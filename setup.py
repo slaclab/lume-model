@@ -23,4 +23,6 @@ setup(
     url="https://github.com/slaclab/lume-model",
     include_package_data=True,
     python_requires=">=3.7",
+    author="Jacqueline Garrahan",
+    author_email="jgarra@slac.stanford.edu",
 )

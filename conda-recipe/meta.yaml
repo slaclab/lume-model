@@ -4,17 +4,15 @@ package:
 
 source:
   path: ..
-#  url: #
-#  sha256: #
 
 requirements:
   host:
     - python
     - setuptools
-    - pydantic
-    - numpy
   run:
     - python
+    - pydantic
+    - numpy
 
 test:
   imports:
