@@ -21,11 +21,11 @@ setup(
     author="Jacqueline Garrahan",
     author_email="jgarra@slac.stanford.edu",
     license="Apache License, Version 2.0",
-    packages=find_packages(exclude=["tests"]),
+    packages=find_packages(),
     install_requires=requirements,
     # set up development requirements
     extras_require={"dev": dev_requirements, "test": ["pytest"]},
     url="https://github.com/slaclab/lume-model",
     include_package_data=True,
-    python_requires=">=3.6",
+    python_requires=">=3.7",
 )

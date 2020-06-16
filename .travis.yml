@@ -1,17 +1,17 @@
-#  Travis uses virtual envs for python and here want to use conda python
-language: c
+language: python
+sudo: required
 
 branches:
   only:
   - master
   - variable-definitions
 
+
 env:
   # Build and test package on all supported python versions
   # NOTE: Miniconda version could be widely expanded
   - PYTHON_BUILD_TARGET=3.8 MINICONDA_VERSION=4.7.12
   - PYTHON_BUILD_TARGET=3.7 MINICONDA_VERSION=4.7.12
-  - PYTHON_BUILD_TARGET=3.6 MINICONDA_VERSION=4.7.12
   # To make sure it's still working with conda 4.6
   - PYTHON_BUILD_TARGET=3.8 MINICONDA_VERSION=4.6.14
   - PYTHON_BUILD_TARGET=3.7 MINICONDA_VERSION=4.6.14
@@ -21,11 +21,15 @@ os:
   - linux
   - osx
 
+matrix:
+  include:
+    - python: 3.7
+    - python: 3.8
 
 install:
   # Install the appropriate miniconda depending on the os and miniconda version
   - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then MINICONDA_OS=Linux; else MINICONDA_OS=MacOSX; fi
-  - wget https://repo.anaconda.com/miniconda/Miniconda3-$MINICONDA_VERSION-$MINICONDA_OS-x86_64.sh -O miniconda.sh
+  - wget https://repo.anaconda.com/miniconda/Miniconda3-latest-$MINICONDA_OS-x86_64.sh -O miniconda.sh
   - bash miniconda.sh -b -p "$HOME"/miniconda
   - source "$HOME"/miniconda/etc/profile.d/conda.sh
 
@@ -37,8 +41,12 @@ install:
   # log info for debugging
   - conda info -a
 
+  # create build & add to channel
+  - conda build -q conda-recipe --python=$TRAVIS_PYTHON_VERSION --output-folder bld-dir
+  - conda config --add channels "file://`pwd`/bld-dir"
+
   # create env
-  - conda create -q -n test-environment python=$PYTHON_BUILD_TARGET --file dev-requirements.txt
+  - conda create -q -n test-environment python=$TRAVIS_PYTHON_VERSION --file dev-requirements.txt
 
   - conda activate test-environment
 
