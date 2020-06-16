@@ -23,7 +23,6 @@ os:
 
 
 install:
-  - sudo apt update
   # Install the appropriate miniconda depending on the os and miniconda version
   - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then MINICONDA_OS=Linux; else MINICONDA_OS=MacOSX; fi
   - wget https://repo.anaconda.com/miniconda/Miniconda3-$MINICONDA_VERSION-$MINICONDA_OS-x86_64.sh -O miniconda.sh
