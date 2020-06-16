@@ -9,6 +9,7 @@ requirements:
   host:
     - python
     - setuptools
+    - pip
   run:
     - python
     - pydantic
@@ -17,8 +18,12 @@ requirements:
 test:
   imports:
     - lume_model
+  requires:
+    - pytest
+  commands:
+    - py.test --pyargs lume_model
 
 about:
-  home: https://github.com/slaclab/lume-epics
+  home: https://github.com/slaclab/lume-model
   license: Apache License 2.0
   summary: Lume-model hosts the variable classes required for running LUME models.
