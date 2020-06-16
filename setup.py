@@ -18,10 +18,10 @@ setup(
     version="0.1",
     author="Jacqueline Garrahan",
     author_email="jgarra@slac.stanford.edu",
-    packages=find_packages(),
+    packages=find_packages(exclude=["tests"]),
     install_requires=requirements,
     # set up development requirements
-    extras_require={"dev": dev_requirements},
+    extras_require={"dev": dev_requirements, "test": ["pytest"]},
     url="https://github.com/slaclab/lume-model",
     include_package_data=True,
     python_requires=">=3.6",
