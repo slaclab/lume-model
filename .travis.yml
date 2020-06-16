@@ -32,6 +32,7 @@ install:
 
   # set configs
   - conda config --set always_yes yes --set changeps1 no
+  - conda config --add channels conda-forge --set channel_priority strict
 
   # log info for debugging
   - conda info -a
