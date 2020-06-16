@@ -37,15 +37,14 @@ install:
   - conda config --add channels conda-forge
 
   # Build the conda recipe for this package
-  - conda build -q conda-recipe --python=$TRAVIS_PYTHON_VERSION --output-folder bld-dir
+  - conda build -q conda-recipe --python=$BUILD_TARGET --output-folder bld-dir
 
   # Add the built package as a channel with highest priority
   # this can eventually be used to deploy to conda-forge
   - conda config --add channels "file://`pwd`/bld-dir"
 
-  # Create and activate a python environment
-  - conda create -n test-environment python=$TRAVIS_PYTHON_VERSION --file dev-requirements.txt --yes
-  - conda activate test-environment
-
 script:
+# Create and activate a python environment
+  - conda create -n test-environment python=$BUILD_TARGET --file dev-requirements.txt --yes
+  - conda activate test-environment
   - pytest
