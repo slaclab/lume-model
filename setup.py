@@ -16,13 +16,13 @@ with open(path.join(cur_dir, "dev-requirements.txt"), "r") as f:
 setup(
     name="lume-model",
     version="0.1",
+    author="Jacqueline Garrahan",
+    author_email="jgarra@slac.stanford.edu",
     packages=find_packages(),
     install_requires=requirements,
     # set up development requirements
     extras_require={"dev": dev_requirements},
     url="https://github.com/slaclab/lume-model",
     include_package_data=True,
-    python_requires=">=3.7",
-    author="Jacqueline Garrahan",
-    author_email="jgarra@slac.stanford.edu",
+    python_requires=">=3.6",
 )
