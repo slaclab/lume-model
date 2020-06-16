@@ -6,14 +6,17 @@ branches:
   - master
   - variable-definitions
 
-os:
-  - linux
-  - osx
-
 matrix:
   include:
-    - python: 3.7
-    - python: 3.8
+    - os: osx
+      python: 3.7
+    - os: osx
+      python: 3.8
+    - os: linux
+      python: 3.7
+    - os: linux
+      python: 3.8
+
 
 install:
   # Install the appropriate miniconda depending on the os and miniconda version
@@ -29,6 +32,9 @@ install:
 
   # log info for debugging
   - conda info -a
+
+  # install conda build
+  - conda install conda-build
 
   # create build & add to channel
   - conda build -q conda-recipe --python=$TRAVIS_PYTHON_VERSION --output-folder bld-dir
