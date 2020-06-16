@@ -9,15 +9,57 @@ from lume_model.variables import (
 )
 
 
-def test_dict_representations():
+def test_input_scalar_variable():
+    # test correctly typed
+    ScalarInputVariable(name="test", value=0.1, value_range=[1, 2])
 
-    # test that keys are
-    pass
+    # test incorrect value type
+    with pytest.raises(ValidationError):
+        ScalarInputVariable(
+            name="test", value=np.array([1, 2, 3, 4]), value_range=[1, 2]
+        )
+
+    # test missing name
+    with pytest.raises(ValidationError):
+        ScalarInputVariable(value=0.1, value_range=[1, 2])
+
+    # test missing value
+    with pytest.raises(ValidationError):
+        ScalarInputVariable(name="test", value_range=[1, 2])
+
+    # test missing range
+    with pytest.raises(ValidationError):
+        ScalarInputVariable(
+            name="test", value=0.1,
+        )
+
+
+def test_output_scalar_variable():
+    # test correctly typed
+    ScalarOutputVariable(name="test", value=0.1, value_range=[1, 2])
+
+    # test incorrect value type
+    with pytest.raises(ValidationError):
+        ScalarOutputVariable(
+            name="test", value=np.array([1, 2, 3, 4]), value_range=[1, 2]
+        )
+
+    # test missing name
+    with pytest.raises(ValidationError):
+        ScalarOutputVariable(value=0.1, value_range=[1, 2])
+
+    # test missing value
+    ScalarOutputVariable(name="test", value_range=[1, 2])
+
+    # test missing range
+    ScalarOutputVariable(
+        name="test", value=0.1,
+    )
 
 
 def test_input_image_variable():
     # test correctly typed
-    var = ImageInputVariable(
+    ImageInputVariable(
         name="test", value=np.array([[1, 2,], [3, 4]]), value_range=[1, 2]
     )
 
@@ -44,11 +86,11 @@ def test_input_image_variable():
 
 def test_output_image_variable():
     # test correctly typed
-    var = ImageOutputVariable(
+    ImageOutputVariable(
         name="test", value=np.array([[1, 2,], [3, 4]]), value_range=[1, 2]
     )
 
-    # test image value constraints
+    # test dim of image value must = 2
     with pytest.raises(ValidationError):
         ImageOutputVariable(
             name="test", value=np.array([1, 2, 3, 4]), value_range=[1, 2]
@@ -65,7 +107,3 @@ def test_output_image_variable():
     ImageOutputVariable(
         name="test", value=np.array([[1, 2,], [3, 4]]),
     )
-
-
-def test_dataframe_construction():
-    pass
