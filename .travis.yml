@@ -9,42 +9,37 @@ branches:
 env:
   # Build and test package on all supported python versions
   # NOTE: Miniconda version could be widely expanded
-  - BUILD_TARGET=3.8 MINICONDA_VERSION=4.7.12
-  - BUILD_TARGET=3.7 MINICONDA_VERSION=4.7.12
-  - BUILD_TARGET=3.6 MINICONDA_VERSION=4.7.12
+  - PYTHON_BUILD_TARGET=3.8 MINICONDA_VERSION=4.7.12
+  - PYTHON_BUILD_TARGET=3.7 MINICONDA_VERSION=4.7.12
+  - PYTHON_BUILD_TARGET=3.6 MINICONDA_VERSION=4.7.12
   # To make sure it's still working with conda 4.6
-  - BUILD_TARGET=3.8 MINICONDA_VERSION=4.6.14
-  - BUILD_TARGET=3.7 MINICONDA_VERSION=4.6.14
-  - BUILD_TARGET=3.6 MINICONDA_VERSION=4.6.14
+  - PYTHON_BUILD_TARGET=3.8 MINICONDA_VERSION=4.6.14
+  - PYTHON_BUILD_TARGET=3.7 MINICONDA_VERSION=4.6.14
+  - PYTHON_BUILD_TARGET=3.6 MINICONDA_VERSION=4.6.14
 
 os:
   - linux
   - osx
 
-before_install:
+
+install:
+  - sudo apt update
   # Install the appropriate miniconda depending on the os and miniconda version
   - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then MINICONDA_OS=Linux; else MINICONDA_OS=MacOSX; fi
   - wget https://repo.anaconda.com/miniconda/Miniconda3-$MINICONDA_VERSION-$MINICONDA_OS-x86_64.sh -O miniconda.sh
-  - chmod +x miniconda.sh
   - bash miniconda.sh -b -p "$HOME"/miniconda
   - source "$HOME"/miniconda/etc/profile.d/conda.sh
-  - conda update --yes conda  # Update CONDA without command line prompt
 
-install:
-  - conda install -y conda-build
+  # set configs
+  - conda config --set always_yes yes --set changeps1 no
 
-  # add conda forge for epics-base etc.
-  - conda config --add channels conda-forge
+  # log info for debugging
+  - conda info -a
 
-  # Build the conda recipe for this package
-  - conda build -q conda-recipe --python=$BUILD_TARGET --output-folder bld-dir
+  # create env
+  - conda create -q -n test-environment python=$PYTHON_BUILD_TARGET --file dev-requirements.txt
 
-  # Add the built package as a channel with highest priority
-  # this can eventually be used to deploy to conda-forge
-  - conda config --add channels "file://`pwd`/bld-dir"
+  - conda activate test-environment
 
 script:
-# Create and activate a python environment
-  - conda create -n test-environment python=$BUILD_TARGET --file dev-requirements.txt --yes
-  - conda activate test-environment
   - pytest
