@@ -1,5 +1,6 @@
 from setuptools import setup, find_packages
 from os import path, environ
+import versioneer
 
 cur_dir = path.abspath(path.dirname(__file__))
 
@@ -15,9 +16,11 @@ with open(path.join(cur_dir, "dev-requirements.txt"), "r") as f:
 
 setup(
     name="lume-model",
-    version="0.1",
+    version=versioneer.get_version(),
+    cmdclass=versioneer.get_cmdclass(),
     author="Jacqueline Garrahan",
     author_email="jgarra@slac.stanford.edu",
+    license="Apache License, Version 2.0",
     packages=find_packages(exclude=["tests"]),
     install_requires=requirements,
     # set up development requirements
