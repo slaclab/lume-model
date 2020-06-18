@@ -80,6 +80,14 @@ class NumpyNDArray(np.ndarray):
 class Image(np.ndarray):
     """
     Custom type validator for image array.
+
+
+    Notes
+    -----
+    This should be expanded to check for color images.
+
+
+    #dw, dh
     """
 
     @classmethod
@@ -153,7 +161,7 @@ class InputVariable(Variable, Generic[Value]):
 
 class OutputVariable(Variable, Generic[Value]):
     """
-    Base generic class for input variables.
+    Base generic class for output variables. Value and range assignment are optional.
 
     Attributes
     ----------
@@ -167,6 +175,10 @@ class OutputVariable(Variable, Generic[Value]):
 
     value: Optional[Value]
     value_range: Optional[list] = Field(alias="range")
+
+
+class ScalarVariable:
+    variable_type = "scalar"
 
 
 class NDVariableBase:
@@ -185,7 +197,14 @@ class NDVariableBase:
         return self.value.shape
 
 
-class ImageInputVariable(InputVariable[Image], NDVariableBase):
+class ImageVariable(BaseModel):
+    x_min: float
+    x_max: float
+    y_min: float
+    y_max: float
+
+
+class ImageInputVariable(InputVariable[Image], NDVariableBase, ImageVariable):
     """
     Class composition of image input, and numpy array base class.
 
@@ -194,7 +213,7 @@ class ImageInputVariable(InputVariable[Image], NDVariableBase):
     pass
 
 
-class ImageOutputVariable(OutputVariable[Image], NDVariableBase):
+class ImageOutputVariable(OutputVariable[Image], NDVariableBase, ImageVariable):
     """
     Class composition of image output, and numpy array base class.
 
