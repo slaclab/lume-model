@@ -194,17 +194,13 @@ class NDVariableBase:
 class ImageVariable(BaseModel):
     variable_type = "image"
     axis_labels: List[str]
-    axis_units: List[str]
+    axis_units: List[str] = None
     precision: int = 8
-    x_min: float
-    x_max: float
-    y_min: float
-    y_max: float
 
 
 class ScalarVariable:
     variable_type = "scalar"
-    units: Optional[str]  # required for some output displays
+    units: str = None  # required for some output displays
     precision: int = 8
 
 
@@ -214,7 +210,10 @@ class ImageInputVariable(InputVariable[Image], NDVariableBase, ImageVariable):
 
     """
 
-    pass
+    x_min: float
+    x_max: float
+    y_min: float
+    y_max: float
 
 
 class ImageOutputVariable(OutputVariable[Image], NDVariableBase, ImageVariable):
