@@ -134,8 +134,6 @@ class Variable(PropertyBaseModel, Generic[Value]):
 
     name: str = Field(...)  # name required
     default: Optional[Value]  # default optionally required
-    units: Optional[str]  # required for some output displays
-    precision: int = 8
 
     class Config:
         allow_population_by_field_name = True  # do not use alias only-init
@@ -177,10 +175,6 @@ class OutputVariable(Variable, Generic[Value]):
     value_range: Optional[list] = Field(alias="range")
 
 
-class ScalarVariable:
-    variable_type = "scalar"
-
-
 class NDVariableBase:
     """
     Holds properties associated with numpy array variables.
@@ -198,10 +192,20 @@ class NDVariableBase:
 
 
 class ImageVariable(BaseModel):
+    variable_type = "image"
+    axis_labels: List[str]
+    axis_units: List[str]
+    precision: int = 8
     x_min: float
     x_max: float
     y_min: float
     y_max: float
+
+
+class ScalarVariable:
+    variable_type = "scalar"
+    units: Optional[str]  # required for some output displays
+    precision: int = 8
 
 
 class ImageInputVariable(InputVariable[Image], NDVariableBase, ImageVariable):
@@ -222,6 +226,17 @@ class ImageOutputVariable(OutputVariable[Image], NDVariableBase, ImageVariable):
     pass
 
 
-#  declare scalare inputs/outputs from generic input type
-ScalarInputVariable = InputVariable[float]
-ScalarOutputVariable = OutputVariable[float]
+class ScalarInputVariable(InputVariable[float], ScalarVariable):
+    """
+    Class composition of scalar input and scalar base.
+    """
+
+    pass
+
+
+class ScalarOutputVariable(OutputVariable[float], ScalarVariable):
+    """
+    Class composition of scalar output and scalar base.
+    """
+
+    pass
