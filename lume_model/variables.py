@@ -194,7 +194,7 @@ class NDVariableBase:
 class ImageVariable(BaseModel):
     variable_type = "image"
     axis_labels: List[str]
-    axis_units: List[str]
+    axis_units: List[str] = None
     precision: int = 8
     x_min: float = None
     x_max: float = None
