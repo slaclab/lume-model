@@ -196,10 +196,10 @@ class ImageVariable(BaseModel):
     axis_labels: List[str]
     axis_units: List[str]
     precision: int = 8
-    x_min: float
-    x_max: float
-    y_min: float
-    y_max: float
+    x_min: float = None
+    x_max: float = None
+    y_min: float = None
+    y_max: float = None
 
 
 class ScalarVariable:
