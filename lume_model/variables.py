@@ -194,7 +194,7 @@ class NDVariableBase:
 class ImageVariable(BaseModel):
     variable_type = "image"
     axis_labels: List[str]
-    axis_units: List[str] = None
+    axis_units: List[str]
     precision: int = 8
     x_min: float
     x_max: float
@@ -204,7 +204,7 @@ class ImageVariable(BaseModel):
 
 class ScalarVariable:
     variable_type = "scalar"
-    units: str = None  # required for some output displays
+    units: Optional[str]  # required for some output displays
     precision: int = 8
 
 
