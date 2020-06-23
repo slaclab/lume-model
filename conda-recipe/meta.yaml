@@ -5,6 +5,10 @@ package:
 source:
   path: ..
 
+build:
+  noarch: python
+  number: 0
+
 requirements:
   host:
     - python
