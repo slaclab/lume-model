@@ -15,7 +15,7 @@ def test_surrogate_model_construction():
             "output2": ScalarOutputVariable(name="output2"),
         }
 
-        def predict(self, input_variables):
+        def evaluate(self, input_variables):
 
             self.input_variables = {
                 variable.name: variable for variable in input_variables
@@ -39,7 +39,7 @@ def test_surrogate_model_construction():
             "input2": ScalarInputVariable(name="input2", value=2, range=[0.0, 5.0]),
         }
 
-        def predict(self, input_variables):
+        def evaluate(self, input_variables):
 
             self.input_variables = {
                 variable.name: variable for variable in input_variables

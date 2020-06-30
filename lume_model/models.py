@@ -22,8 +22,12 @@ class SurrogateModel(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def predict(self):
+    def evaluate(self):
         """
-        Abstract prediction method that must be overwritten by inheriting classes.
+        Abstract evaluate method that must be overwritten by inheriting classes.
+
+        Notes
+        -----
+        Must return lume-model output variables.
         """
         pass
