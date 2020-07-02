@@ -1,5 +1,5 @@
 import pickle
-from typing import Dict, List
+from typing import Tuple
 
 from lume_model.models import SurrogateModel
 from lume_model.variables import Variable
@@ -18,14 +18,15 @@ def save_variables(model_class, variable_file) -> None:
 
     """
     variables = {
-        "input_variables": list(model_class.input_variables.values()),
-        "output_variables": list(model_class.output_variables.values()),
+        "input_variables": model_class.input_variables,
+        "output_variables": model_class.output_variables,
     }
+
     with open(variable_file, "wb") as f:
         pickle.dump(variables, f)
 
 
-def load_variables(variable_file) -> Dict[str, List[Variable]]:
+def load_variables(variable_file) -> Tuple[dict]:
     """
     Load variables from the given variable file.
 
@@ -34,8 +35,13 @@ def load_variables(variable_file) -> Dict[str, List[Variable]]:
     variable_file: str
         Name of variable file
 
+    Returns
+    -------
+    tuple
+        input variable dict, output variable dict
+
     """
     with open(variable_file, "rb") as f:
         variables = pickle.load(f)
 
-        return variables
+        return variables["input_variables"], variables["output_variables"]
