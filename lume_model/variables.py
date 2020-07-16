@@ -1,8 +1,11 @@
 import numpy as np
 from enum import Enum
+import logging
 from typing import Any, List, Union, Optional, Generic, TypeVar
 from pydantic import BaseModel, Field, validator
 from pydantic.generics import GenericModel
+
+logger = logging.getLogger(__name__)
 
 
 class PropertyBaseModel(GenericModel):
@@ -73,6 +76,7 @@ class NumpyNDArray(np.ndarray):
     def validate(cls, v: Any) -> np.ndarray:
         # validate data...
         if not isinstance(v, np.ndarray):
+            logger.exception("A numpy array is required for the value")
             raise TypeError("Numpy array required")
         return v
 
@@ -98,9 +102,11 @@ class Image(np.ndarray):
     def validate(cls, v: Any) -> np.ndarray:
         # validate data...
         if not isinstance(v, np.ndarray):
+            logger.exception("Image variable value must be a numpy array")
             raise TypeError("Numpy array required")
 
         if not v.ndim == 2:
+            logger.exception("Array must have dim=2 to instantiate image")
             raise ValueError(
                 f"Image array must have dim=2. Provided array has {v.ndim} dimensions"
             )

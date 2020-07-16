@@ -1,8 +1,11 @@
 import pickle
 from typing import Tuple
+import logging
 
 from lume_model.models import SurrogateModel
 from lume_model.variables import Variable
+
+logger = logging.getLogger(__name__)
 
 
 def save_variables(model_class, variable_file) -> None:
