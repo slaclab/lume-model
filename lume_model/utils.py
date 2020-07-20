@@ -1,3 +1,10 @@
+"""
+This module contains utility functions for model construction, saving, and
+the subsequent loading of saved variables.
+
+"""
+
+
 import pickle
 from typing import Tuple
 import logging
@@ -8,16 +15,13 @@ from lume_model.variables import Variable
 logger = logging.getLogger(__name__)
 
 
-def save_variables(model_class, variable_file) -> None:
-    """
-    Save model class variables to file.
+def save_variables(model_class, variable_file: str) -> None:
+    """Save model class variables to file.
 
-    Parameters
-    ----------
-    model_class: SurrogateModel
+    Args:
+        model_class (SurrogateModel): Model class
 
-    variable_file: str
-        Name of file to save
+        variable_file (str): Filename for saving
 
     """
     variables = {
@@ -29,19 +33,14 @@ def save_variables(model_class, variable_file) -> None:
         pickle.dump(variables, f)
 
 
-def load_variables(variable_file) -> Tuple[dict]:
-    """
-    Load variables from the given variable file.
+def load_variables(variable_file: str) -> Tuple[dict]:
+    """ Load variables from the given variable file.
 
-    Parameters
-    ----------
-    variable_file: str
-        Name of variable file
+    Args:
+        variable_file (str): Name of variable file.
 
-    Returns
-    -------
-    tuple
-        input variable dict, output variable dict
+    Returns:
+        Tuple of input variable dictionary and output variable dictionary.
 
     """
     with open(variable_file, "rb") as f:
