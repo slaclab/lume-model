@@ -1,3 +1,7 @@
+"""
+This module contains the surrogate model class used for running the online models.
+
+"""
 from abc import ABC, abstractmethod
 from typing import Dict
 import logging
@@ -9,7 +13,7 @@ logger = logging.getLogger(__name__)
 
 class SurrogateModel(ABC):
     """
-    Base class for the surrogate models that includes abstract predict method, which \\
+    Base class for the surrogate models that includes abstract predict method, which
     must be initialized by children.
 
     """
@@ -31,8 +35,7 @@ class SurrogateModel(ABC):
         """
         Abstract evaluate method that must be overwritten by inheriting classes.
 
-        Notes
-        -----
+        Note:
         Must return lume-model output variables.
         """
         pass
