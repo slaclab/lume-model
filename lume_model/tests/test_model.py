@@ -6,8 +6,8 @@ import pytest
 def test_surrogate_model_construction():
     class ExampleModel(SurrogateModel):
         input_variables = {
-            "input1": ScalarInputVariable(name="input1", value=1, range=[0.0, 5.0]),
-            "input2": ScalarInputVariable(name="input2", value=2, range=[0.0, 5.0]),
+            "input1": ScalarInputVariable(name="input1", default=1, range=[0.0, 5.0]),
+            "input2": ScalarInputVariable(name="input2", default=2, range=[0.0, 5.0]),
         }
 
         output_variables = {
@@ -35,8 +35,8 @@ def test_surrogate_model_construction():
 
     class ExampleFailureModel(SurrogateModel):
         input_variables = {
-            "input1": ScalarInputVariable(name="input1", value=1, range=[0.0, 5.0]),
-            "input2": ScalarInputVariable(name="input2", value=2, range=[0.0, 5.0]),
+            "input1": ScalarInputVariable(name="input1", default=1, range=[0.0, 5.0]),
+            "input2": ScalarInputVariable(name="input2", default=2, range=[0.0, 5.0]),
         }
 
         def evaluate(self, input_variables):

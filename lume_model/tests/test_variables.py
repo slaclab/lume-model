@@ -11,57 +11,59 @@ from lume_model.variables import (
 
 def test_input_scalar_variable():
     # test correctly typed
-    ScalarInputVariable(name="test", value=0.1, value_range=[1, 2])
+    ScalarInputVariable(name="test", default=0.1, value_range=[1, 2])
 
     # test incorrect value type
     with pytest.raises(ValidationError):
         ScalarInputVariable(
-            name="test", value=np.array([1, 2, 3, 4]), value_range=[1, 2]
+            name="test", default=np.array([1, 2, 3, 4]), value_range=[1, 2]
         )
 
     # test missing name
     with pytest.raises(ValidationError):
-        ScalarInputVariable(value=0.1, value_range=[1, 2])
+        ScalarInputVariable(default=0.1, value_range=[1, 2])
 
-    # test missing value
+    # test missing default
     with pytest.raises(ValidationError):
         ScalarInputVariable(name="test", value_range=[1, 2])
 
     # test missing range
     with pytest.raises(ValidationError):
         ScalarInputVariable(
-            name="test", value=0.1,
+            name="test", default=0.1,
         )
 
 
 def test_output_scalar_variable():
     # test correctly typed
-    ScalarOutputVariable(name="test", value=0.1, value_range=[1, 2])
+    ScalarOutputVariable(name="test", default=0.1, value_range=[1, 2])
 
     # test incorrect value type
     with pytest.raises(ValidationError):
         ScalarOutputVariable(
-            name="test", value=np.array([1, 2, 3, 4]), value_range=[1, 2]
+            name="test", default=np.array([1, 2, 3, 4]), value_range=[1, 2]
         )
 
     # test missing name
     with pytest.raises(ValidationError):
-        ScalarOutputVariable(value=0.1, value_range=[1, 2])
+        ScalarOutputVariable(default=0.1, value_range=[1, 2])
 
     # test missing value
     ScalarOutputVariable(name="test", value_range=[1, 2])
 
     # test missing range
     ScalarOutputVariable(
-        name="test", value=0.1,
+        name="test", default=0.1,
     )
 
 
 def test_input_image_variable():
     # test correctly typed
+    test_array = np.array([[1, 2,], [3, 4]])
     ImageInputVariable(
         name="test",
-        value=np.array([[1, 2,], [3, 4]]),
+        default=test_array,
+        shape=test_array.shape,
         value_range=[1, 10],
         axis_labels=["count_1", "count_2"],
         x_min=0,
@@ -74,7 +76,8 @@ def test_input_image_variable():
     with pytest.raises(ValidationError):
         ImageInputVariable(
             name="test",
-            value=np.array([1, 2, 3, 4]),
+            default=np.array([1, 2, 3, 4]),
+            shape=test_array.shape,
             value_range=[1, 10],
             axis_labels=["count_1", "count_2"],
             x_min=0,
@@ -86,7 +89,8 @@ def test_input_image_variable():
     # test missing name
     with pytest.raises(ValidationError):
         ImageInputVariable(
-            value=np.array([[1, 2,], [3, 4]]),
+            default=test_array,
+            shape=test_array.shape,
             value_range=[1, 10],
             axis_labels=["count_1", "count_2"],
             x_min=0,
@@ -99,6 +103,7 @@ def test_input_image_variable():
     with pytest.raises(ValidationError):
         ImageInputVariable(
             name="test",
+            shape=test_array.shape,
             value_range=[1, 10],
             axis_labels=["count_1", "count_2"],
             x_min=0,
@@ -111,7 +116,8 @@ def test_input_image_variable():
     with pytest.raises(ValidationError):
         ImageInputVariable(
             name="test",
-            value=np.array([[1, 2,], [3, 4]]),
+            default=np.array([[1, 2,], [3, 4]]),
+            shape=test_array.shape,
             axis_labels=["count_1", "count_2"],
             x_min=0,
             y_min=0,
@@ -123,7 +129,8 @@ def test_input_image_variable():
     with pytest.raises(ValidationError):
         ImageInputVariable(
             name="test",
-            value=np.array([[1, 2,], [3, 4]]),
+            default=np.array([[1, 2,], [3, 4]]),
+            shape=test_array.shape,
             value_range=[1, 10],
             x_min=0,
             y_min=0,
@@ -134,9 +141,12 @@ def test_input_image_variable():
 
 def test_output_image_variable():
     # test correctly typed
+    test_array = np.array([[1, 2,], [3, 4]])
+
     ImageOutputVariable(
         name="test",
-        value=np.array([[1, 2,], [3, 4]]),
+        default=test_array,
+        shape=test_array.shape,
         axis_labels=["count_1", "count_2"],
         x_min=0,
         y_min=0,
@@ -148,7 +158,8 @@ def test_output_image_variable():
     with pytest.raises(ValidationError):
         ImageOutputVariable(
             name="test",
-            value=np.array([1, 2, 3, 4]),
+            default=np.array([1, 2, 3, 4]),
+            shape=test_array.shape,
             axis_labels=["count_1", "count_2"],
             x_min=0,
             y_min=0,
@@ -159,7 +170,8 @@ def test_output_image_variable():
     # test missing name
     with pytest.raises(ValidationError):
         ImageOutputVariable(
-            value=np.array([[1, 2,], [3, 4]]),
+            default=test_array,
+            shape=test_array.shape,
             axis_labels=["count_1", "count_2"],
             x_min=0,
             y_min=0,
@@ -170,13 +182,19 @@ def test_output_image_variable():
     # test missing axis labels
     with pytest.raises(ValidationError):
         ImageOutputVariable(
-            value=np.array([[1, 2,], [3, 4]]), x_min=0, y_min=0, x_max=5, y_max=5,
+            default=test_array,
+            shape=test_array.shape,
+            x_min=0,
+            y_min=0,
+            x_max=5,
+            y_max=5,
         )
 
     # test missing value
     ImageOutputVariable(
         name="test",
         axis_labels=["count_1", "count_2"],
+        shape=test_array.shape,
         x_min=0,
         y_min=0,
         x_max=5,
@@ -187,6 +205,7 @@ def test_output_image_variable():
     ImageOutputVariable(
         name="test",
         value=np.array([[1, 2,], [3, 4]]),
+        shape=test_array.shape,
         axis_labels=["count_1", "count_2"],
         x_min=0,
         y_min=0,
