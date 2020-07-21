@@ -15,7 +15,7 @@ from lume_model.variables import Variable
 logger = logging.getLogger(__name__)
 
 
-def save_variables(model_class, variable_file: str) -> None:
+def save_variables(input_variables, output_variables, variable_file: str) -> None:
     """Save model class variables to file.
 
     Args:
@@ -25,8 +25,8 @@ def save_variables(model_class, variable_file: str) -> None:
 
     """
     variables = {
-        "input_variables": model_class.input_variables,
-        "output_variables": model_class.output_variables,
+        "input_variables": input_variables,
+        "output_variables": output_variables,
     }
 
     with open(variable_file, "wb") as f:
