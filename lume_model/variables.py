@@ -130,7 +130,7 @@ class Variable(PropertyBaseModel, Generic[Value]):
     """
 
     name: str = Field(...)  # name required
-    value: Optional[Value]
+    value: Value = None
     precision: Optional[int] = 8
 
     class Config:
