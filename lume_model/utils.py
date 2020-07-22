@@ -11,7 +11,6 @@ import h5py
 from typing import Tuple, List
 import logging
 
-from lume_model.models import SurrogateModel
 from lume_model.variables import Variable
 
 logger = logging.getLogger(__name__)
