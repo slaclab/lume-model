@@ -63,7 +63,6 @@ def test_input_image_variable():
     ImageInputVariable(
         name="test",
         default=test_array,
-        shape=test_array.shape,
         value_range=[1, 10],
         axis_labels=["count_1", "count_2"],
         x_min=0,
@@ -77,7 +76,6 @@ def test_input_image_variable():
         ImageInputVariable(
             name="test",
             default=np.array([1, 2, 3, 4]),
-            shape=test_array.shape,
             value_range=[1, 10],
             axis_labels=["count_1", "count_2"],
             x_min=0,
@@ -90,7 +88,6 @@ def test_input_image_variable():
     with pytest.raises(ValidationError):
         ImageInputVariable(
             default=test_array,
-            shape=test_array.shape,
             value_range=[1, 10],
             axis_labels=["count_1", "count_2"],
             x_min=0,
@@ -103,7 +100,6 @@ def test_input_image_variable():
     with pytest.raises(ValidationError):
         ImageInputVariable(
             name="test",
-            shape=test_array.shape,
             value_range=[1, 10],
             axis_labels=["count_1", "count_2"],
             x_min=0,
@@ -117,7 +113,6 @@ def test_input_image_variable():
         ImageInputVariable(
             name="test",
             default=np.array([[1, 2,], [3, 4]]),
-            shape=test_array.shape,
             axis_labels=["count_1", "count_2"],
             x_min=0,
             y_min=0,
@@ -148,10 +143,6 @@ def test_output_image_variable():
         default=test_array,
         shape=test_array.shape,
         axis_labels=["count_1", "count_2"],
-        x_min=0,
-        y_min=0,
-        x_max=5,
-        y_max=5,
     )
 
     # test dim of image value must = 2
@@ -161,10 +152,6 @@ def test_output_image_variable():
             default=np.array([1, 2, 3, 4]),
             shape=test_array.shape,
             axis_labels=["count_1", "count_2"],
-            x_min=0,
-            y_min=0,
-            x_max=5,
-            y_max=5,
         )
 
     # test missing name
@@ -173,42 +160,22 @@ def test_output_image_variable():
             default=test_array,
             shape=test_array.shape,
             axis_labels=["count_1", "count_2"],
-            x_min=0,
-            y_min=0,
-            x_max=5,
-            y_max=5,
         )
 
     # test missing axis labels
     with pytest.raises(ValidationError):
         ImageOutputVariable(
-            default=test_array,
-            shape=test_array.shape,
-            x_min=0,
-            y_min=0,
-            x_max=5,
-            y_max=5,
+            name="test", default=test_array,
         )
 
     # test missing value
     ImageOutputVariable(
-        name="test",
-        axis_labels=["count_1", "count_2"],
-        shape=test_array.shape,
-        x_min=0,
-        y_min=0,
-        x_max=5,
-        y_max=5,
+        name="test", axis_labels=["count_1", "count_2"],
     )
 
-    # test missing range
     ImageOutputVariable(
         name="test",
         value=np.array([[1, 2,], [3, 4]]),
         shape=test_array.shape,
         axis_labels=["count_1", "count_2"],
-        x_min=0,
-        y_min=0,
-        x_max=5,
-        y_max=5,
     )

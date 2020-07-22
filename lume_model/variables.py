@@ -1,5 +1,10 @@
 """
-This module contains lume-model variable definitions.
+This module contains definitions of lume-model variables for use with lume tools.
+The variables are divided into input and outputs, each with different requirements.
+Initiating any variable without the minimum requirements results in an error.
+
+Two types of variables are currently defined: Scalar and Image. Scalar variables hold
+float type values. Image variables hold numpy arrays.
 """
 
 import numpy as np
@@ -15,11 +20,11 @@ logger = logging.getLogger(__name__)
 class PropertyBaseModel(GenericModel):
     """
     Generic base class used for the Variables. This extends the pydantic GenericModel to serialize properties.
-    Notes
-    -----
-    Workaround for serializing properties with pydantic until
-    https://github.com/samuelcolvin/pydantic/issues/935
-    is solved. This solution is referenced in the issue.
+
+    TODO:
+        Workaround for serializing properties with pydantic until
+        https://github.com/samuelcolvin/pydantic/issues/935
+        is solved. This solution is referenced in the issue.
     """
 
     @classmethod
@@ -87,7 +92,7 @@ class Image(np.ndarray):
     """
     Custom type validator for image array.
 
-    Note:
+    TODO:
         This should be expanded to check for color images.
 
     """
@@ -112,6 +117,19 @@ class Image(np.ndarray):
         return v
 
 
+class NDVariableBase:
+    """
+    Holds properties associated with numpy array variables.
+
+    Attributes:
+        shape (tuple): Shape of the numpy n-dimensional array
+    """
+
+    @property
+    def shape(self) -> tuple:
+        return self.value.shape
+
+
 # define generic value type
 Value = TypeVar("Value")
 
@@ -123,15 +141,15 @@ class Variable(PropertyBaseModel, Generic[Value]):
     Attributes:
         name (str): Name of the variable.
 
-        default (Value, optional):  Default value assigned to the variable
+        value (Optional[Value]):  Value assigned to the variable
 
-        precision (int, optional): Precision to use for the value
+        precision (Optional[int]): Precision to use for the value
 
     """
 
     name: str = Field(...)  # name required
-    value: Value = None
-    precision: Optional[int] = 8
+    value: Optional[Value] = None
+    precision: Optional[int] = None
 
     class Config:
         allow_population_by_field_name = True  # do not use alias only-init
@@ -144,11 +162,11 @@ class InputVariable(Variable, Generic[Value]):
     Attributes:
         name (str): Name of the variable.
 
-        default (Value, optional):  Default value assigned to the variable
+        default (Value):  Default value assigned to the variable
 
-        precision (int, optional): Precision to use for the value
+        precision (Optional[int]): Precision to use for the value
 
-        value (Value): Value assigned to variable
+        value (Optional[Value]): Value assigned to variable
 
         value_range (list): Acceptable range for value
 
@@ -165,13 +183,13 @@ class OutputVariable(Variable, Generic[Value]):
     Attributes:
         name (str): Name of the variable.
 
-        default (Value, optional):  Default value assigned to the variable
+        default (Optional[Value]):  Default value assigned to the variable.
 
-        precision (int, optional): Precision to use for the value
+        precision (Optional[int]): Precision to use for the value.
 
-        value (Value, optional): Value assigned to variable
+        value (Optional[Value]): Value assigned to variable
 
-        value_range (list, optional): Acceptable range for value
+        value_range (Optional[list]): Acceptable range for value
 
     """
 
@@ -179,42 +197,29 @@ class OutputVariable(Variable, Generic[Value]):
     value_range: Optional[list] = Field(alias="range")
 
 
-class ImageVariable(BaseModel):
+class ImageVariable(BaseModel, NDVariableBase):
     """
     Base class used for constructing an image variable.
 
     Attributes:
-        variable_type (tuple="image): Indicates image variable.
+        variable_type (str): Indicates image variable.
 
         axis_labels (List[str]): Labels to use for rendering axes.
 
-        axis_units (Lsit[str]): Units to use for rendering axes labels.
+        axis_units (Optional[List[str]]): Units to use for rendering axes labels.
 
-        x_min (float): Minimum x value of image.
+        x_min_variable (Optional[str]): Scalar variable associated with image minimum x.
 
-        x_max (float): Maximum x value of image.
+        x_max_variable (Optional[str]): Scalar variable associated with image maximum x.
 
-        y_min (float): Minimum y value of image.
+        y_min_variable (Optional[str]): Scalar variable associated with image minimum y.
 
-        y_max (float): Maximum y value of image.
-
-        x_min_variable (str): Variable associated with image minimum x.
-
-        x_max_variable (str): Variable associated with image maximum x.
-
-        y_min_variable (str): Variable associated with image minimum y.
-
-        y_max_variable (str): Variable associated with image maximum y.
+        y_max_variable (Optional[str]): Scalar variable associated with image maximum y.
     """
 
     variable_type: str = "image"
     axis_labels: List[str]
-    shape: tuple
     axis_units: List[str] = None
-    x_min: float = None
-    x_max: float = None
-    y_min: float = None
-    y_max: float = None
     x_min_variable: str = None
     x_max_variable: str = None
     y_min_variable: str = None
@@ -226,11 +231,11 @@ class ScalarVariable:
     Base class used for constructing a scalar variable.
 
     Attributes:
-        variable_type (tuple="scalar"): Type of variable
+        variable_type (tuple): Indicates scalar variable.
 
-        units (str): Units associated with scalar value
+        units (Optional[str]): Units associated with scalar value.
 
-        parent_variable (str=None): Variable for which this is an attribute
+        parent_variable (str): Variable for which this is an attribute.
     """
 
     variable_type: str = "scalar"
@@ -240,30 +245,147 @@ class ScalarVariable:
 
 class ImageInputVariable(InputVariable[Image], ImageVariable):
     """
-    Class composition of image input, and numpy array base class.
+    Image input variable. Require name, default, value_range
 
     Attributes:
 
+        name (str): Name of the variable.
+
+        default (Value):  Default value assigned to the variable.
+
+        precision (Optional[int]): Precision to use for the value.
+
+        value (Optional[Value]): Value assigned to variable
+
+        value_range (list): Acceptable range for value
+
+        variable_type (str): Indicates image variable.
+
+        axis_labels (List[str]): Labels to use for rendering axes.
+
+        axis_units (Optional[List[str]]): Units to use for rendering axes labels.
+
+        x_min (float): Minimum x value of image.
+
+        x_max (float): Maximum x value of image.
+
+        y_min (float): Minimum y value of image.
+
+        y_max (float): Maximum y value of image.
+
+        x_min_variable (Optional[str]): Scalar variable associated with image minimum x.
+
+        x_max_variable (Optional[str]): Scalar variable associated with image maximum x.
+
+        y_min_variable (Optional[str]): Scalar variable associated with image minimum y.
+
+        y_max_variable (Optional[str]): Scalar variable associated with image maximum y.
+
+
+    Example:
+        ```
+        variable = ImageInputVariable(
+            name="test",
+            default=np.array([[1,4], [5,2]]),
+            value_range=[1, 10],
+            axis_labels=["count_1", "count_2"],
+            x_min=0,
+            y_min=0,
+            x_max=5,
+            y_max=5,
+        )
+        ```
+
     """
 
-    pass
+    x_min: float
+    x_max: float
+    y_min: float
+    y_max: float
 
 
 class ImageOutputVariable(OutputVariable[Image], ImageVariable):
     """
-    Class composition of image output, and numpy array base class.
+    Class composition of image output, and numpy array base class. value_range
 
     Attributes:
+        name (str): Name of the variable.
+
+        default (Optional[Value]):  Default value assigned to the variable.
+
+        precision (Optional[int]): Precision to use for the value.
+
+        value (Optional[Value]): Value assigned to variable
+
+        value_range (Optional[list]): Acceptable range for value
+
+        variable_type (str): Indicates image variable.
+
+        axis_labels (List[str]): Labels to use for rendering axes.
+
+        axis_units (Optional[List[str]]): Units to use for rendering axes labels.
+
+        x_min (Optional[float]): Minimum x value of image.
+
+        x_max (Optional[float]): Maximum x value of image.
+
+        y_min (Optional[float]): Minimum y value of image.
+
+        y_max (Optional[float]): Maximum y value of image.
+
+        x_min_variable (Optional[str]): Scalar variable associated with image minimum x.
+
+        x_max_variable (Optional[str]): Scalar variable associated with image maximum x.
+
+        y_min_variable (Optional[str]): Scalar variable associated with image minimum y.
+
+        y_max_variable (Optional[str]): Scalar variable associated with image maximum y.
+
+    Example:
+        ```
+        variable =  ImageOutputVariable(
+            name="test",
+            default=np.array([[2 , 1], [1, 4]]),
+            axis_labels=["count_1", "count_2"],
+        )
+
+        ```
 
 
     """
 
-    pass
+    x_min: Optional[float] = None
+    x_max: Optional[float] = None
+    y_min: Optional[float] = None
+    y_max: Optional[float] = None
 
 
 class ScalarInputVariable(InputVariable[float], ScalarVariable):
     """
     Class composition of scalar input and scalar base.
+
+    Attributes:
+        name (str): Name of the variable.
+
+        default (Value):  Default value assigned to the variable
+
+        precision (Optional[int]): Precision to use for the value
+
+        value (Optional[Value]): Value assigned to variable
+
+        value_range (list): Acceptable range for value
+
+        variable_type (str): Indicates scalar variable.
+
+        units (Optional[str]): Units associated with scalar value.
+
+        parent_variable (Optional[str]): Variable for which this is an attribute.
+
+    Example:
+        ```
+        variable = ScalarInputVariable(name="test", default=0.1, value_range=[1, 2])
+
+        ```
     """
 
     pass
@@ -274,6 +396,26 @@ class ScalarOutputVariable(OutputVariable[float], ScalarVariable):
     Class composition of scalar output and scalar base.
 
     Attributes:
+        name (str): Name of the variable.
+
+        default (Optional[Value]):  Default value assigned to the variable.
+
+        precision (Optional[int]): Precision to use for the value.
+
+        value (Optional[Value]): Value assigned to variable.
+
+        value_range (Optional[list]): Acceptable range for value.
+
+        variable_type (str): Indicates scalar variable.
+
+        units (Optional[str]): Units associated with scalar value.
+
+        parent_variable (str): Variable for which this is an attribute.
+
+    Example:
+        ```
+        variable = ScalarOutputVariable(name="test", default=0.1, value_range=[1, 2])
+        ```
 
     """
 
