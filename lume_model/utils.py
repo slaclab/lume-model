@@ -11,7 +11,13 @@ import h5py
 from typing import Tuple, List
 import logging
 
-from lume_model.variables import Variable
+from lume_model.variables import (
+    Variable,
+    ScalarInputVariable,
+    ScalarOutputVariable,
+    ImageInputVariable,
+    ImageOutputVariable,
+)
 
 logger = logging.getLogger(__name__)
 
