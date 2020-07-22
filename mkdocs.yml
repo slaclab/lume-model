@@ -1,4 +1,19 @@
 site_name: lume-model
 nav:
   - Home: index.md
-theme: readthedocs
+  - Variables: variables.md
+  - Models: models.md
+  - Utils: utils.md
+theme: "material"
+plugins:
+  - mkdocstrings:
+      default_handler: python
+      handlers:
+        python:
+          selection:
+            inherited_members: false
+            filters:
+              - "!^_"  # exlude all members starting with _
+              - "^__init__$"  # but always include __init__ modules and methods
+          rendering:
+            show_source: true
