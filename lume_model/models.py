@@ -4,9 +4,12 @@ This module contains the surrogate model class used for running the online model
 """
 from abc import ABC, abstractmethod
 from typing import Dict
+import h5py
 import logging
+import numpy as np
 
 from lume_model.variables import InputVariable, OutputVariable
+from lume_model.utils import load_variables
 
 logger = logging.getLogger(__name__)
 
@@ -17,18 +20,6 @@ class SurrogateModel(ABC):
     must be initialized by children.
 
     """
-
-    @property
-    @abstractmethod
-    def input_variables(self):
-        logger.exception("Input variables not implemented")
-        raise NotImplementedError
-
-    @property
-    @abstractmethod
-    def output_variables(self):
-        logger.exception("Output variables not implemented")
-        raise NotImplementedError
 
     @abstractmethod
     def evaluate(self):
