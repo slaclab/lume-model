@@ -207,15 +207,16 @@ def save_model(
         h.attrs.create("JSON", fstr(archjson))
 
     with open(description_file) as d:
-        desc_file = dict(json.load(d))
+        description = dict(json.load(d))
 
+    h.attrs.create("input_ordering", list(description["input_variables"].keys()))
+    h.attrs.create("output_ordering", list(description["output_variables"].keys()))
     h.attrs.create("input_scales", input_scales)
     h.attrs.create("input_offsets", input_offsets)
     h.attrs.create("output_scales", output_scales)
     h.attrs.create("output_offsets", output_offsets)
     h.attrs.create("lower", lower)
     h.attrs.create("upper", upper)
-
     h.close()
 
     # save variables
