@@ -1,3 +1,2 @@
 pydantic
 numpy
-h5py

@@ -4,7 +4,6 @@ This module contains the surrogate model class used for running the online model
 """
 from abc import ABC, abstractmethod
 from typing import Dict
-import h5py
 import logging
 import numpy as np
 

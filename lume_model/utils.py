@@ -7,7 +7,6 @@ the subsequent loading of saved variables.
 
 import pickle
 import json
-import h5py
 from typing import Tuple, List
 import logging
 
