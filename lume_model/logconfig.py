@@ -9,7 +9,7 @@ def is_debug():
     Check for environment variable to be debug or not
 
     Returns:
-    bool
+        bool
 
     """
     if os.environ.get("LOGLEVEL") == "DEBUG":
