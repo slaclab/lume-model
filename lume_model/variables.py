@@ -128,7 +128,10 @@ class NDVariableBase:
 
     @property
     def shape(self) -> tuple:
-        return self.value.shape
+        if self.default is not None:
+            return self.default.shape
+        else:
+            return None
 
 
 # define generic value type
