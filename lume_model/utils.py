@@ -1,6 +1,6 @@
 """
-This module contains utility functions for model construction, saving, and
-the subsequent loading of saved variables.
+This module contains utility functions for the saving and subsequent loading of saved
+variables.
 
 """
 
@@ -22,12 +22,28 @@ logger = logging.getLogger(__name__)
 
 
 def save_variables(input_variables, output_variables, variable_file: str) -> None:
-    """Save model class variables to file.
+    """Save input and output variables to file. Validates that all variable names are
+    unique.
 
     Args:
         model_class (SurrogateModel): Model class
 
         variable_file (str): Filename for saving
+
+    Example:
+        ```
+        input_variables = {
+            "input1": ScalarInputVariable(name="input1", default=1, range=[0.0, 5.0]),
+            "input2": ScalarInputVariable(name="input2", default=2, range=[0.0, 5.0]),
+            }
+
+        output_variables = {
+            "output1": ScalarOutputVariable(name="output1"),
+            "output2": ScalarOutputVariable(name="output2"),
+        }
+
+        save_variables(input_variables, output_variables, "variable_file.pickle")
+        ```
 
     """
 
@@ -59,6 +75,11 @@ def load_variables(variable_file: str) -> Tuple[dict]:
     Returns:
         Tuple of input variable dictionary and output variable dictionary.
 
+    Example:
+        ```
+        input_variables, output_variables = load_variables("variable_file.pickle")
+
+        ```
     """
     with open(variable_file, "rb") as f:
         variables = pickle.load(f)

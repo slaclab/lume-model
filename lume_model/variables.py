@@ -1,10 +1,10 @@
 """
 This module contains definitions of lume-model variables for use with lume tools.
-The variables are divided into input and outputs, each with different requirements.
-Initiating any variable without the minimum requirements results in an error.
+The variables are divided into input and outputs, each with different minimal requirements.
+Initiating any variable without the minimum requirements will result in an error.
 
 Two types of variables are currently defined: Scalar and Image. Scalar variables hold
-float type values. Image variables hold numpy arrays.
+float type values. Image variables hold numpy array representations of images.
 """
 
 import numpy as np
@@ -19,7 +19,8 @@ logger = logging.getLogger(__name__)
 
 class PropertyBaseModel(GenericModel):
     """
-    Generic base class used for the Variables. This extends the pydantic GenericModel to serialize properties.
+    Generic base class used for the Variables. This extends the pydantic GenericModel
+    to serialize properties.
 
     TODO:
         Workaround for serializing properties with pydantic until
@@ -108,10 +109,10 @@ class Image(np.ndarray):
             logger.exception("Image variable value must be a numpy array")
             raise TypeError("Numpy array required")
 
-        if not v.ndim == 2:
-            logger.exception("Array must have dim=2 to instantiate image")
+        if not v.ndim == 2 or v.dim == 3:
+            logger.exception("Array must have dim=2 or dim=3 to instantiate image")
             raise ValueError(
-                f"Image array must have dim=2. Provided array has {v.ndim} dimensions"
+                f"Image array must have dim=2 or dim=3. Provided array has {v.ndim} dimensions"
             )
 
         return v
@@ -157,7 +158,7 @@ class Variable(PropertyBaseModel, Generic[Value]):
 
 class InputVariable(Variable, Generic[Value]):
     """
-    Base generic class for input variables.
+    Base class for input variables.
 
     Attributes:
         name (str): Name of the variable.
@@ -178,7 +179,7 @@ class InputVariable(Variable, Generic[Value]):
 
 class OutputVariable(Variable, Generic[Value]):
     """
-    Base generic class for output variables. Value and range assignment are optional.
+    Base class for output variables. Value and range assignment are optional.
 
     Attributes:
         name (str): Name of the variable.
@@ -235,17 +236,19 @@ class ScalarVariable:
 
         units (Optional[str]): Units associated with scalar value.
 
-        parent_variable (str): Variable for which this is an attribute.
+        parent_variable (Optional[str]): Variable for which this is an attribute.
     """
 
     variable_type: str = "scalar"
-    units: Optional[str]  # required for some output displays
+    units: Optional[str] = None  # required for some output displays
     parent_variable: str = None  # indicates that this variable is an attribute of another
 
 
 class ImageInputVariable(InputVariable[Image], ImageVariable):
     """
-    Image input variable. Require name, default, value_range
+    Variable used for representing an image input. Image variable values must be two or
+    three dimensional arrays (grayscale, color, respectively). Initialization requires
+    name, axis_labels, default, x_min, x_max, y_min, y_max.
 
     Attributes:
 
@@ -306,7 +309,9 @@ class ImageInputVariable(InputVariable[Image], ImageVariable):
 
 class ImageOutputVariable(OutputVariable[Image], ImageVariable):
     """
-    Class composition of image output, and numpy array base class. value_range
+    Variable used for representing an image output. Image variable values must be two or
+    three dimensional arrays (grayscale, color, respectively). Initialization requires
+    name and axis_labels.
 
     Attributes:
         name (str): Name of the variable.
@@ -362,7 +367,8 @@ class ImageOutputVariable(OutputVariable[Image], ImageVariable):
 
 class ScalarInputVariable(InputVariable[float], ScalarVariable):
     """
-    Class composition of scalar input and scalar base.
+    Variable used for representing an scalar input. Scalar variables hold float values.
+    Initialization requires name, default, and value_range.
 
     Attributes:
         name (str): Name of the variable.
@@ -393,7 +399,8 @@ class ScalarInputVariable(InputVariable[float], ScalarVariable):
 
 class ScalarOutputVariable(OutputVariable[float], ScalarVariable):
     """
-    Class composition of scalar output and scalar base.
+    Variable used for representing an scalar output. Scalar variables hold float values.
+    Initialization requires name.
 
     Attributes:
         name (str): Name of the variable.
@@ -410,7 +417,7 @@ class ScalarOutputVariable(OutputVariable[float], ScalarVariable):
 
         units (Optional[str]): Units associated with scalar value.
 
-        parent_variable (str): Variable for which this is an attribute.
+        parent_variable (Optional[str]): Variable for which this is an attribute.
 
     Example:
         ```

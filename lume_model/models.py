@@ -1,14 +1,26 @@
 """
-This module contains the surrogate model class used for running the online models.
-The purpose of this base class is to create a configurable
+This module contains the surrogate model class used for running models using
+lume-model variables. Models build using this framework will be compatible with the
+lume-epics EPICS server and associated tools. The base class is intentionally
+minimal with the purpose of extensibility and customizability to the user's
+preferred format.
 
 Requirements for the  model:
 
-The evaluate method must accept a list of input variables (ScalarInputVariable, ImageInputVariable).
+input_variables, output_variables: lume-model input and output variables are required
+for use with lume-epics tools. The user can optionally define these as class
+attributes or design the subclass so that these are passed during initialization
+(see example 2). Names of all variables must be unique in order to be served using
+the EPICS tools. A utility function for saving these variables, which also enforces
+the uniqueness constraint, is provided (lume_model.utils.save_variables).
+
+evaluate: The evaluate method is called by the serving model. Subclasses must
+implement the method, accepting a list of input variables and returning a list of the
+model's output variables with value attributes updated based on model execution.
 
 
 Example:
-    Hard code variables:
+    Example 1, hard coded variables:
     ```
     class ExampleModel(SurrogateModel):
             input_variables = {
@@ -34,7 +46,7 @@ Example:
 
     ```
 
-    Pass variables to __init__:
+    Example 2, variables passed during __init__:
     ```
     class ExampleModel(SurrogateModel):
 
@@ -57,7 +69,7 @@ Example:
 
     ```
 
-    Load model variables from saved variable file:
+    Example 3, load model variables from variable file (saved with lume_model.utils.save_variables):
 
     ```
     from lume_model.utils import load_variables
@@ -101,6 +113,11 @@ class SurrogateModel(ABC):
     """
     Base class for the surrogate models that includes abstract predict method, which
     must be initialized by children.
+
+    Attributes:
+        input_variables (List[InputVariable]): Must be defined after __init__.
+
+        output_variables (List[OutputVariable]): Must be defined after __init__.
 
     """
 
