@@ -4,3 +4,5 @@ pytest
 mkdocs
 numpy
 pydantic
+mkdocs
+mkdocstrings
