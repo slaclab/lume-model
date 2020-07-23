@@ -30,6 +30,17 @@ def save_variables(input_variables, output_variables, variable_file: str) -> Non
         variable_file (str): Filename for saving
 
     """
+
+    # check unique names for all variables
+    variable_names = [var.name for var in input_variables.values()]
+    variable_names += [var.name for var in output_variables.values()]
+    for var in set(variable_names):
+        if variable_names.count(var) > 1:
+            logger.exception(
+                "Duplicate variable name %s. All variables must have unique names.", var
+            )
+            raise ValueError
+
     variables = {
         "input_variables": input_variables,
         "output_variables": output_variables,
