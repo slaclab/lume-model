@@ -83,9 +83,10 @@ class NumpyNDArray(np.ndarray):
     @classmethod
     def validate(cls, v: Any) -> np.ndarray:
         # validate data...
-        if not isinstance(v, np.ndarray):
-            logger.exception("A numpy array is required for the value")
-            raise TypeError("Numpy array required")
+        if v:
+            if not isinstance(v, np.ndarray):
+                logger.exception("A numpy array is required for the value")
+                raise TypeError("Numpy array required")
         return v
 
 
