@@ -1,4 +1,6 @@
 site_name: lume-model
+site_url: https://slaclab.github.io/lume-model
+repo_url: https://github.com/slaclab/lume-model
 nav:
   - Home: index.md
   - Variables: variables.md
