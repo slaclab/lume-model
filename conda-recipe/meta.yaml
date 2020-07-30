@@ -1,0 +1,33 @@
+package:
+  name: "lume-model"
+  version: "0.1"
+
+source:
+  path: ..
+
+build:
+  noarch: python
+  number: 0
+
+requirements:
+  host:
+    - python
+    - setuptools
+    - pip
+  run:
+    - python
+    - pydantic
+    - numpy
+
+test:
+  imports:
+    - lume_model
+  requires:
+    - pytest
+  commands:
+    - py.test --pyargs lume_model
+
+about:
+  home: https://github.com/slaclab/lume-model
+  license: Apache License 2.0
+  summary: Lume-model hosts the variable classes required for running LUME models.

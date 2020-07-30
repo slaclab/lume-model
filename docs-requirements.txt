@@ -1,0 +1,8 @@
+pre-commit
+black
+pytest
+mkdocs
+numpy
+pydantic
+mkdocs
+mkdocstrings
