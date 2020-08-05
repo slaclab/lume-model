@@ -6,7 +6,6 @@ nav:
   - Variables: variables.md
   - Models: models.md
   - Utils: utils.md
-theme: "material"
 plugins:
   - mkdocstrings:
       default_handler: python

@@ -53,7 +53,7 @@ Surrogate Model Requirements:
 
 Example model implementation:
 
-```
+```python
 class ExampleModel(SurrogateModel):
     input_variables = {
         "input1": ScalarInputVariable(name="input1", default=1, range=[0.0, 5.0]),
