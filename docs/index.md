@@ -18,13 +18,17 @@ Lume-model can be installed with conda using the command:
 The lume-model variables are intended to enforce requirements for input and output variables by variable type. Current variable implementations are scalar (float) or image (numpy array) type.
 
 Example of minimal implementation of scalar input and output variables:
-```
+```python
+from lume_model.variables import ScalarInputVariable, ScalarOutputVariable
 input_variable = ScalarInputVariable(name="test_input", default=0.1, value_range=[1, 2])
 output_variable = ScalarOutputVariable(name="test_output")
 ```
 
 Example of minimal implementation of image input and output variables:
-```
+```python
+from lume_model.variables import ImageInputVariable, ImageOutputVariable
+import numpy as np
+
 input_variable = ImageInputVariable(
     name="test_input",
     default= np.array([[1, 2,], [3, 4]]),
@@ -38,7 +42,6 @@ input_variable = ImageInputVariable(
 
 output_variable = ImageOutputVariable(
     name="test_output",
-    shape=(2,2),
     axis_labels=["count_1", "count_2"],
 )
 ```
@@ -54,6 +57,8 @@ Surrogate Model Requirements:
 Example model implementation:
 
 ```python
+from lume_model.models import SurrogateModel
+
 class ExampleModel(SurrogateModel):
     input_variables = {
         "input1": ScalarInputVariable(name="input1", default=1, range=[0.0, 5.0]),
