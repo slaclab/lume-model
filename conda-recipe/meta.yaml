@@ -1,13 +1,16 @@
+{% set data = load_setup_py_data(setup_file='../setup.py', from_recipe_dir=True) %}
+
 package:
   name: "lume-model"
-  version: "0.2"
-
-source:
-  path: ..
+  version: {{ data.get('version') }}
 
 build:
   noarch: python
   number: 0
+
+source:
+  path: ..
+
 
 requirements:
   host:
