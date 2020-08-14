@@ -4,21 +4,31 @@ sudo: required
 branches:
   only:
   - master
-  - variable-definitions
+  - dev
+  - build_cleanup
+  - /^v\d*\.?\d*$/
+
+env:
+  global:
+    - secure: "QIfituqCDTWF69QoXwQVWzWRt9jURVSUm1OW7hQ3REEHi6GPzDF0BNkMDAKnkvyu19BPpeAqKgU/eKYYRU8jucPmiyWMU28mN5JERO8C4KZrhlrf9B48UsV82v5Lh5m1LU5nFmYxud5eICL6yfDmAxA+LhtyzDTC4Wb56kDMQu9JWzj+i/N/OpjBIVrmzUl3Uha9xN6FxuDI+JU+9YszsS+nRANVaayH6PWkX4MWj/wq5j0ECiPi94hUsPcdv1W76nlECJ2HvR7kJPDJVOv/BDfxmcDiwwujDCpixZHsm3wBAYCmjgVk3IXxV04sv3jBdYaYYi4IQCH63ECXK0luheYwv3BWtkwv+84SJ1nzHmUsK/ekLrzFzqNhHPoc3aqrVV0P2IJUbaD5Ttf/ras+6/2Hh/HEvqBsayhWVHfrzeo7ZpHg1OU9x7qo8ujCUjp1wA+Zcs6li7ZGFQGVJmSK9EdSxUcgrMerOm8dQp/Xknh5eTMwDrP/kDle3OaGbfuYZULxA57HTgsqQsmeW0a571JBQLeZydKsp4V+0hEnYawBAxrh6DIICUkzZTyu7kKam3ONAM2AE36NWiu4AKF4Ysc++BbkG0U/AdRjyTGqsvNVIu/Hu1nhpBagX6tTm0KdeaItsWMAc8E+k/BbnBrWLY4xYfo+HZUQS6rKkMcWvdk="
 
 matrix:
   include:
     - os: osx
       language: generic
-      env: TOXENV=py37
+      env:
+        - TOXENV=py37
     - os: osx
       language: generic
-      env: TOXENV=py38
+      env:
+        - TOXENV=py38
     - os: linux
       python: 3.7
     - os: linux
       python: 3.8
-
+      env:
+        - CONDA_UPLOAD=1
+        - BUILD_DOCS=1
 
 install:
   # Install the appropriate miniconda depending on the os and miniconda version
@@ -49,3 +59,28 @@ install:
 
 script:
   - pytest
+  - set -e
+  - |
+    if [[ "${BUILD_DOCS:=0}" == '1' && $LUME_MODEL_REPO == 'slaclab' ]]; then
+        pip install -r docs-requirements.txt
+        mkdocs build -c -d site
+        # Publish docs.
+        doctr deploy . --deploy-branch-name gh-pages
+    fi
+
+after_success:
+  - echo $TRAVIS_TAG
+  - echo $LUME_MODEL_REPO
+  - echo $CONDA_UPLOAD
+  - |
+    if [[ $TRAVIS_BRANCH == $TRAVIS_TAG  && $TRAVIS_TAG != '' && $LUME_MODEL_REPO == 'slaclab' && "${CONDA_UPLOAD:=0}" == '1' ]]; then
+        echo "Uploading to jrgarrahan channel"
+        export ANACONDA_API_TOKEN=$CONDA_UPLOAD_TOKEN
+        anaconda upload bld-dir/noarch/*.tar.bz2
+    fi
+  - |
+    if [[ $LUME_MODEL_REPO == 'dev' && "${CONDA_UPLOAD:=0}" == '1' ]]; then
+        echo "Uploading to jrgarrahan channel"
+        export ANACONDA_API_TOKEN=$CONDA_UPLOAD_TOKEN
+        anaconda upload bld-dir/noarch/*.tar.bz2 --label dev
+    fi
