@@ -65,7 +65,7 @@ script:
         pip install -r docs-requirements.txt
         mkdocs build -c -d site
         # Publish docs.
-        doctr deploy . --deploy-branch-name gh-pages
+        doctr deploy . --built-docs site --deploy-branch-name gh-pages
     fi
 
 after_success:
