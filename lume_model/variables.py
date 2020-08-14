@@ -231,7 +231,7 @@ class ImageVariable(BaseModel, NDVariableBase):
     y_max_variable: str = None
 
 
-class ScalarVariable:
+class ScalarVariable(BaseModel):
     """
     Base class used for constructing a scalar variable.
 
