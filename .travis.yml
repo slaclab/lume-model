@@ -78,9 +78,3 @@ after_success:
         export ANACONDA_API_TOKEN=$CONDA_UPLOAD_TOKEN
         anaconda upload bld-dir/noarch/*.tar.bz2
     fi
-  - |
-    if [[ $LUME_MODEL_REPO == 'dev' && "${CONDA_UPLOAD:=0}" == '1' ]]; then
-        echo "Uploading to jrgarrahan channel"
-        export ANACONDA_API_TOKEN=$CONDA_UPLOAD_TOKEN
-        anaconda upload bld-dir/noarch/*.tar.bz2 --label dev
-    fi
