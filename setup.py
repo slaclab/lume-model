@@ -24,7 +24,11 @@ setup(
     packages=find_packages(),
     install_requires=requirements,
     # set up development requirements
-    extras_require={"dev": dev_requirements, "test": ["pytest"]},
+    extras_require={
+        "dev": dev_requirements,
+        "test": ["pytest"],
+        "keras": ["tensorflow"],
+    },
     url="https://github.com/slaclab/lume-model",
     include_package_data=True,
     python_requires=">=3.7",
