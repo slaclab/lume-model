@@ -8,4 +8,4 @@ The `BaseModel` packaged in the toolkit will be compatible with models saved usi
 
 Development requirements:
 - The model must be trained using the custom scaling layers provided in `lume_model.keras.layers` OR the custom layers must be defined during build and made accessible during loading by the user. No custom layers will be supported out-of-the box by this toolkit.
-- The `BaseModel` must be subclassed and the `format_input` and `format_output` class methods must be implemented.
+- The `BaseModel` must be subclassed and the `format_input` and `format_output` member functions must be implemented.
