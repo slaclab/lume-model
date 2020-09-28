@@ -92,7 +92,7 @@ class UnscaleLayer(keras.layers.Layer):
             lower (float): Lower range
             upper (float): Upper range
         """
-        super(UnScaleLayer, self).__init__(**kwargs)
+        super(UnscaleLayer, self).__init__(**kwargs)
         self._scale = scale
         self._offset = offset
         self._lower = lower
@@ -138,7 +138,7 @@ class UnscaleImgLayer(keras.layers.Layer):
             offset (float): Data offset
             scale (float): Scale multiplier
         """
-        super(UnScaleImg, self).__init__(**kwargs)
+        super(UnscaleImg, self).__init__(**kwargs)
         self._scale = scale
         self._offset = offset
 
