@@ -10,7 +10,6 @@ from tensorflow.keras.models import load_model
 from lume_model.models import SurrogateModel
 from lume_model.utils import load_variables
 from lume_model.variables import InputVariable, OutputVariable
-from lume_model.keras.layers import ScaleLayer, UnScaleLayer, UnScaleImgLayer
 
 logger = logging.getLogger(__name__)
 
@@ -55,8 +54,8 @@ class BaseModel(SurrogateModel, ABC):
                 model_file,
                 custom_objects={
                     "ScaleLayer": ScaleLayer,
-                    "UnScaleLayer": UnScaleLayer,
-                    "UnScaleImgLayer": UnScaleImgLayer,
+                    "UnscaleLayer": UnscaleLayer,
+                    "UnscaleImgLayer": UnscaleImgLayer,
                 },
             )
 
