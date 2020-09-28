@@ -5,3 +5,4 @@ mkdocs
 numpy
 pydantic
 doctr
+pyyaml
