@@ -68,7 +68,7 @@ class ScaleLayer(keras.layers.Layer):
         }
 
 
-class UnScaleLayer(keras.layers.Layer):
+class UnscaleLayer(keras.layers.Layer):
     """Layer used for unscaling float values.
 
     Attributes:
@@ -124,7 +124,7 @@ class UnScaleLayer(keras.layers.Layer):
         }
 
 
-class UnScaleImgLayer(keras.layers.Layer):
+class UnscaleImgLayer(keras.layers.Layer):
     """Layer used to unscale images.
 
 
