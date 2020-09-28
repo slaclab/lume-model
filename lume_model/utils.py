@@ -7,6 +7,8 @@ variables.
 
 import pickle
 import json
+import sys
+from pydoc import locate
 from typing import Tuple, List
 import logging
 
@@ -85,3 +87,72 @@ def load_variables(variable_file: str) -> Tuple[dict]:
         variables = pickle.load(f)
 
         return variables["input_variables"], variables["output_variables"]
+
+
+def model_from_yaml(config_file, model_class=None):
+    """Creates model from yaml configuration.
+
+    """
+    config = yaml.safe_load(config_file)
+
+    input_variables = []
+    if "input_variables" in config:
+        for variable in config["input_variables"]:
+            if config["input_variables"][variable]["type"] == "scalar":
+                lume_model_var = ScalarInputVariable(
+                    config["input_variables"][variable]
+                )
+                input_variables.append(lume_model_var)
+
+            elif config["input_variables"][variable]["type"] == "image":
+                lume_model_var = ImageInputVariable(config["input_variables"][variable])
+                input_variables.append(lume_model_var)
+
+            else:
+                logger.exception(
+                    "Variable type %s not defined.",
+                    config["input_variables"][variable]["type"],
+                )
+
+    else:
+        logger.exception("Input variables are missing from configuration file.")
+        sys.exit()
+
+    output_variables = []
+    if "output_variables" in config:
+        for variable in config["output_variables"]:
+            if config["output_variables"][variable]["type"] == "scalar":
+                lume_model_var = ScalarInputVariable(
+                    config["output_variables"][variable]
+                )
+                output_variables.append(lume_model_var)
+
+            elif config["output_variables"][variable]["type"] == "image":
+                lume_model_var = ImageInputVariable(
+                    config["output_variables"][variable]
+                )
+                output_variables.append(lume_model_var)
+
+            else:
+                logger.exception(
+                    "Variable type %s not defined.",
+                    config["output_variables"][variable]["type"],
+                )
+
+    else:
+        logger.exception("Output variables are missing from configuration file.")
+        sys.exit()
+
+    if model_class is not None and "model" in config:
+        logger.exception(
+            "Conflicting class definitions between config file and function argument."
+        )
+        sys.exit()
+
+    if "model" in config:
+        if config["model"] in dir():
+            klass = locate(config["model"])
+            Model = klass(**config["args"])
+
+    elif model_class is not None:
+        model = model_class(**config["args"])
