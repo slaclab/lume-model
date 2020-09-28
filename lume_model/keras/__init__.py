@@ -4,6 +4,7 @@ import numpy as np
 import tensorflow as tf
 from abc import ABC, abstractmethod
 from typing import List
+import logging
 from tensorflow.keras.models import load_model
 
 from lume_model.models import SurrogateModel

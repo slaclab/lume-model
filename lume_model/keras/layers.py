@@ -82,7 +82,7 @@ class UnScaleLayer(keras.layers.Layer):
     trainable = False
 
     def __init__(
-        self, offset: float, scale: float, lower: float, upper: floats, **kwargs
+        self, offset: float, scale: float, lower: float, upper: float, **kwargs
     ):
         """Sets up scaling.
 
