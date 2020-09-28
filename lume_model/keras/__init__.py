@@ -10,6 +10,7 @@ from tensorflow.keras.models import load_model
 from lume_model.models import SurrogateModel
 from lume_model.utils import load_variables
 from lume_model.variables import InputVariable, OutputVariable
+from lume_model.keras.layers import ScaleLayer, UnscaleLayer, UnscaleImgLayer
 
 logger = logging.getLogger(__name__)
 
