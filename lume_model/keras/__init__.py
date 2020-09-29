@@ -1,7 +1,7 @@
 import copy
 import numpy as np
 import tensorflow as tf
-from typing import List
+from typing import List, Dict
 import logging
 from tensorflow.keras.models import load_model
 
@@ -13,24 +13,28 @@ from lume_model.keras.layers import ScaleLayer, UnscaleLayer, UnscaleImgLayer
 logger = logging.getLogger(__name__)
 
 
-class BaseModel(SurrogateModel):
+class KerasModel(SurrogateModel):
     """
-    The BaseModel class is used for the loading and evaluation of online models. It is an abstract base class designed to
-    implement the general behaviors expected for models used with the Keras lume-model tool kit. Parsing methods for inputs and
-    outputs must be implemented in derived classes.
+    The KerasModel class is used for the loading and evaluation of online models. It is  designed to
+    implement the general behaviors expected for models used with the Keras lume-model tool kit.
 
     Attributes:
-
+        input_valiables (Dict[str, InputVariable]): Dictionary mapping input variable name to variable
+        output_variables (Dict[str, OutputVariable]): Dictionary mapping output variable name to variable
+        _input_format (dict): Instructions for formatting model input
+        _output_format (dict): Instructions for parsing model output
+        _model_file (str): Model filename
+        _thread_graph (tf.Graph): default graph for model execution
 
     """
 
     def __init__(
         self,
         model_file: str,
-        input_variables: List[InputVariable],
-        output_variables: List[OutputVariable],
-        input_format: dict = None,
-        output_format: dict = None,
+        input_variables: Dict[str, InputVariable],
+        output_variables: Dict[str, OutputVariable],
+        input_format: dict,
+        output_format: dict,
     ) -> None:
         """Initializes the model and stores inputs/outputs.
 
@@ -38,16 +42,17 @@ class BaseModel(SurrogateModel):
             model_file (str): Path to model file generated with keras.save()
             input_variables (List[InputVariable]): list of model input variables
             output_variables (List[OutputVariable]): list of model output variables
-            _thread_graph (tf.Graph): default graph for model execution
+            input_format (dict): Instructions for building model input
+            output_format (dict): Instructions for parsing model ouptut
 
         """
 
         # Save init
-        self.model_file = model_file
         self.input_variables = input_variables
         self.output_variables = output_variables
-        self.input_format = input_format
-        self.output_format = output_format
+        self._input_format = input_format
+        self._output_format = output_format
+        self._model_file = model_file
 
         # load model in thread safe manner
         self._thread_graph = tf.Graph()
@@ -163,12 +168,12 @@ class BaseModel(SurrogateModel):
         """
 
         vector = []
-        for item in self.input_format["order"]:
+        for item in self._input_format["order"]:
             vector.append(input_dictionary[item])
 
         # Convert to numpy array and reshape
         vector = np.array(vector)
-        vector = vector.reshape(tuple(self.input_format["shape"]))
+        vector = vector.reshape(tuple(self._input_format["shape"]))
 
         return vector
 
@@ -180,13 +185,13 @@ class BaseModel(SurrogateModel):
         """
         output_dict = {}
 
-        if self.output_format["type"] == "softmax":
-            for value, idx in self.output_format["indices"].items():
+        if self._output_format["type"] == "softmax":
+            for value, idx in self._output_format["indices"].items():
                 softmax_output = list(model_output[idx])
                 output_dict[value] = softmax_output.index(max(softmax_output))
 
-        if self.output_format["type"] == "raw":
-            for value, idx in self.output_format["indices"].items():
+        if self._output_format["type"] == "raw":
+            for value, idx in self._output_format["indices"].items():
                 output_dict[value] = model_output[idx]
 
         return output_dict
