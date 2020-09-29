@@ -1,4 +1,3 @@
-import h5py
 import copy
 import numpy as np
 import tensorflow as tf
@@ -70,7 +69,7 @@ class BaseModel(SurrogateModel, ABC):
             List[OutputVariable]: List of output variables
 
         """
-        self.input_variables = input_variables
+        self.input_variables = {var.name: var for var in input_variables}
 
         # convert list of input variables to dictionary
         input_dictionary = {
