@@ -30,6 +30,8 @@ class BaseModel(SurrogateModel, ABC):
         model_file: str,
         input_variables: List[InputVariable],
         output_variables: List[OutputVariable],
+        input_format: dict = None,
+        output_format: dict = None,
     ) -> None:
         """Initializes the model and stores inputs/outputs.
 
@@ -39,13 +41,14 @@ class BaseModel(SurrogateModel, ABC):
             output_variables (List[OutputVariable]): list of model output variables
             _thread_graph (tf.Graph): default graph for model execution
 
-
         """
 
         # Save init
         self.model_file = model_file
         self.input_variables = input_variables
         self.output_variables = output_variables
+        self.input_format = input_format
+        self.output_format = output_format
 
         # load model in thread safe manner
         self._thread_graph = tf.Graph()
@@ -154,10 +157,22 @@ class BaseModel(SurrogateModel, ABC):
 
         return list(self.output_variables.values())
 
-    @abstractmethod
-    def format_input(self, input_dictionary):
-        # MUST IMPLEMENT A METHOD TO CONVERT INPUT DICTIONARY TO MODEL INPUT
-        pass
+    def format_input(self, input_dictionary: dict):
+        """Formats input to be fed into model
+
+        Args:
+            input_dictionary (dict): Dictionary mapping input to value.
+        """
+
+        vector = []
+        for item in self.input_format["order"]:
+            vector.append(input_dictionary[item])
+
+        # Convert to numpy array and reshape
+        vector = np.array(vector)
+        vector = vector.reshape(tuple(self.input_format["shape"]))
+
+        return vector
 
     @abstractmethod
     def parse_output(self, model_output):
