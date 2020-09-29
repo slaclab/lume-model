@@ -1,7 +1,6 @@
 import copy
 import numpy as np
 import tensorflow as tf
-from abc import ABC, abstractmethod
 from typing import List
 import logging
 from tensorflow.keras.models import load_model
@@ -14,7 +13,7 @@ from lume_model.keras.layers import ScaleLayer, UnscaleLayer, UnscaleImgLayer
 logger = logging.getLogger(__name__)
 
 
-class BaseModel(SurrogateModel, ABC):
+class BaseModel(SurrogateModel):
     """
     The BaseModel class is used for the loading and evaluation of online models. It is an abstract base class designed to
     implement the general behaviors expected for models used with the Keras lume-model tool kit. Parsing methods for inputs and
@@ -80,18 +79,17 @@ class BaseModel(SurrogateModel, ABC):
             for input_variable in input_variables
         }
 
-        # MUST IMPLEMENT A format_input METHOD TO CONVERT FROM DICT -> MODEL INPUT
-        formatted_input = self.format_input(input_dictionary)
+        # converts from input_dict -> formatted input
+        formatted_input = self._format_input(input_dictionary)
 
         # call prediction in threadsafe manner
         with self._thread_graph.as_default():
             model_output = self.model.predict(formatted_input)
 
-        # MUST IMPLEMENT AN OUTPUT -> DICT METHOD
-        output = self.parse_output(model_output)
+        output = self._parse_output(model_output)
 
-        # PREPARE OUTPUTS WILL FORMAT RETURN VARIABLES (DICT-> VARIABLES)
-        return self.prepare_outputs(output)
+        # prepare outputs will format return variables (dict-> variables)
+        return self._prepare_outputs(output)
 
     def random_evaluate(self) -> List[OutputVariable]:
         """Return a random evaluation of the model.
@@ -113,7 +111,7 @@ class BaseModel(SurrogateModel, ABC):
 
         return self.evaluate(list(random_input.values()))
 
-    def prepare_outputs(self, predicted_output: dict):
+    def _prepare_outputs(self, predicted_output: dict):
         """Prepares the model outputs to be served so that no additional manipulation
         occurs in the OnlineSurrogateModel class.
 
@@ -157,7 +155,7 @@ class BaseModel(SurrogateModel, ABC):
 
         return list(self.output_variables.values())
 
-    def format_input(self, input_dictionary: dict):
+    def _format_input(self, input_dictionary: dict):
         """Formats input to be fed into model
 
         Args:
@@ -174,7 +172,21 @@ class BaseModel(SurrogateModel, ABC):
 
         return vector
 
-    @abstractmethod
-    def parse_output(self, model_output):
-        # MUST IMPLEMENT A METHOD TO CONVERT MODEL OUTPUT TO A DICTIONARY OF VARIABLE NAME -> VALUE
-        pass
+    def _parse_output(self, model_output):
+        """Parses model output to create dictionary variable name -> value
+
+        Args:
+            model_output (np.ndarray): Raw model output
+        """
+        output_dict = {}
+
+        if self.output_format["type"] == "softmax":
+            for value, idx in self.output_format["indices"].items():
+                softmax_output = list(model_output[idx])
+                output_dict[value] = softmax_output.index(max(softmax_output))
+
+        if self.output_format["type"] == "raw":
+            for value, idx in self.output_format["indices"].items():
+                output_dict[value] = model_output[idx]
+
+        return output_dict
