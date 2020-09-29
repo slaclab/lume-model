@@ -109,7 +109,7 @@ def model_from_yaml(config_file, model_class=None, model_kwargs=None):
         config = yaml.safe_load(stream)
 
     # set up the input variables
-    input_variables = []
+    input_variables = {}
     if "input_variables" in config:
         for variable in config["input_variables"]:
 
@@ -135,7 +135,7 @@ def model_from_yaml(config_file, model_class=None, model_kwargs=None):
                 )
                 sys.exit()
 
-            input_variables.append(lume_model_var)
+            input_variables[variable] = lume_model_var
 
     else:
         logger.exception("Input variables are missing from configuration file.")
@@ -143,7 +143,7 @@ def model_from_yaml(config_file, model_class=None, model_kwargs=None):
 
     # set up the output variables
 
-    output_variables = []
+    output_variables = {}
     if "output_variables" in config:
         for variable in config["output_variables"]:
 
@@ -169,7 +169,7 @@ def model_from_yaml(config_file, model_class=None, model_kwargs=None):
                 )
                 sys.exit()
 
-            output_variables.append(lume_model_var)
+            output_variables[variable] = lume_model_var
 
     else:
         logger.exception("Output variables are missing from configuration file.")
