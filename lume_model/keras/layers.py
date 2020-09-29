@@ -138,7 +138,7 @@ class UnscaleImgLayer(keras.layers.Layer):
             offset (float): Data offset
             scale (float): Scale multiplier
         """
-        super(UnscaleImg, self).__init__(**kwargs)
+        super(UnscaleImgLayer, self).__init__(**kwargs)
         self._scale = scale
         self._offset = offset
 
