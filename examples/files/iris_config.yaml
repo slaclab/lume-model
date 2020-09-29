@@ -1,0 +1,41 @@
+
+#model:
+#    model_class: examples.iris_model.IrisModel
+#    requirements:
+#      tensorflow: 2.3.1
+#    args:
+#      model_file: examples/files/iris_model.h5
+
+input_variables:
+  SepalLength:
+      name: SepalLength
+      type: scalar
+      default: 4.3
+      lower: 4.3
+      upper: 7.9
+
+  SepalWidth:
+      name: SepalWidth
+      type: scalar
+      default: 2.0
+      lower: 2.0
+      upper: 6.9
+
+  PetalLength:
+      name: PetalLength
+      type: scalar
+      default: 1.0
+      lower: 1.0
+      upper: 6.9
+
+  PetalWidth:
+      name: PetalWidth
+      type: scalar
+      default: 0.1
+      lower: 0.1
+      upper: 2.5
+
+output_variables:
+  Species:
+    name: Species
+    type: scalar
