@@ -5,7 +5,17 @@ model:
       tensorflow: 2.3.1
     args:
       model_file: examples/files/iris_model.h5
-    input:
+    input_format:
+        order:
+            - SepalLength
+            - SepalWidth
+            - PetalLength
+            - PetalWidth
+        shape: [1, 4]
+    output_format:
+        type: softmax
+        indices:
+            Species: [0]
 
 
 input_variables:
