@@ -116,13 +116,6 @@ def model_from_yaml(config_file, model_class=None, model_kwargs=None):
 
             variable_config = config["input_variables"][variable]
 
-            # define range
-            if "upper" in variable_config and "lower" in variable_config:
-                variable_config["range"] = [
-                    variable_config["lower"],
-                    variable_config["upper"],
-                ]
-
             # build variable
             if variable_config["type"] == "scalar":
                 lume_model_var = ScalarInputVariable(**variable_config)
@@ -154,13 +147,6 @@ def model_from_yaml(config_file, model_class=None, model_kwargs=None):
         for variable in config["output_variables"]:
 
             variable_config = config["output_variables"][variable]
-
-            # define range
-            if "upper" in variable_config and "lower" in variable_config:
-                variable_config["range"] = [
-                    variable_config["lower"],
-                    variable_config["upper"],
-                ]
 
             # build variable
             if variable_config["type"] == "scalar":
@@ -271,13 +257,6 @@ def variables_from_yaml(config_file):
 
             variable_config = config["input_variables"][variable]
 
-            # define range
-            if "upper" in variable_config and "lower" in variable_config:
-                variable_config["range"] = [
-                    variable_config["lower"],
-                    variable_config["upper"],
-                ]
-
             # build variable
             if variable_config["type"] == "scalar":
                 lume_model_var = ScalarInputVariable(**variable_config)
@@ -309,13 +288,6 @@ def variables_from_yaml(config_file):
         for variable in config["output_variables"]:
 
             variable_config = config["output_variables"][variable]
-
-            # define range
-            if "upper" in variable_config and "lower" in variable_config:
-                variable_config["range"] = [
-                    variable_config["lower"],
-                    variable_config["upper"],
-                ]
 
             # build variable
             if variable_config["type"] == "scalar":
