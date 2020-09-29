@@ -214,6 +214,12 @@ def model_from_yaml(config_file, model_class=None, model_kwargs=None):
         if "args" in config["model"]:
             model_args.update(config["model"]["args"])
 
+        if "input_format" in config["model"]:
+            model_args["input_format"] = config["model"]["input_format"]
+
+        if "output_format" in config["model"]:
+            model_args["output_format"] = config["model"]["output_format"]
+
         try:
             model = klass(**model_args)
         except:
