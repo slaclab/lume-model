@@ -10,6 +10,7 @@ import json
 import sys
 import yaml
 from pydoc import locate
+import numpy as np
 from typing import Tuple, List
 import logging
 
@@ -126,7 +127,12 @@ def model_from_yaml(config_file, model_class=None, model_kwargs=None):
             if variable_config["type"] == "scalar":
                 lume_model_var = ScalarInputVariable(**variable_config)
 
-            elif variable_config == "image":
+            elif variable_config["type"] == "image":
+                variable_config["default"] = np.load(variable_config["default"])
+                variable_config["axis_labels"] = [
+                    variable_config["x_label"],
+                    variable_config["y_label"],
+                ]
                 lume_model_var = ImageInputVariable(**variable_config)
 
             else:
@@ -161,6 +167,11 @@ def model_from_yaml(config_file, model_class=None, model_kwargs=None):
                 lume_model_var = ScalarOutputVariable(**variable_config)
 
             elif variable_config["type"] == "image":
+                variable_config["default"] = np.load(variable_config["default"])
+                variable_config["axis_labels"] = [
+                    variable_config["x_label"],
+                    variable_config["y_label"],
+                ]
                 lume_model_var = ImageOutputVariable(**variable_config)
 
             else:
@@ -236,3 +247,94 @@ def model_from_yaml(config_file, model_class=None, model_kwargs=None):
             sys.exit()
 
     return model
+
+
+def variables_from_yaml(config_file):
+    """Returns variables from yaml configuration.
+
+    Args:
+        config_file (str): Filename string
+
+    Returns:
+        tuple
+
+    """
+
+    config = {}
+    with open(config_file, "r") as stream:
+        config = yaml.safe_load(stream)
+
+    # set up the input variables
+    input_variables = {}
+    if "input_variables" in config:
+        for variable in config["input_variables"]:
+
+            variable_config = config["input_variables"][variable]
+
+            # define range
+            if "upper" in variable_config and "lower" in variable_config:
+                variable_config["range"] = [
+                    variable_config["lower"],
+                    variable_config["upper"],
+                ]
+
+            # build variable
+            if variable_config["type"] == "scalar":
+                lume_model_var = ScalarInputVariable(**variable_config)
+
+            elif variable_config["type"] == "image":
+                variable_config["default"] = np.load(variable_config["default"])
+                variable_config["axis_labels"] = [
+                    variable_config["x_label"],
+                    variable_config["y_label"],
+                ]
+                lume_model_var = ImageInputVariable(**variable_config)
+
+            else:
+                logger.exception(
+                    "Variable type %s not defined.", variable_config["type"],
+                )
+                sys.exit()
+
+            input_variables[variable] = lume_model_var
+
+    else:
+        logger.exception("Input variables are missing from configuration file.")
+        sys.exit()
+
+    # set up the output variables
+
+    output_variables = {}
+    if "output_variables" in config:
+        for variable in config["output_variables"]:
+
+            variable_config = config["output_variables"][variable]
+
+            # define range
+            if "upper" in variable_config and "lower" in variable_config:
+                variable_config["range"] = [
+                    variable_config["lower"],
+                    variable_config["upper"],
+                ]
+
+            # build variable
+            if variable_config["type"] == "scalar":
+                lume_model_var = ScalarOutputVariable(**variable_config)
+
+            elif variable_config["type"] == "image":
+                variable_config["default"] = np.load(variable_config["default"])
+                variable_config["axis_labels"] = [
+                    variable_config["x_label"],
+                    variable_config["y_label"],
+                ]
+                lume_model_var = ImageOutputVariable(**variable_config)
+
+            else:
+                logger.exception(
+                    "Variable type %s not defined.", variable_config["type"],
+                )
+                sys.exit()
+
+            output_variables[variable] = lume_model_var
+
+    return input_variables, output_variables
