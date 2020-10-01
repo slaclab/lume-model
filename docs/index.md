@@ -86,3 +86,75 @@ class ExampleModel(SurrogateModel):
         # return inputs * 2
         return list(self.output_variables.values())
 ```
+
+## Configuration files
+
+Models and variables may be constructed using a yaml configuration file. The configuration file consists of three sections:
+
+* model (optional, can alternatively pass a custom model class into the `model_from_yaml` method)
+*  input_variables
+* output_variables
+
+The model section is used for the initialization of model classes. The `model_class` entry is used to specify the model class to initialize. The `model_from_yaml` method will attempt to import the specified class. Additional model-specific requirements may be provided. These requirements will be checked before model construction. Model keyword arguments may be passed via the config file or with the function kwarg `model_kwargs`. All models are assumed to accept `input_variables` and `output_variables` as keyword arguments.
+
+In order to use the `KerasModel` execution class, instructions must be provided to format inputs for model execution and parse the model output. Input formatting in the yaml uses the `order` and `shape` entries to format the model input. The output format requires indexing for each output variable. Similar functionality might be implemented for custom model classes; however, this is not supported out-of-the-box with `lume-model`.
+
+The below example outlines the specification for a model compatible with the `lume-model` keras/tensorflow toolkit.
+
+```yaml
+model:
+    model_class: lume_model.keras.KerasModel
+    requirements:
+      tensorflow: 2.3.1
+    args:
+      model_file: examples/files/iris_model.h5
+    input_format:
+        order:
+            - SepalLength
+            - SepalWidth
+            - PetalLength
+            - PetalWidth
+        shape: [1, 4]
+    output_format:
+        type: softmax
+        indices:
+            Species: [0]
+```
+
+
+Variables are constructed the minimal data requirements for inputs/outputs:
+
+An example ScalarInputVariable:
+
+```yaml
+input_variables:
+    SepalLength:
+        name: SepalLength
+        type: scalar
+        default: 4.3
+        lower: 4.3
+        upper: 7.9
+
+```
+For image variables, default values must point to files associated with a default numpy array representation. The file import will be relative to PYTHONPATH.
+
+An example ImageInputVariable:
+
+```yaml
+input_variables:
+    InputImage:
+        name: test
+        type: image
+        default: examples/files/example_input_image.npy
+        range: [0, 100]
+        x_min: 0
+        x_max: 10
+        y_min: 0
+        y_max: 10
+        axis_labels: ["x", "y"]
+        x_min_variable: xmin_pv
+        y_min_variable: ymin_pv
+        x_max_variable: xmax_pv
+        y_max_variable: ymax_pv
+
+```
