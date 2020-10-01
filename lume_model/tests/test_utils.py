@@ -1,5 +1,6 @@
 from lume_model import utils
 import os
+import sys
 import pytest
 from lume_model.models import SurrogateModel
 from lume_model.variables import ScalarInputVariable, ScalarOutputVariable
@@ -37,3 +38,9 @@ def test_variables_with_same_name():
 
     with pytest.raises(ValueError):
         utils.save_variables(input_variables, output_variables, file_name)
+
+
+@pytest.mark.parametrize("config_file", [("test_utils/iris_config.yaml")])
+def test_yaml(rootdir, config_file):
+    model = utils.model_from_yaml(f"{rootdir}/{config_file}")
+    model.random_evaluate()
