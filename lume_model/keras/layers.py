@@ -9,7 +9,21 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-class ScaleLayer(keras.layers.Layer):
+class LumeModelLayer(keras.layers.Layer):
+    def _validate_args(self):
+
+        for attr in ("_offset", "_scale", "_lower", "_upper"):
+            try:
+                val = getattr(self, attr)
+            except:
+                val = None
+
+            if val:
+                if not isinstance(val, (float, int,)):
+                    raise ValueError(f"{attr} must be a float or int.")
+
+
+class ScaleLayer(LumeModelLayer):
     """Layer for scaling float values.
 
     Attributes:
@@ -39,6 +53,7 @@ class ScaleLayer(keras.layers.Layer):
         self._offset = offset
         self._lower = lower
         self._upper = upper
+        self._validate_args()
 
     def call(self, inputs: np.ndarray) -> np.ndarray:
         """Execute scaling on an array.
@@ -68,7 +83,7 @@ class ScaleLayer(keras.layers.Layer):
         }
 
 
-class UnscaleLayer(keras.layers.Layer):
+class UnscaleLayer(LumeModelLayer):
     """Layer used for unscaling float values.
 
     Attributes:
@@ -97,6 +112,7 @@ class UnscaleLayer(keras.layers.Layer):
         self._offset = offset
         self._lower = lower
         self._upper = upper
+        self._validate_args()
 
     def call(self, inputs: np.ndarray) -> np.ndarray:
         """Unscale an array
@@ -124,7 +140,7 @@ class UnscaleLayer(keras.layers.Layer):
         }
 
 
-class UnscaleImgLayer(keras.layers.Layer):
+class UnscaleImgLayer(LumeModelLayer):
     """Layer used to unscale images.
 
 
@@ -141,6 +157,7 @@ class UnscaleImgLayer(keras.layers.Layer):
         super(UnscaleImgLayer, self).__init__(**kwargs)
         self._scale = scale
         self._offset = offset
+        self._validate_args()
 
     def call(self, inputs: np.ndarray) -> np.ndarray:
         """Unscale an image.
