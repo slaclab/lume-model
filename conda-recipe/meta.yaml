@@ -21,6 +21,7 @@ requirements:
     - python
     - pydantic
     - numpy
+    - pyyaml
 
 test:
   imports:
@@ -41,8 +42,9 @@ outputs:
 
   - name: lume-model-keras
     requirements:
-      run:
-        - tensorflow
-      test:
-        imports:
-          - lume_model.keras
+      - tensorflow
+    test:
+      imports:
+        - lume_model.keras
+      commands:
+        - pytest -v -m keras_toolkit --pyargs lume_model
