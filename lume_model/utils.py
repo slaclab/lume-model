@@ -195,20 +195,21 @@ def model_from_yaml(config_file, model_class=None, model_kwargs=None):
                     if isinstance(config["model"]["requirements"][req], (dict,)):
                         version = config["model"]["requirements"][req]
                         if module.version != version:
-                            print(
+                            logger.exception(
                                 f"Incorrect version for {req}. Model requires {version} and \
                                     {module.version} is installed. Please install the correct \
                                         version to continue."
                             )
+                            sys.exit()
 
                     else:
-                        print(
+                        logger.warning(
                             f"No version provided for {req}. Unable to check compatibility."
                         )
 
                 # if requirement not found
                 else:
-                    print("Module not installed")
+                    logger.warning("Module not installed")
 
         klass = locate(config["model"]["model_class"])
         if "args" in config["model"]:
@@ -223,8 +224,7 @@ def model_from_yaml(config_file, model_class=None, model_kwargs=None):
         try:
             model = klass(**model_args)
         except:
-            logger.exception("Cannot load model.")
-            print(f"Unable to load model with args: {model_args}")
+            logger.exception(f"Unable to load model with args: {model_args}")
             sys.exit()
 
     elif model_class is not None:
@@ -234,8 +234,7 @@ def model_from_yaml(config_file, model_class=None, model_kwargs=None):
         try:
             model = model_class(**model_args)
         except:
-            logger.exception("Cannot load model.")
-            print(f"Unable to load model with args: {model_args}")
+            logger.exception(f"Unable to load model with args: {model_args}")
             sys.exit()
 
     return model
