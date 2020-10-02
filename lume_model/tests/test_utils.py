@@ -45,12 +45,14 @@ def test_variables_with_same_name():
         utils.save_variables(input_variables, output_variables, file_name)
 
 
+@pytest.mark.keras_toolkit
 @pytest.mark.parametrize("config_file", [("test_utils/iris_config.yaml")])
 def test_model_from_yaml(rootdir, config_file):
     model = utils.model_from_yaml(f"{rootdir}/{config_file}")
     model.random_evaluate()
 
 
+@pytest.mark.keras_toolkit
 @pytest.mark.parametrize("config_file", [("test_utils/iris_config.yaml")])
 def test_variables_from_yaml(rootdir, config_file):
     input_variables, output_variables = utils.variables_from_yaml(
