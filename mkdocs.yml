@@ -6,6 +6,7 @@ nav:
   - Variables: variables.md
   - Models: models.md
   - Utils: utils.md
+theme: material
 plugins:
   - mkdocstrings:
       default_handler: python
@@ -18,3 +19,7 @@ plugins:
               - "^__init__$"  # but always include __init__ modules and methods
           rendering:
             show_source: true
+markdown_extensions:
+  - pymdownx.highlight
+  - pymdownx.superfences
+  - pymdownx.inlinehilite
