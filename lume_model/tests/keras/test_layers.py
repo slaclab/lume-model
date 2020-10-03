@@ -11,8 +11,8 @@ import pytest
 )
 @pytest.mark.keras_toolkit
 def test_scale_layer(offset, scale, lower, upper):
-    ScaleLayer = pytest.importorskip("lume_model.keras.layers.ScaleLayer")
-    scale_layer = ScaleLayer(offset, scale, lower, upper)
+    layers = pytest.importorskip("lume_model.keras.layers")
+    scale_layer = layers.ScaleLayer(offset, scale, lower, upper)
 
 
 # test value and failed initialization with characters
@@ -26,8 +26,8 @@ def test_scale_layer(offset, scale, lower, upper):
 )
 @pytest.mark.keras_toolkit
 def test_unscale_layer(offset, scale, lower, upper):
-    UnscaleLayer = pytest.importorskip("lume_model.keras.layers.UnscaleLayer")
-    unscale_layer = UnscaleLayer(offset, scale, lower, upper)
+    layers = pytest.importorskip("lume_model.keras.layers")
+    unscale_layer = layers.UnscaleLayer(offset, scale, lower, upper)
 
 
 # test value and failed initialization with characters
@@ -36,5 +36,5 @@ def test_unscale_layer(offset, scale, lower, upper):
 )
 @pytest.mark.keras_toolkit
 def test_unscale_image_layer(offset, scale):
-    UnscaleImgLayer = pytest.importorskip("lume_model.keras.layers.UnscaleImgLayer")
-    unscale_layer = UnscaleImgLayer(offset, scale)
+    layers = pytest.importorskip("lume_model.keras.layers")
+    unscale_layer = layers.UnscaleImgLayer(offset, scale)
