@@ -1,5 +1,6 @@
 import pytest
 import sys
+import tensorflow
 from lume_model import utils
 from lume_model.variables import InputVariable, OutputVariable
 
@@ -10,6 +11,7 @@ def test_model_from_yaml(config_file):
     model.random_evaluate()
 
 
+@pytest.mark.skipif(tensorflow.version != "2.3.1", reason="Incompatible tf version.")
 def test_variables_from_yaml(config_file):
     pytest.importorskip("tensorflow")
 
