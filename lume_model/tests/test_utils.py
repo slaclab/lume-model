@@ -43,20 +43,3 @@ def test_variables_with_same_name():
 
     with pytest.raises(ValueError):
         utils.save_variables(input_variables, output_variables, file_name)
-
-
-@pytest.mark.keras_toolkit
-def test_model_from_yaml(config_file):
-    model = utils.model_from_yaml(config_file)
-    model.random_evaluate()
-
-
-@pytest.mark.keras_toolkit
-def test_variables_from_yaml(config_file):
-    input_variables, output_variables = utils.variables_from_yaml(config_file)
-
-    for variable_name, variable in input_variables.items():
-        assert isinstance(variable, InputVariable)
-
-    for variable_name, variable in output_variables.items():
-        assert isinstance(variable, OutputVariable)

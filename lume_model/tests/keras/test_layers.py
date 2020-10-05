@@ -9,7 +9,9 @@ import pytest
         pytest.param("t", "e", "s", "t", marks=pytest.mark.xfail),
     ],
 )
-@pytest.mark.keras_toolkit
+@pytest.mark.skipif(
+    "tensorflow" not in sys.modules, reason="requires tensorflow installation"
+)
 def test_scale_layer(offset, scale, lower, upper):
     layers = pytest.importorskip("lume_model.keras.layers")
     scale_layer = layers.ScaleLayer(offset, scale, lower, upper)
@@ -24,7 +26,9 @@ def test_scale_layer(offset, scale, lower, upper):
         pytest.param("t", "e", "s", "t", marks=pytest.mark.xfail),
     ],
 )
-@pytest.mark.keras_toolkit
+@pytest.mark.skipif(
+    "tensorflow" not in sys.modules, reason="requires tensorflow installation"
+)
 def test_unscale_layer(offset, scale, lower, upper):
     layers = pytest.importorskip("lume_model.keras.layers")
     unscale_layer = layers.UnscaleLayer(offset, scale, lower, upper)
@@ -34,7 +38,9 @@ def test_unscale_layer(offset, scale, lower, upper):
 @pytest.mark.parametrize(
     "offset,scale", [(1, 2), (5, 4), pytest.param("t", "e", marks=pytest.mark.xfail),],
 )
-@pytest.mark.keras_toolkit
+@pytest.mark.skipif(
+    "tensorflow" not in sys.modules, reason="requires tensorflow installation"
+)
 def test_unscale_image_layer(offset, scale):
     layers = pytest.importorskip("lume_model.keras.layers")
     unscale_layer = layers.UnscaleImgLayer(offset, scale)
