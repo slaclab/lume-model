@@ -46,20 +46,14 @@ def test_variables_with_same_name():
 
 
 @pytest.mark.keras_toolkit
-@pytest.mark.parametrize("config_file", [("test_files/iris_config.yaml")])
 def test_model_from_yaml(config_file):
-    dir = os.path.split(__file__)[0]
-    model = utils.model_from_yaml(f"{dir}/{config_file}")
+    model = utils.model_from_yaml(config_file)
     model.random_evaluate()
 
 
 @pytest.mark.keras_toolkit
-@pytest.mark.parametrize("config_file", [("test_files/iris_config.yaml")])
 def test_variables_from_yaml(config_file):
-    dir = os.path.split(__file__)[0]
-    input_variables, output_variables = utils.variables_from_yaml(
-        f"{dir}/{config_file}"
-    )
+    input_variables, output_variables = utils.variables_from_yaml(config_file)
 
     for variable_name, variable in input_variables.items():
         assert isinstance(variable, InputVariable)
