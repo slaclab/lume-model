@@ -242,7 +242,7 @@ def variables_from_yaml(config_file):
     """Returns variables from yaml configuration.
 
     Args:
-        config_file (str): Filename string
+        config_file: Yaml file
 
     Returns:
         tuple
