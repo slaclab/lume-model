@@ -22,6 +22,7 @@ requirements:
     - pydantic
     - numpy
     - pyyaml
+    - tensorflow
 
 test:
   imports:
@@ -35,16 +36,3 @@ about:
   home: https://github.com/slaclab/lume-model
   license: Apache License 2.0
   summary: Lume-model hosts the variable classes required for running LUME models.
-
-
-outputs:
-  - name: lume-model
-
-  - name: lume-model-keras
-    requirements:
-      - tensorflow
-    test:
-      imports:
-        - lume_model.keras
-      commands:
-        - pytest -v -m keras_toolkit --pyargs lume_model

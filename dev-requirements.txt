@@ -6,3 +6,4 @@ numpy
 pydantic
 doctr
 pyyaml
+tensorflow
