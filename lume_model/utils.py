@@ -97,7 +97,7 @@ def model_from_yaml(config_file, model_class=None, model_kwargs=None):
     attempt to import the path specified in the yaml.
 
     Args:
-        config_file (str): Filename string
+        config_file: Config file
         model_class: Class for initializing model
 
     Returns:
@@ -105,9 +105,7 @@ def model_from_yaml(config_file, model_class=None, model_kwargs=None):
 
     """
 
-    config = {}
-    with open(config_file, "r") as stream:
-        config = yaml.safe_load(stream)
+    config = yaml.safe_load(config_file)
 
     # set up the input variables
     input_variables = {}
@@ -251,9 +249,7 @@ def variables_from_yaml(config_file):
 
     """
 
-    config = {}
-    with open(config_file, "r") as stream:
-        config = yaml.safe_load(stream)
+    config = yaml.safe_load(config_file)
 
     # set up the input variables
     input_variables = {}
