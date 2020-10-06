@@ -1,35 +1,40 @@
-import h5py
 import copy
 import numpy as np
 import tensorflow as tf
-from abc import ABC, abstractmethod
-from typing import List
+from typing import List, Dict
 import logging
 from tensorflow.keras.models import load_model
 
 from lume_model.models import SurrogateModel
 from lume_model.utils import load_variables
 from lume_model.variables import InputVariable, OutputVariable
+from lume_model.keras.layers import ScaleLayer, UnscaleLayer, UnscaleImgLayer
 
 logger = logging.getLogger(__name__)
 
 
-class BaseModel(SurrogateModel, ABC):
+class KerasModel(SurrogateModel):
     """
-    The BaseModel class is used for the loading and evaluation of online models. It is an abstract base class designed to
-    implement the general behaviors expected for models used with the Keras lume-model tool kit. Parsing methods for inputs and
-    outputs must be implemented in derived classes.
+    The KerasModel class is used for the loading and evaluation of online models. It is  designed to
+    implement the general behaviors expected for models used with the Keras lume-model tool kit.
 
     Attributes:
-
+        input_valiables (Dict[str, InputVariable]): Dictionary mapping input variable name to variable
+        output_variables (Dict[str, OutputVariable]): Dictionary mapping output variable name to variable
+        _input_format (dict): Instructions for formatting model input
+        _output_format (dict): Instructions for parsing model output
+        _model_file (str): Model filename
+        _thread_graph (tf.Graph): default graph for model execution
 
     """
 
     def __init__(
         self,
         model_file: str,
-        input_variables: List[InputVariable],
-        output_variables: List[OutputVariable],
+        input_variables: Dict[str, InputVariable],
+        output_variables: Dict[str, OutputVariable],
+        input_format: dict,
+        output_format: dict,
     ) -> None:
         """Initializes the model and stores inputs/outputs.
 
@@ -37,15 +42,17 @@ class BaseModel(SurrogateModel, ABC):
             model_file (str): Path to model file generated with keras.save()
             input_variables (List[InputVariable]): list of model input variables
             output_variables (List[OutputVariable]): list of model output variables
-            _thread_graph (tf.Graph): default graph for model execution
-
+            input_format (dict): Instructions for building model input
+            output_format (dict): Instructions for parsing model ouptut
 
         """
 
         # Save init
-        self.model_file = model_file
         self.input_variables = input_variables
         self.output_variables = output_variables
+        self._input_format = input_format
+        self._output_format = output_format
+        self._model_file = model_file
 
         # load model in thread safe manner
         self._thread_graph = tf.Graph()
@@ -69,7 +76,7 @@ class BaseModel(SurrogateModel, ABC):
             List[OutputVariable]: List of output variables
 
         """
-        self.input_variables = input_variables
+        self.input_variables = {var.name: var for var in input_variables}
 
         # convert list of input variables to dictionary
         input_dictionary = {
@@ -77,18 +84,17 @@ class BaseModel(SurrogateModel, ABC):
             for input_variable in input_variables
         }
 
-        # MUST IMPLEMENT A format_input METHOD TO CONVERT FROM DICT -> MODEL INPUT
-        formatted_input = self.format_input(input_dictionary)
+        # converts from input_dict -> formatted input
+        formatted_input = self._format_input(input_dictionary)
 
         # call prediction in threadsafe manner
         with self._thread_graph.as_default():
             model_output = self.model.predict(formatted_input)
 
-        # MUST IMPLEMENT AN OUTPUT -> DICT METHOD
-        output = self.parse_output(model_output)
+        output = self._parse_output(model_output)
 
-        # PREPARE OUTPUTS WILL FORMAT RETURN VARIABLES (DICT-> VARIABLES)
-        return self.prepare_outputs(output)
+        # prepare outputs will format return variables (dict-> variables)
+        return self._prepare_outputs(output)
 
     def random_evaluate(self) -> List[OutputVariable]:
         """Return a random evaluation of the model.
@@ -110,7 +116,7 @@ class BaseModel(SurrogateModel, ABC):
 
         return self.evaluate(list(random_input.values()))
 
-    def prepare_outputs(self, predicted_output: dict):
+    def _prepare_outputs(self, predicted_output: dict):
         """Prepares the model outputs to be served so that no additional manipulation
         occurs in the OnlineSurrogateModel class.
 
@@ -154,12 +160,38 @@ class BaseModel(SurrogateModel, ABC):
 
         return list(self.output_variables.values())
 
-    @abstractmethod
-    def format_input(self, input_dictionary):
-        # MUST IMPLEMENT A METHOD TO CONVERT INPUT DICTIONARY TO MODEL INPUT
-        pass
+    def _format_input(self, input_dictionary: dict):
+        """Formats input to be fed into model
 
-    @abstractmethod
-    def parse_output(self, model_output):
-        # MUST IMPLEMENT A METHOD TO CONVERT MODEL OUTPUT TO A DICTIONARY OF VARIABLE NAME -> VALUE
-        pass
+        Args:
+            input_dictionary (dict): Dictionary mapping input to value.
+        """
+
+        vector = []
+        for item in self._input_format["order"]:
+            vector.append(input_dictionary[item])
+
+        # Convert to numpy array and reshape
+        vector = np.array(vector)
+        vector = vector.reshape(tuple(self._input_format["shape"]))
+
+        return vector
+
+    def _parse_output(self, model_output):
+        """Parses model output to create dictionary variable name -> value
+
+        Args:
+            model_output (np.ndarray): Raw model output
+        """
+        output_dict = {}
+
+        if self._output_format["type"] == "softmax":
+            for value, idx in self._output_format["indices"].items():
+                softmax_output = list(model_output[idx])
+                output_dict[value] = softmax_output.index(max(softmax_output))
+
+        if self._output_format["type"] == "raw":
+            for value, idx in self._output_format["indices"].items():
+                output_dict[value] = model_output[idx]
+
+        return output_dict

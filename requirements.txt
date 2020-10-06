@@ -1,2 +1,4 @@
 pydantic
 numpy
+pyyaml
+tensorflow

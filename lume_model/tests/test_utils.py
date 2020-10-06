@@ -1,8 +1,14 @@
 from lume_model import utils
 import os
+import sys
 import pytest
 from lume_model.models import SurrogateModel
-from lume_model.variables import ScalarInputVariable, ScalarOutputVariable
+from lume_model.variables import (
+    InputVariable,
+    OutputVariable,
+    ScalarInputVariable,
+    ScalarOutputVariable,
+)
 
 
 def test_save():
