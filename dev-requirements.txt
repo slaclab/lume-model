@@ -1,9 +1,8 @@
-pre-commit
 black
+pre-commit
 pytest
 mkdocs
 numpy
 pydantic
 doctr
 pyyaml
-tensorflow
