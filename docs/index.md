@@ -47,6 +47,8 @@ output_variable = ImageOutputVariable(
 )
 ```
 
+All input variables may be made into constants by passing the `is_constant=True` keyword argument. Value assingments on these constant variables will raise an error message.
+
 ## Surrogate models
 
 Lume-model model classes are intended to guide user development while allowing for flexibility and customizability. The base class `lume_model.models.SurrogateModel` is used to enforce LUME tool compatable classes for the execution of trained models. For this case, model loading and execution should be organized into class methods.
