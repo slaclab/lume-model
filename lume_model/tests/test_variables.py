@@ -34,6 +34,17 @@ def test_input_scalar_variable():
         )
 
 
+@pytest.mark.parametrize("variable_name,default,value_range,is_constant,assign,assignment", [("test", 0.1, [1,2], True, False,None)])
+#@pytest.mark.xfail(raises=RuntimeError)
+def test_constant_input_scalar_variable(variable_name,default,value_range,is_constant, assign, assignment):
+
+    variable = ScalarInputVariable(name=variable_name, default=default, value_range=value_range, is_constant=is_constant)
+ 
+    # test assignment
+    if assign:
+        variable.default = assignment
+
+
 def test_output_scalar_variable():
     # test correctly typed
     ScalarOutputVariable(name="test", default=0.1, value_range=[1, 2])
@@ -179,3 +190,8 @@ def test_output_image_variable():
         shape=test_array.shape,
         axis_labels=["count_1", "count_2"],
     )
+
+
+if __name__ == "__main__":
+
+    test_constant_input_scalar_variable()
