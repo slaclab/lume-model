@@ -34,12 +34,24 @@ def test_input_scalar_variable():
         )
 
 
-@pytest.mark.parametrize("variable_name,default,value_range,is_constant,assign,assignment", [("test", 0.1, [1,2], True, False,None)])
-#@pytest.mark.xfail(raises=RuntimeError)
-def test_constant_input_scalar_variable(variable_name,default,value_range,is_constant, assign, assignment):
+@pytest.mark.parametrize(
+    "variable_name,default,value_range,is_constant,assign,assignment",
+    [
+        ("test", 0.1, [1, 2], False, True, 2.0),
+        pytest.param("test", 0.1, [1, 2], True, True, 2.0, marks=pytest.mark.xfail),
+    ],
+)
+def test_constant_input_scalar_variable(
+    variable_name, default, value_range, is_constant, assign, assignment
+):
 
-    variable = ScalarInputVariable(name=variable_name, default=default, value_range=value_range, is_constant=is_constant)
- 
+    variable = ScalarInputVariable(
+        name=variable_name,
+        default=default,
+        value_range=value_range,
+        is_constant=is_constant,
+    )
+
     # test assignment
     if assign:
         variable.default = assignment
