@@ -99,8 +99,6 @@ Models and variables may be constructed using a yaml configuration file. The con
 
 The model section is used for the initialization of model classes. The `model_class` entry is used to specify the model class to initialize. The `model_from_yaml` method will attempt to import the specified class. Additional model-specific requirements may be provided. These requirements will be checked before model construction. Model keyword arguments may be passed via the config file or with the function kwarg `model_kwargs`. All models are assumed to accept `input_variables` and `output_variables` as keyword arguments.
 
-In order to use the `KerasModel` execution class, instructions must be provided to format inputs for model execution and parse the model output. Input formatting in the yaml uses the `order` and `shape` entries to format the model input. The output format requires indexing for each output variable. Similar functionality might be implemented for custom model classes; however, this is not supported out-of-the-box with `lume-model`.
-
 The below example outlines the specification for a model compatible with the `lume-model` keras/tensorflow toolkit.
 
 ```yaml
@@ -119,10 +117,8 @@ model:
         shape: [1, 4]
     output_format:
         type: softmax
-        indices:
-            Species: [0]
-```
 
+```
 
 Variables are constructed the minimal data requirements for inputs/outputs.
 
