@@ -85,13 +85,13 @@ class KerasModel(SurrogateModel):
         }
 
         # converts from input_dict -> formatted input
-        formatted_input = self._format_input(input_dictionary)
+        formatted_input = self.format_input(input_dictionary)
 
         # call prediction in threadsafe manner
         with self._thread_graph.as_default():
             model_output = self.model.predict(formatted_input)
 
-        output = self._parse_output(model_output)
+        output = self.parse_output(model_output)
 
         # prepare outputs will format return variables (dict-> variables)
         return self._prepare_outputs(output)
@@ -160,7 +160,7 @@ class KerasModel(SurrogateModel):
 
         return list(self.output_variables.values())
 
-    def _format_input(self, input_dictionary: dict):
+    def format_input(self, input_dictionary: dict):
         """Formats input to be fed into model
 
         Args:
@@ -177,7 +177,7 @@ class KerasModel(SurrogateModel):
 
         return vector
 
-    def _parse_output(self, model_output):
+    def parse_output(self, model_output):
         """Parses model output to create dictionary variable name -> value
 
         Args:
