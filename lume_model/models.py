@@ -104,7 +104,6 @@ import logging
 import numpy as np
 
 from lume_model.variables import InputVariable, OutputVariable
-from lume_model.utils import load_variables
 
 logger = logging.getLogger(__name__)
 
