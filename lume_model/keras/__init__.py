@@ -33,8 +33,8 @@ class KerasModel(SurrogateModel):
         model_file: str,
         input_variables: Dict[str, InputVariable],
         output_variables: Dict[str, OutputVariable],
-        input_format: dict,
-        output_format: dict,
+        input_format: dict = {},
+        output_format: dict = {},
     ) -> None:
         """Initializes the model and stores inputs/outputs.
 
@@ -42,8 +42,6 @@ class KerasModel(SurrogateModel):
             model_file (str): Path to model file generated with keras.save()
             input_variables (List[InputVariable]): list of model input variables
             output_variables (List[OutputVariable]): list of model output variables
-            input_format (dict): Instructions for building model input
-            output_format (dict): Instructions for parsing model ouptut
 
         """
 
@@ -167,7 +165,14 @@ class KerasModel(SurrogateModel):
         Args:
             input_dictionary (dict): Dictionary mapping input to value.
         """
-        return input_dictionary
+        formatted_dict = {}
+        for input_variable, value in input_dictionary.items():
+            if isinstance(value, (float, int)):
+                formatted_dict[input_variable] = np.array([value])
+            else:
+                formatted_dict[input_variable] = [value]
+
+        return formatted_dict
 
     def parse_output(self, model_output):
         """Parses model output to create dictionary variable name -> value. This assumes
@@ -180,7 +185,7 @@ class KerasModel(SurrogateModel):
 
         if self._output_format["type"] == "softmax":
             for idx, output_name in enumerate(self._model.output_names):
-                softmax_output = model_output[idx]
+                softmax_output = list(model_output[idx])
                 output_dict[output_name] = softmax_output.index(max(softmax_output))
 
         if self._output_format["type"] == "raw":
