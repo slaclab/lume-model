@@ -101,8 +101,6 @@ Models and variables may be constructed using a yaml configuration file. The con
 
 The model section is used for the initialization of model classes. The `model_class` entry is used to specify the model class to initialize. The `model_from_yaml` method will attempt to import the specified class. Additional model-specific requirements may be provided. These requirements will be checked before model construction. Model keyword arguments may be passed via the config file or with the function kwarg `model_kwargs`. All models are assumed to accept `input_variables` and `output_variables` as keyword arguments.
 
-In order to use the `KerasModel` execution class, instructions must be provided to format inputs for model execution and parse the model output. Input formatting in the yaml uses the `order` and `shape` entries to format the model input. The output format requires indexing for each output variable. Similar functionality might be implemented for custom model classes; however, this is not supported out-of-the-box with `lume-model`.
-
 The below example outlines the specification for a model compatible with the `lume-model` keras/tensorflow toolkit.
 
 ```yaml
@@ -121,10 +119,8 @@ model:
         shape: [1, 4]
     output_format:
         type: softmax
-        indices:
-            Species: [0]
-```
 
+```
 
 Variables are constructed the minimal data requirements for inputs/outputs.
 
@@ -173,8 +169,29 @@ The `KerasModel` packaged in the toolkit will be compatible with models saved us
 
 ### Development requirements:
 - The model must be trained using the custom scaling layers provided in `lume_model.keras.layers` OR using preprocessing layers packaged with Keras OR the custom layers must be defined during build and made accessible during loading by the user. Custom layers are not supported out-of-the box by this toolkit.
-- The keras model must use named input layers such that the model will accept a dictionary input OR the `KerasModel` must be subclassed and the `format_input` and `format_output` member functions must be overwritten with proper formatting of model input from a dictionary mapping input variable names to values and proper output parsing into a dictionary, respectively.
+- The keras model must use named input layers such that the model will accept a dictionary input OR the `KerasModel` must be subclassed and the `format_input` and `format_output` member functions must be overwritten with proper formatting of model input from a dictionary mapping input variable names to values and proper output parsing into a dictionary, respectively. This will require use of the Keras functional API for model construction.
 
+An example of a model built using the functional API is given below:
+
+```python
+
+sepal_length_input = keras.Input(shape=(1,), name="SepalLength")
+sepal_width_input = keras.Input(shape=(1,), name="SepalWidth")
+petal_length_input = keras.Input(shape=(1,), name="PetalLength")
+petal_width_input = keras.Input(shape=(1,), name="PetalWidth")
+inputs = [sepal_length_input, sepal_width_input, petal_length_input, petal_width_input]
+merged = keras.layers.concatenate(inputs)
+dense1 = Dense(8, activation='relu')(merged)
+output = Dense(3, activation='softmax', name="Species")(dense1)
+
+# Compile model
+model = keras.Model(inputs=inputs, outputs=[output])
+optimizer = tf.keras.optimizers.Adam()
+model.compile(loss='categorical_crossentropy', optimizer=optimizer, metrics=['accuracy'])
+
+```
+
+Models built in this way will accept inputs in dictionary form mapping variable name to a numpy array of values.
 
 ### Configuration file
 The KerasModel can be instantiated using the utility function `lume_model.utils.model_from_yaml` method.

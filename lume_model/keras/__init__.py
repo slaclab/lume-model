@@ -33,8 +33,8 @@ class KerasModel(SurrogateModel):
         model_file: str,
         input_variables: Dict[str, InputVariable],
         output_variables: Dict[str, OutputVariable],
-        input_format: dict,
-        output_format: dict,
+        input_format: dict = {},
+        output_format: dict = {},
     ) -> None:
         """Initializes the model and stores inputs/outputs.
 
@@ -42,8 +42,6 @@ class KerasModel(SurrogateModel):
             model_file (str): Path to model file generated with keras.save()
             input_variables (List[InputVariable]): list of model input variables
             output_variables (List[OutputVariable]): list of model output variables
-            input_format (dict): Instructions for building model input
-            output_format (dict): Instructions for parsing model ouptut
 
         """
 
@@ -57,7 +55,7 @@ class KerasModel(SurrogateModel):
         # load model in thread safe manner
         self._thread_graph = tf.Graph()
         with self._thread_graph.as_default():
-            self.model = load_model(
+            self._model = load_model(
                 model_file,
                 custom_objects={
                     "ScaleLayer": ScaleLayer,
@@ -89,7 +87,7 @@ class KerasModel(SurrogateModel):
 
         # call prediction in threadsafe manner
         with self._thread_graph.as_default():
-            model_output = self.model.predict(formatted_input)
+            model_output = self._model.predict(formatted_input)
 
         output = self.parse_output(model_output)
 
@@ -161,24 +159,24 @@ class KerasModel(SurrogateModel):
         return list(self.output_variables.values())
 
     def format_input(self, input_dictionary: dict):
-        """Formats input to be fed into model
+        """Formats input to be fed into model. For the base KerasModel, inputs should
+        be assumed in dictionary format.
 
         Args:
             input_dictionary (dict): Dictionary mapping input to value.
         """
+        formatted_dict = {}
+        for input_variable, value in input_dictionary.items():
+            if isinstance(value, (float, int)):
+                formatted_dict[input_variable] = np.array([value])
+            else:
+                formatted_dict[input_variable] = [value]
 
-        vector = []
-        for item in self._input_format["order"]:
-            vector.append(input_dictionary[item])
-
-        # Convert to numpy array and reshape
-        vector = np.array(vector)
-        vector = vector.reshape(tuple(self._input_format["shape"]))
-
-        return vector
+        return formatted_dict
 
     def parse_output(self, model_output):
-        """Parses model output to create dictionary variable name -> value
+        """Parses model output to create dictionary variable name -> value. This assumes
+        that outputs have been labeled during model creation.
 
         Args:
             model_output (np.ndarray): Raw model output
@@ -186,12 +184,12 @@ class KerasModel(SurrogateModel):
         output_dict = {}
 
         if self._output_format["type"] == "softmax":
-            for value, idx in self._output_format["indices"].items():
+            for idx, output_name in enumerate(self._model.output_names):
                 softmax_output = list(model_output[idx])
-                output_dict[value] = softmax_output.index(max(softmax_output))
+                output_dict[output_name] = softmax_output.index(max(softmax_output))
 
         if self._output_format["type"] == "raw":
-            for value, idx in self._output_format["indices"].items():
-                output_dict[value] = model_output[idx]
+            for idx, output_name in enumerate(self._model.output_names):
+                output_dict[output_name] = model_output[idx]
 
         return output_dict
