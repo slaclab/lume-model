@@ -1,4 +1,3 @@
 pydantic
 numpy
 pyyaml
-tensorflow
