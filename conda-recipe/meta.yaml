@@ -29,7 +29,6 @@ test:
   requires:
     - pytest
   commands:
-    - pip install tensorflow
     - py.test --pyargs lume_model
 
 about:
