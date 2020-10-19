@@ -106,6 +106,9 @@ def model_from_yaml(config_file, model_class=None, model_kwargs=None):
     """
 
     config = yaml.safe_load(config_file)
+    if not isinstance(config, (dict,)):
+        logger.exception("Invalid config file.")
+        sys.exit()
 
     # set up the input variables
     input_variables = {}
@@ -250,6 +253,9 @@ def variables_from_yaml(config_file):
     """
 
     config = yaml.safe_load(config_file)
+    if not isinstance(config, (dict,)):
+        logger.exception("Invalid config file.")
+        sys.exit()
 
     # set up the input variables
     input_variables = {}
@@ -295,7 +301,6 @@ def variables_from_yaml(config_file):
                 lume_model_var = ScalarOutputVariable(**variable_config)
 
             elif variable_config["type"] == "image":
-                variable_config["default"] = np.load(variable_config["default"])
                 variable_config["axis_labels"] = [
                     variable_config["x_label"],
                     variable_config["y_label"],
