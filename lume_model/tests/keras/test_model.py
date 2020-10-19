@@ -1,15 +1,11 @@
 import pytest
 import sys
-import tensorflow
 from lume_model import utils
 from lume_model.variables import InputVariable, OutputVariable
 
 
-@pytest.mark.skipif(
-    tensorflow.__version__ != "2.3.1", reason="Incompatible tf version."
-)
 def test_model_from_yaml(config_file):
-    pytest.importorskip("tensorflow")
+    pytest.importorskip("tensorflow", minversion="2.3.1")
     model = utils.model_from_yaml(config_file)
     model.random_evaluate()
 

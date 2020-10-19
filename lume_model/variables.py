@@ -179,6 +179,14 @@ class InputVariable(Variable, Generic[Value]):
 
     default: Value  # required default
     value_range: list = Field(..., alias="range")  # range required
+    is_constant: bool = False
+
+    class Config:
+        allow_mutation = True
+
+    def __init__(self, **kwargs):
+        super(Variable, self).__init__(**kwargs)
+        self.Config.allow_mutation = not self.is_constant
 
 
 class OutputVariable(Variable, Generic[Value]):

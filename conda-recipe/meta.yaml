@@ -22,7 +22,6 @@ requirements:
     - pydantic
     - numpy
     - pyyaml
-    - tensorflow
 
 test:
   imports:

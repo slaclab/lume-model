@@ -180,7 +180,7 @@ def model_from_yaml(config_file, model_class=None, model_kwargs=None):
         sys.exit()
 
     model = None
-    model_args = {
+    model_kwargs = {
         "input_variables": input_variables,
         "output_variables": output_variables,
     }
@@ -213,29 +213,29 @@ def model_from_yaml(config_file, model_class=None, model_kwargs=None):
                     logger.warning("Module not installed")
 
         klass = locate(config["model"]["model_class"])
-        if "args" in config["model"]:
-            model_args.update(config["model"]["args"])
+        if "kwargs" in config["model"]:
+            model_kwargs.update(config["model"]["kwargs"])
 
         if "input_format" in config["model"]:
-            model_args["input_format"] = config["model"]["input_format"]
+            model_kwargs["input_format"] = config["model"]["input_format"]
 
         if "output_format" in config["model"]:
-            model_args["output_format"] = config["model"]["output_format"]
+            model_kwargs["output_format"] = config["model"]["output_format"]
 
         try:
-            model = klass(**model_args)
+            model = klass(**model_kwargs)
         except:
-            logger.exception(f"Unable to load model with args: {model_args}")
+            logger.exception(f"Unable to load model with args: {model_kwargs}")
             sys.exit()
 
     elif model_class is not None:
         if model_kwargs:
-            model_args.update((model_kwargs))
+            model_kwargs.update((model_kwargs))
 
         try:
-            model = model_class(**model_args)
+            model = model_class(**model_kwargs)
         except:
-            logger.exception(f"Unable to load model with args: {model_args}")
+            logger.exception(f"Unable to load model with args: {model_kwargs}")
             sys.exit()
 
     return model

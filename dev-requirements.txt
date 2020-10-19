@@ -3,6 +3,6 @@ pre-commit
 pytest
 mkdocs
 numpy
-pydantic
+pydantic>=1.6.1
 doctr
 pyyaml
