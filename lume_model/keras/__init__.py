@@ -58,7 +58,7 @@ class KerasModel(SurrogateModel):
         self._model_file = model_file
 
         base_layers.update(custom_layers)
-        print(base_layers)
+
         # load model in thread safe manner
         self._thread_graph = tf.Graph()
         with self._thread_graph.as_default():
