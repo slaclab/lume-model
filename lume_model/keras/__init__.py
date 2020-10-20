@@ -59,8 +59,7 @@ class KerasModel(SurrogateModel):
                     "ScaleLayer": ScaleLayer,
                     "UnscaleLayer": UnscaleLayer,
                     "UnscaleImgLayer": UnscaleImgLayer,
-                    **custom_layers,
-                },
+                }.update(custom_layers),
             )
 
     def evaluate(self, input_variables: List[InputVariable]) -> List[OutputVariable]:
