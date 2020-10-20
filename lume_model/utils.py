@@ -215,7 +215,7 @@ def model_from_yaml(
                 else:
                     logger.warning("Module not installed")
 
-        klass = locate(config["model"]["model_class"])
+        model_class = locate(config["model"]["model_class"])
         if "kwargs" in config["model"]:
             model_kwargs.update(config["model"]["kwargs"])
 
@@ -225,23 +225,13 @@ def model_from_yaml(
         if "output_format" in config["model"]:
             model_kwargs["output_format"] = config["model"]["output_format"]
 
-        try:
-            model = klass(**model_kwargs)
-        except:
-            logger.exception(f"Unable to load model with args: {model_kwargs}")
-            sys.exit()
-
-    elif model_class is not None:
-        if model_kwargs:
-            model_kwargs.update((model_kwargs))
-
-    elif klass is None:
+    if model_class is None:
         logger.exception("No model class found.")
         sys.exit()
 
     if load_model:
         try:
-            model = klass(**model_kwargs)
+            model = model_class(**model_kwargs)
         except:
             logger.exception(f"Unable to load model with args: {model_kwargs}")
             sys.exit()
@@ -249,7 +239,7 @@ def model_from_yaml(
         return model
 
     else:
-        return klass, model_kwargs
+        return model_class, model_kwargs
 
 
 def variables_from_yaml(config_file):
