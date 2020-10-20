@@ -91,7 +91,9 @@ def load_variables(variable_file: str) -> Tuple[dict]:
         return variables["input_variables"], variables["output_variables"]
 
 
-def model_from_yaml(config_file, model_class=None, model_kwargs=None):
+def model_from_yaml(
+    config_file, model_class=None, model_kwargs: dict = None, load_model: bool = True
+):
     """Creates model from yaml configuration. The model class for initialization may
     either be passed to the function as a kwarg or defined in the config file. This function will
     attempt to import the path specified in the yaml.
@@ -99,6 +101,7 @@ def model_from_yaml(config_file, model_class=None, model_kwargs=None):
     Args:
         config_file: Config file
         model_class: Class for initializing model
+        load_model (bool): If True, will return model. If False, will return model class and model_kwargs.
 
     Returns:
         model: Initialized model
@@ -232,13 +235,21 @@ def model_from_yaml(config_file, model_class=None, model_kwargs=None):
         if model_kwargs:
             model_kwargs.update((model_kwargs))
 
+    else:
+        logger.exception("No model class found.")
+        sys.exit()
+
+    if load_model:
         try:
             model = model_class(**model_kwargs)
         except:
             logger.exception(f"Unable to load model with args: {model_kwargs}")
             sys.exit()
 
-    return model
+        return model
+
+    else:
+        return model_class, model_kwargs
 
 
 def variables_from_yaml(config_file):
