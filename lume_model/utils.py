@@ -278,6 +278,13 @@ def variables_from_yaml(config_file):
 
             # build variable
             if variable_config["type"] == "scalar":
+
+                if variable_config.get("is_constant"):
+                    variable_config["range"] = [
+                        variable_config["default"],
+                        variable_config["default"],
+                    ]
+
                 lume_model_var = ScalarInputVariable(**variable_config)
 
             elif variable_config["type"] == "image":
@@ -286,6 +293,13 @@ def variables_from_yaml(config_file):
                     variable_config["x_label"],
                     variable_config["y_label"],
                 ]
+
+                if variable_config.get("is_constant"):
+                    variable_config["range"] = [
+                        np.amin(variable_config["default"]),
+                        np.amax(variable_config["default"]),
+                    ]
+
                 lume_model_var = ImageInputVariable(**variable_config)
 
             else:
