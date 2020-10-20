@@ -33,8 +33,7 @@ class KerasModel(SurrogateModel):
         model_file: str,
         input_variables: Dict[str, InputVariable],
         output_variables: Dict[str, OutputVariable],
-        input_format: dict = {},
-        output_format: dict = {},
+        custom_layers: dict = {},
     ) -> None:
         """Initializes the model and stores inputs/outputs.
 
@@ -42,14 +41,13 @@ class KerasModel(SurrogateModel):
             model_file (str): Path to model file generated with keras.save()
             input_variables (List[InputVariable]): list of model input variables
             output_variables (List[OutputVariable]): list of model output variables
+            custom_layers
 
         """
 
         # Save init
         self.input_variables = input_variables
         self.output_variables = output_variables
-        self._input_format = input_format
-        self._output_format = output_format
         self._model_file = model_file
 
         # load model in thread safe manner
@@ -61,6 +59,7 @@ class KerasModel(SurrogateModel):
                     "ScaleLayer": ScaleLayer,
                     "UnscaleLayer": UnscaleLayer,
                     "UnscaleImgLayer": UnscaleImgLayer,
+                    **custom_layers,
                 },
             )
 
