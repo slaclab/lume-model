@@ -220,7 +220,9 @@ def model_from_yaml(
             if "custom_layers" in config["model"]["kwargs"]:
                 model_kwargs["custom_layers"] = {}
 
-                for layer, import_path in config["model"]["kwargs"]["custom_layers"]:
+                for layer, import_path in config["model"]["kwargs"][
+                    "custom_layers"
+                ].items():
                     layer_class = locate(import_path)
 
                     if layer_class is not None:
