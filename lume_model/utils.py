@@ -216,13 +216,17 @@ def model_from_yaml(
 
         model_class = locate(config["model"]["model_class"])
         if "kwargs" in config["model"]:
+
+            if "custom_layers" in config["model"]["kwargs"]:
+                model_kwargs["custom_layers"] = {}
+
+                for layer, import_path in config["model"]["kwargs"]["custom_layers"]:
+                    layer_class = locate(import_path)
+
+                    if layer_class is not None:
+                        model_kwargs["custom_layers"][layer] = layer_class
+
             model_kwargs.update(config["model"]["kwargs"])
-
-        if "input_format" in config["model"]:
-            model_kwargs["input_format"] = config["model"]["input_format"]
-
-        if "output_format" in config["model"]:
-            model_kwargs["output_format"] = config["model"]["output_format"]
 
     if model_class is None:
         logger.exception("No model class found.")
