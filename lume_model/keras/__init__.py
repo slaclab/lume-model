@@ -187,13 +187,13 @@ class KerasModel(SurrogateModel):
         """
         output_dict = {}
 
-        if self._output_format["type"] == "softmax":
+        if not self._output_format.get("type") or self._output_format["type"] == "raw":
+            for idx, output_name in enumerate(self._model.output_names):
+                output_dict[output_name] = model_output[idx]
+
+        elif self._output_format["type"] == "softmax":
             for idx, output_name in enumerate(self._model.output_names):
                 softmax_output = list(model_output[idx])
                 output_dict[output_name] = softmax_output.index(max(softmax_output))
-
-        if self._output_format["type"] == "raw":
-            for idx, output_name in enumerate(self._model.output_names):
-                output_dict[output_name] = model_output[idx]
 
         return output_dict
