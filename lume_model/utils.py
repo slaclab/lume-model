@@ -157,7 +157,6 @@ def model_from_yaml(
                 lume_model_var = ScalarOutputVariable(**variable_config)
 
             elif variable_config["type"] == "image":
-                variable_config["default"] = np.load(variable_config["default"])
                 variable_config["axis_labels"] = [
                     variable_config["x_label"],
                     variable_config["y_label"],
