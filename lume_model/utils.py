@@ -235,13 +235,13 @@ def model_from_yaml(
         if model_kwargs:
             model_kwargs.update((model_kwargs))
 
-    else:
+    elif klass is None:
         logger.exception("No model class found.")
         sys.exit()
 
     if load_model:
         try:
-            model = model_class(**model_kwargs)
+            model = klass(**model_kwargs)
         except:
             logger.exception(f"Unable to load model with args: {model_kwargs}")
             sys.exit()
@@ -249,7 +249,7 @@ def model_from_yaml(
         return model
 
     else:
-        return model_class, model_kwargs
+        return klass, model_kwargs
 
 
 def variables_from_yaml(config_file):
