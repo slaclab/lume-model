@@ -40,6 +40,8 @@ class KerasModel(SurrogateModel):
         model_file: str,
         input_variables: Dict[str, InputVariable],
         output_variables: Dict[str, OutputVariable],
+        input_format: dict = {},
+        output_format: dict = {},
         custom_layers: dict = {},
     ) -> None:
         """Initializes the model and stores inputs/outputs.
@@ -56,6 +58,8 @@ class KerasModel(SurrogateModel):
         self.input_variables = input_variables
         self.output_variables = output_variables
         self._model_file = model_file
+        self._input_format = input_format
+        self._output_format = output_format
 
         base_layers.update(custom_layers)
 
