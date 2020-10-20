@@ -218,15 +218,21 @@ def model_from_yaml(
         if "kwargs" in config["model"]:
 
             if "custom_layers" in config["model"]["kwargs"]:
+                custom_layers = config["model"]["kwargs"]["custom_layers"]
+
+                # delete key to avoid overwrite
+                del config["model"]["kwargs"]["custom_layers"]
                 model_kwargs["custom_layers"] = {}
 
-                for layer, import_path in config["model"]["kwargs"][
-                    "custom_layers"
-                ].items():
+                for layer, import_path in custom_layers.items():
                     layer_class = locate(import_path)
 
                     if layer_class is not None:
                         model_kwargs["custom_layers"][layer] = layer_class
+
+                    else:
+                        logger.exception("Layer class %s not found.", layer)
+                        sys.exit()
 
             model_kwargs.update(config["model"]["kwargs"])
 
