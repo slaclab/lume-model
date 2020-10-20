@@ -13,6 +13,13 @@ from lume_model.keras.layers import ScaleLayer, UnscaleLayer, UnscaleImgLayer
 logger = logging.getLogger(__name__)
 
 
+base_layers = {
+    "ScaleLayer": ScaleLayer,
+    "UnscaleLayer": UnscaleLayer,
+    "UnscaleImgLayer": UnscaleImgLayer,
+}
+
+
 class KerasModel(SurrogateModel):
     """
     The KerasModel class is used for the loading and evaluation of online models. It is  designed to
@@ -50,17 +57,12 @@ class KerasModel(SurrogateModel):
         self.output_variables = output_variables
         self._model_file = model_file
 
+        base_layers.update(custom_layers)
+        print(base_layers)
         # load model in thread safe manner
         self._thread_graph = tf.Graph()
         with self._thread_graph.as_default():
-            self._model = load_model(
-                model_file,
-                custom_objects={
-                    "ScaleLayer": ScaleLayer,
-                    "UnscaleLayer": UnscaleLayer,
-                    "UnscaleImgLayer": UnscaleImgLayer,
-                }.update(custom_layers),
-            )
+            self._model = load_model(model_file, custom_objects=base_layers,)
 
     def evaluate(self, input_variables: List[InputVariable]) -> List[OutputVariable]:
         """Evaluate model using new input variables.
