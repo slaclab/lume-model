@@ -174,6 +174,8 @@ The `KerasModel` packaged in the toolkit will be compatible with models saved us
 An example of a model built using the functional API is given below:
 
 ```python
+from tensorflow import keras
+import tensorflow as tf
 
 sepal_length_input = keras.Input(shape=(1,), name="SepalLength")
 sepal_width_input = keras.Input(shape=(1,), name="SepalWidth")
