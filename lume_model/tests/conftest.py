@@ -9,4 +9,4 @@ def rootdir():
 
 @pytest.fixture
 def config_file(rootdir):
-    return open(f"{rootdir}/test_files/iris_config.yaml", "r")
+    return open(f"{rootdir}/test_files/iris_config.yml", "r")

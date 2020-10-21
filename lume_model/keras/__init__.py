@@ -13,6 +13,13 @@ from lume_model.keras.layers import ScaleLayer, UnscaleLayer, UnscaleImgLayer
 logger = logging.getLogger(__name__)
 
 
+base_layers = {
+    "ScaleLayer": ScaleLayer,
+    "UnscaleLayer": UnscaleLayer,
+    "UnscaleImgLayer": UnscaleImgLayer,
+}
+
+
 class KerasModel(SurrogateModel):
     """
     The KerasModel class is used for the loading and evaluation of online models. It is  designed to
@@ -35,6 +42,7 @@ class KerasModel(SurrogateModel):
         output_variables: Dict[str, OutputVariable],
         input_format: dict = {},
         output_format: dict = {},
+        custom_layers: dict = {},
     ) -> None:
         """Initializes the model and stores inputs/outputs.
 
@@ -42,27 +50,23 @@ class KerasModel(SurrogateModel):
             model_file (str): Path to model file generated with keras.save()
             input_variables (List[InputVariable]): list of model input variables
             output_variables (List[OutputVariable]): list of model output variables
+            custom_layers
 
         """
 
         # Save init
         self.input_variables = input_variables
         self.output_variables = output_variables
+        self._model_file = model_file
         self._input_format = input_format
         self._output_format = output_format
-        self._model_file = model_file
+
+        base_layers.update(custom_layers)
 
         # load model in thread safe manner
         self._thread_graph = tf.Graph()
         with self._thread_graph.as_default():
-            self._model = load_model(
-                model_file,
-                custom_objects={
-                    "ScaleLayer": ScaleLayer,
-                    "UnscaleLayer": UnscaleLayer,
-                    "UnscaleImgLayer": UnscaleImgLayer,
-                },
-            )
+            self._model = load_model(model_file, custom_objects=base_layers,)
 
     def evaluate(self, input_variables: List[InputVariable]) -> List[OutputVariable]:
         """Evaluate model using new input variables.
@@ -183,13 +187,13 @@ class KerasModel(SurrogateModel):
         """
         output_dict = {}
 
-        if self._output_format["type"] == "softmax":
+        if not self._output_format.get("type") or self._output_format["type"] == "raw":
+            for idx, output_name in enumerate(self._model.output_names):
+                output_dict[output_name] = model_output[idx]
+
+        elif self._output_format["type"] == "softmax":
             for idx, output_name in enumerate(self._model.output_names):
                 softmax_output = list(model_output[idx])
                 output_dict[output_name] = softmax_output.index(max(softmax_output))
-
-        if self._output_format["type"] == "raw":
-            for idx, output_name in enumerate(self._model.output_names):
-                output_dict[output_name] = model_output[idx]
 
         return output_dict

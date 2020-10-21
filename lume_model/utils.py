@@ -157,7 +157,6 @@ def model_from_yaml(
                 lume_model_var = ScalarOutputVariable(**variable_config)
 
             elif variable_config["type"] == "image":
-                variable_config["default"] = np.load(variable_config["default"])
                 variable_config["axis_labels"] = [
                     variable_config["x_label"],
                     variable_config["y_label"],
@@ -217,13 +216,25 @@ def model_from_yaml(
 
         model_class = locate(config["model"]["model_class"])
         if "kwargs" in config["model"]:
+
+            if "custom_layers" in config["model"]["kwargs"]:
+                custom_layers = config["model"]["kwargs"]["custom_layers"]
+
+                # delete key to avoid overwrite
+                del config["model"]["kwargs"]["custom_layers"]
+                model_kwargs["custom_layers"] = {}
+
+                for layer, import_path in custom_layers.items():
+                    layer_class = locate(import_path)
+
+                    if layer_class is not None:
+                        model_kwargs["custom_layers"][layer] = layer_class
+
+                    else:
+                        logger.exception("Layer class %s not found.", layer)
+                        sys.exit()
+
             model_kwargs.update(config["model"]["kwargs"])
-
-        if "input_format" in config["model"]:
-            model_kwargs["input_format"] = config["model"]["input_format"]
-
-        if "output_format" in config["model"]:
-            model_kwargs["output_format"] = config["model"]["output_format"]
 
     if model_class is None:
         logger.exception("No model class found.")
@@ -267,6 +278,13 @@ def variables_from_yaml(config_file):
 
             # build variable
             if variable_config["type"] == "scalar":
+
+                if variable_config.get("is_constant"):
+                    variable_config["range"] = [
+                        variable_config["default"],
+                        variable_config["default"],
+                    ]
+
                 lume_model_var = ScalarInputVariable(**variable_config)
 
             elif variable_config["type"] == "image":
@@ -275,6 +293,13 @@ def variables_from_yaml(config_file):
                     variable_config["x_label"],
                     variable_config["y_label"],
                 ]
+
+                if variable_config.get("is_constant"):
+                    variable_config["range"] = [
+                        np.amin(variable_config["default"]),
+                        np.amax(variable_config["default"]),
+                    ]
+
                 lume_model_var = ImageInputVariable(**variable_config)
 
             else:
