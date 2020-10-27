@@ -34,6 +34,7 @@ about:
   home: https://github.com/slaclab/lume-model
   license: SLAC Open
   license_family: OTHER
+  license_file: LICENSE
   summary: Lume-model hosts the variable classes required for running LUME models.
   doc_url: https://slaclab.github.io/lume-model/
   dev_url: https://github.com/slaclab/lume-model
