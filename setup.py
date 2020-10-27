@@ -18,9 +18,9 @@ setup(
     name="lume-model",
     version=versioneer.get_version(),
     cmdclass=versioneer.get_cmdclass(),
-    author="Jacqueline Garrahan",
+    author="SLAC National Accelerator Laboratory",
     author_email="jgarra@slac.stanford.edu",
-    license="Apache License, Version 2.0",
+    license="SLAC Open",
     packages=find_packages(),
     install_requires=requirements,
     # set up development requirements
