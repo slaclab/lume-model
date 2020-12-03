@@ -1,0 +1,42 @@
+name: Build lume-model
+
+on:
+  push:
+    branches:
+      - master
+      - github-actions
+
+jobs:
+  build:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [macOS-latest, ubuntu-latest]
+        python-version: [3.6, 3.7, 3.8]
+
+    name: Python ${{ matrix.python-version }}, ${{ matrix.os }} build
+    steps:
+      - uses: actions/checkout@v2
+      - name: Set up conda
+        uses: s-weigand/setup-conda@v1
+        with:
+          update-conda: true
+          python-version: ${{ matrix.python-version }}
+          conda-channels: anaconda, conda-forge
+      - name: Configure conda
+        run: |
+          conda info
+          conda config --set always_yes yes --set changeps1 no
+          conda config --add channels conda-forge
+          conda config --set channel_priority strict
+          conda install conda-build anaconda-client
+          conda update -q conda conda-build
+      - name: Build package
+        run: |
+          conda build -q conda-recipe --python=$TRAVIS_PYTHON_VERSION --output-folder bld-dir
+      - name: Test with pytest
+        run: |
+          conda config --add channels "file://`pwd`/bld-dir"
+          conda install --file dev-requirements.txt
+          conda install lume-model
+          pytest
