@@ -34,4 +34,4 @@ jobs:
       - name: Make docs
         run: |
           mkdocs build
-          mkdocs gh-deploy
+          mkdocs gh-deploy --force
