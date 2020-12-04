@@ -44,7 +44,7 @@ jobs:
           conda install lume-model
           pytest
       - name: build-docs
-        if: ${{ github.repository == "slaclab/lume-model" }}
+        if: ${{ github.repository == 'slaclab/lume-model' }}
         run: |
           pip install -r docs-requirements.txt
           mkdocs build -c -d site
