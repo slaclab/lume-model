@@ -5,6 +5,9 @@ on:
     branches:
       - master
       - github-actions
+  pull_request:
+    branches:
+      - master
 
 jobs:
   build:
@@ -40,3 +43,9 @@ jobs:
           conda install --file dev-requirements.txt
           conda install lume-model
           pytest
+      - name: build-docs
+        if: ${{ github.repository == "slaclab/lume-model" }}
+        run: |
+        pip install -r docs-requirements.txt
+        mkdocs build -c -d site
+        doctr deploy . --built-docs site --deploy-branch-name gh-pages
