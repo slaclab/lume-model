@@ -184,3 +184,69 @@ def test_output_image_variable(variable_name, default, axis_labels):
     ImageOutputVariable(
         name=variable_name, axis_labels=axis_labels,
     )
+
+
+@pytest.mark.parametrize(
+    "variable_name,default,value_range,axis_labels,x_min,y_min,x_max,y_max",
+    [
+        ("test", np.array([[1, 2,], [3, 4]]), [0, 1], ["x", "y"], 0, 0, 1, 1),
+        pytest.param(
+            "test", 1.0, [0, 1], ["x", "y"], 0, 0, 1, 1, marks=pytest.mark.xfail
+        ),
+    ],
+)
+def test_image_variable_shape(
+    variable_name, default, value_range, axis_labels, x_min, y_min, x_max, y_max
+):
+    shape = default.shape
+
+    # test correctly typed
+    variable = ImageInputVariable(
+        name=variable_name,
+        default=default,
+        value_range=value_range,
+        axis_labels=axis_labels,
+        x_min=x_min,
+        y_min=y_min,
+        x_max=x_max,
+        y_max=y_max,
+    )
+
+    assert shape == variable.shape
+
+
+@pytest.mark.parametrize(
+    "variable_name,default,value_range,axis_labels,x_min,y_min,x_max,y_max",
+    [("test", np.array([[1, 2,], [3, 4]]), [0, 1], ["x", "y"], 0, 0, 1, 1)],
+)
+def test_input_image_variable_color_mode(
+    variable_name, default, value_range, axis_labels, x_min, y_min, x_max, y_max
+):
+
+    random_rgb_default = np.random.rand(10, 10, 3)
+
+    # test correctly typed
+    variable = ImageInputVariable(
+        name=variable_name,
+        default=random_rgb_default,
+        value_range=value_range,
+        axis_labels=axis_labels,
+        x_min=x_min,
+        y_min=y_min,
+        x_max=x_max,
+        y_max=y_max,
+    )
+
+    with pytest.raises(ValueError):
+        random_rgb_default = np.random.rand(10, 10, 2)
+        # test correctly typed
+        variable = ImageInputVariable(
+            name=variable_name,
+            default=random_rgb_default,
+            value_range=value_range,
+            axis_labels=axis_labels,
+            x_min=x_min,
+            y_min=y_min,
+            x_max=x_max,
+            y_max=y_max,
+        )
