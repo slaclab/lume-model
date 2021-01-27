@@ -110,7 +110,7 @@ class Image(np.ndarray):
             logger.exception("Image variable value must be a numpy array")
             raise TypeError("Numpy array required")
 
-        if not v.ndim == 2 and not v.ndim == 3:
+        if (not v.ndim == 2 and not v.ndim == 3) or (v.ndim == 3 and v.shape[2] != 3):
             logger.exception("Array must have dim=2 or dim=3 to instantiate image")
             raise ValueError(
                 f"Image array must have dim=2 or dim=3. Provided array has {v.ndim} dimensions"
