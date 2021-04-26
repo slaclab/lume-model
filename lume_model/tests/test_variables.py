@@ -6,6 +6,8 @@ from lume_model.variables import (
     ScalarOutputVariable,
     ImageInputVariable,
     ImageOutputVariable,
+    ArrayInputVariable,
+    ArrayOutputVariable,
 )
 
 
@@ -250,3 +252,73 @@ def test_input_image_variable_color_mode(
             x_max=x_max,
             y_max=y_max,
         )
+
+
+@pytest.mark.parametrize(
+    "variable_name,default,value_range,dim_labels",
+    [
+        ("test", np.array([[1, 2,], [3, 4]]), [0, 5], ["x, y"]),
+        pytest.param("test", [0, 1], [0, 5], ["x", "y"], marks=pytest.mark.xfail),
+    ],
+)
+def test_input_array_variable(variable_name, default, value_range, dim_labels):
+    # test correctly typed
+    ArrayInputVariable(
+        name=variable_name,
+        default=default,
+        value_range=value_range,
+        dim_labels=dim_labels,
+    )
+
+    # test missing name
+    with pytest.raises(ValidationError):
+        ArrayInputVariable(
+            default=default, value_range=value_range, dim_labels=dim_labels,
+        )
+
+    # test missing value
+    with pytest.raises(ValidationError):
+        ArrayInputVariable(
+            name=variable_name, value_range=value_range, dim_labels=dim_labels,
+        )
+
+    # test missing range
+    with pytest.raises(ValidationError):
+        ArrayInputVariable(
+            name=variable_name, default=default, dim_labels=dim_labels,
+        )
+
+    # test missing axis labels
+    ArrayInputVariable(
+        name=variable_name, default=default, value_range=value_range,
+    )
+
+
+@pytest.mark.parametrize(
+    "variable_name,default,dim_labels",
+    [
+        ("test", np.array([[1, 2,], [3, 4]]), ["x", "y"],),
+        pytest.param("test", 1.0, ["x", "y"], marks=pytest.mark.xfail),
+    ],
+)
+def test_output_array_variable(variable_name, default, dim_labels):
+    shape = default.shape
+    ArrayOutputVariable(
+        name=variable_name, default=default, shape=shape, dim_labels=dim_labels,
+    )
+
+    # test missing name
+    with pytest.raises(ValidationError):
+        ArrayOutputVariable(
+            default=default, shape=shape, dim_labels=dim_labels,
+        )
+
+    # test missing labels
+    ArrayOutputVariable(
+        name=variable_name, default=default,
+    )
+
+    # test missing value
+    ArrayOutputVariable(
+        name=variable_name, dim_labels=dim_labels,
+    )

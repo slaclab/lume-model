@@ -83,19 +83,15 @@ class NumpyNDArray(np.ndarray):
     @classmethod
     def validate(cls, v: Any) -> np.ndarray:
         # validate data...
-        if v:
-            if not isinstance(v, np.ndarray):
-                logger.exception("A numpy array is required for the value")
-                raise TypeError("Numpy array required")
+        if not isinstance(v, np.ndarray):
+            logger.exception("A numpy array is required for the value")
+            raise TypeError("Numpy array required")
         return v
 
 
 class Image(np.ndarray):
     """
     Custom type validator for image array.
-
-    TODO:
-        This should be expanded to check for color images.
 
     """
 
@@ -237,6 +233,31 @@ class ImageVariable(BaseModel, NDVariableBase):
     x_max_variable: str = None
     y_min_variable: str = None
     y_max_variable: str = None
+
+
+class ArrayVariable(BaseModel, NDVariableBase):
+    """
+    Base class used for constructing an array variable.
+
+    Attributes:
+        variable_type (str): Indicates array variable.
+
+        axis_labels (List[str]): Labels to use for rendering axes.
+
+        axis_units (Optional[List[str]]): Units to use for rendering axes labels.
+
+        x_min_variable (Optional[str]): Scalar variable associated with image minimum x.
+
+        x_max_variable (Optional[str]): Scalar variable associated with image maximum x.
+
+        y_min_variable (Optional[str]): Scalar variable associated with image minimum y.
+
+        y_max_variable (Optional[str]): Scalar variable associated with image maximum y.
+    """
+
+    variable_type: str = "array"
+    units: Optional[str] = None  # required for some output displays
+    dim_labels: Optional[List[str]] = None
 
 
 class ScalarVariable(BaseModel):
@@ -438,4 +459,12 @@ class ScalarOutputVariable(OutputVariable[float], ScalarVariable):
 
     """
 
+    pass
+
+
+class ArrayInputVariable(InputVariable[NumpyNDArray], ArrayVariable):
+    pass
+
+
+class ArrayOutputVariable(OutputVariable[NumpyNDArray], ArrayVariable):
     pass
