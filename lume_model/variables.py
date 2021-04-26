@@ -242,21 +242,13 @@ class ArrayVariable(BaseModel, NDVariableBase):
     Attributes:
         variable_type (str): Indicates array variable.
 
-        axis_labels (List[str]): Labels to use for rendering axes.
+        dim_labels (List[str]): Labels to use for rendering axes.
 
-        axis_units (Optional[List[str]]): Units to use for rendering axes labels.
-
-        x_min_variable (Optional[str]): Scalar variable associated with image minimum x.
-
-        x_max_variable (Optional[str]): Scalar variable associated with image maximum x.
-
-        y_min_variable (Optional[str]): Scalar variable associated with image minimum y.
-
-        y_max_variable (Optional[str]): Scalar variable associated with image maximum y.
+        dim_units (Optional[List[str]]): Units to use for rendering axes labels.
     """
 
     variable_type: str = "array"
-    units: Optional[str] = None  # required for some output displays
+    units: Optional[List[str]] = None  # required for some output displays
     dim_labels: Optional[List[str]] = None
 
 
@@ -463,8 +455,48 @@ class ScalarOutputVariable(OutputVariable[float], ScalarVariable):
 
 
 class ArrayInputVariable(InputVariable[NumpyNDArray], ArrayVariable):
+    """
+    Variable used for representing an array input.
+
+    Attributes:
+        name (str): Name of the variable.
+
+        default (np.ndarray):  Default value assigned to the variable.
+
+        precision (Optional[int]): Precision to use for the value.
+
+        value (Optional[Value]): Value assigned to variable
+
+        value_range (Optional[list]): Acceptable range for value
+
+        variable_type (str): Indicates array variable.
+
+        dim_labels (List[str]): Labels to use for dimensions
+
+        dim_units (Optional[List[str]]): Units to use for dimensions.
+    """
+
     pass
 
 
 class ArrayOutputVariable(OutputVariable[NumpyNDArray], ArrayVariable):
+    """
+    Attributes:
+        name (str): Name of the variable.
+
+        default (Optional[np.ndarray]):  Default value assigned to the variable.
+
+        precision (Optional[int]): Precision to use for the value.
+
+        value (Optional[Value]): Value assigned to variable
+
+        value_range (Optional[list]): Acceptable range for value
+
+        variable_type (str): Indicates array variable.
+
+        dim_labels (List[str]): Labels to use for dimensions
+
+        dim_units (Optional[List[str]]): Units to use for dimensions.
+    """
+
     pass
