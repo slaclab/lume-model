@@ -28,11 +28,9 @@ jobs:
           conda-channels: anaconda, conda-forge
       - name: Configure conda
         run: |
-          ulimit -c unlimited
           conda info
           conda config --set always_yes yes --set changeps1 no
           conda config --add channels conda-forge
-          conda config --set channel_priority flexible
           conda install conda-build anaconda-client
           conda update -q conda conda-build
       - name: Build package
