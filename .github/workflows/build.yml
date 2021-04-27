@@ -36,6 +36,7 @@ jobs:
           conda update -q conda conda-build
       - name: Build package
         run: |
+          ulimit -c unlimited
           conda build -q conda-recipe --python=$TRAVIS_PYTHON_VERSION --output-folder bld-dir
       - name: Test with pytest
         run: |
