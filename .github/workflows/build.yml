@@ -24,7 +24,7 @@ jobs:
         with:
           auto-activate-base: true
           activate-environment: true
-          conda-build-version: latest
+          conda-build-version: 3.18.11
           python-version: ${{ matrix.python-version }}
           channels: anaconda,conda-forge
           channel-priority: flexible
