@@ -83,19 +83,15 @@ class NumpyNDArray(np.ndarray):
     @classmethod
     def validate(cls, v: Any) -> np.ndarray:
         # validate data...
-        if v:
-            if not isinstance(v, np.ndarray):
-                logger.exception("A numpy array is required for the value")
-                raise TypeError("Numpy array required")
+        if not isinstance(v, np.ndarray):
+            logger.exception("A numpy array is required for the value")
+            raise TypeError("Numpy array required")
         return v
 
 
 class Image(np.ndarray):
     """
     Custom type validator for image array.
-
-    TODO:
-        This should be expanded to check for color images.
 
     """
 
@@ -237,6 +233,23 @@ class ImageVariable(BaseModel, NDVariableBase):
     x_max_variable: str = None
     y_min_variable: str = None
     y_max_variable: str = None
+
+
+class ArrayVariable(BaseModel, NDVariableBase):
+    """
+    Base class used for constructing an array variable.
+
+    Attributes:
+        variable_type (str): Indicates array variable.
+
+        dim_labels (List[str]): Labels to use for rendering axes.
+
+        dim_units (Optional[List[str]]): Units to use for rendering axes labels.
+    """
+
+    variable_type: str = "array"
+    units: Optional[List[str]] = None  # required for some output displays
+    dim_labels: Optional[List[str]] = None
 
 
 class ScalarVariable(BaseModel):
@@ -436,6 +449,54 @@ class ScalarOutputVariable(OutputVariable[float], ScalarVariable):
         variable = ScalarOutputVariable(name="test", default=0.1, value_range=[1, 2])
         ```
 
+    """
+
+    pass
+
+
+class ArrayInputVariable(InputVariable[NumpyNDArray], ArrayVariable):
+    """
+    Variable used for representing an array input.
+
+    Attributes:
+        name (str): Name of the variable.
+
+        default (np.ndarray):  Default value assigned to the variable.
+
+        precision (Optional[int]): Precision to use for the value.
+
+        value (Optional[Value]): Value assigned to variable
+
+        value_range (Optional[list]): Acceptable range for value
+
+        variable_type (str): Indicates array variable.
+
+        dim_labels (List[str]): Labels to use for dimensions
+
+        dim_units (Optional[List[str]]): Units to use for dimensions.
+    """
+
+    pass
+
+
+class ArrayOutputVariable(OutputVariable[NumpyNDArray], ArrayVariable):
+    """
+    Attributes:
+        name (str): Name of the variable.
+
+        default (Optional[np.ndarray]):  Default value assigned to the variable.
+
+        precision (Optional[int]): Precision to use for the value.
+
+        value (Optional[Value]): Value assigned to variable
+
+        value_range (Optional[list]): Acceptable range for value
+
+        variable_type (str): Indicates array variable.
+
+        dim_labels (List[str]): Labels to use for dimensions
+
+        dim_units (Optional[List[str]]): Units to use for dimensions.
     """
 
     pass
