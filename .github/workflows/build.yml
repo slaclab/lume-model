@@ -28,6 +28,7 @@ jobs:
           conda-channels: anaconda, conda-forge
       - name: Configure conda
         run: |
+          ulimit -c unlimited
           conda info
           conda config --set always_yes yes --set changeps1 no
           conda config --add channels conda-forge
@@ -36,7 +37,6 @@ jobs:
           conda update -q conda conda-build
       - name: Build package
         run: |
-          ulimit -c unlimited
           conda build -q conda-recipe --python=$TRAVIS_PYTHON_VERSION --output-folder bld-dir
       - name: Test with pytest
         run: |
