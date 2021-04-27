@@ -33,7 +33,9 @@ jobs:
           conda build -q conda-recipe --python=${{ matrix.python-version }} --output-folder bld-dir
       - name: Test with pytest
         run: |
+          conda activate base
           conda config --add channels "file://`pwd`/bld-dir"
           conda install --file dev-requirements.txt
           conda install lume-model
-          python -m pytest
+          which python
+          pytest
