@@ -236,6 +236,9 @@ def model_from_yaml(
 
             model_kwargs.update(config["model"]["kwargs"])
 
+        if "output_format" in config["model"]:
+            model_kwargs["output_format"] = config["model"]["output_format"]
+
     if model_class is None:
         logger.exception("No model class found.")
         sys.exit()
