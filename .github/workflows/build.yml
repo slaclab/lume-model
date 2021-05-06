@@ -1,25 +1,20 @@
-name: Build lume-model
+name: Build docs
 
 on:
   push:
     branches:
       - master
       - github-actions
-  pull_request:
-    branches:
-      - master
-
 jobs:
   build:
+    if: ${{ github.repository == 'slaclab/lume-model' }}
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [macOS-latest, ubuntu-latest]
-        python-version: [3.7, 3.8]
-
-    name: Python ${{ matrix.python-version }}, ${{ matrix.os }} build
+        os: [ubuntu-latest]
+        python-version: [3.7]
+    name:  Build docs
     steps:
-      - uses: actions/checkout@v2
       - uses: conda-incubator/setup-miniconda@v2
         with:
           auto-activate-base: true
@@ -30,4 +25,8 @@ jobs:
           channel-priority: flexible
       - name: Build package
         run: |
-          conda build -q conda-recipe --python=${{ matrix.python-version }} --output-folder bld-dir
+          conda config --set always_yes yes --set changeps1 no
+          conda install --file dev-requirements.txt
+          conda install --file docs-requirements.txt
+          mkdocs build
+          mkdocs gh-deploy --force
