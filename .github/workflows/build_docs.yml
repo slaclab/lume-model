@@ -5,6 +5,7 @@ on:
     branches:
       - master
       - github-actions
+
 jobs:
   build:
     if: ${{ github.repository == 'slaclab/lume-model' }}
@@ -16,22 +17,18 @@ jobs:
     name:  Build docs
     steps:
       - uses: actions/checkout@v2
-      - name: Set up conda
-        uses: s-weigand/setup-conda@v1
+      - uses: conda-incubator/setup-miniconda@v2
         with:
-          update-conda: true
+          auto-activate-base: true
+          activate-environment: true
+          conda-build-version: 3.18.11
           python-version: ${{ matrix.python-version }}
-          conda-channels: anaconda, conda-forge
-      - name: Configure conda
+          channels: anaconda,conda-forge
+          channel-priority: flexible
+      - name: Build package
         run: |
-          conda info
           conda config --set always_yes yes --set changeps1 no
-          conda config --add channels conda-forge
-          conda config --set channel_priority strict
-          conda install conda-build anaconda-client
           conda install --file dev-requirements.txt
           conda install --file docs-requirements.txt
-      - name: Make docs
-        run: |
           mkdocs build
           mkdocs gh-deploy --force
