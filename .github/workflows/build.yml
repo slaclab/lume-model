@@ -29,5 +29,6 @@ jobs:
           channels: anaconda,conda-forge
           channel-priority: flexible
       - name: Build package
+        shell: bash -l {0}
         run: |
           conda build -q conda-recipe --python=${{ matrix.python-version }} --output-folder bld-dir
