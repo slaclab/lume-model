@@ -174,7 +174,6 @@ class InputVariable(Variable, Generic[Value]):
     """
 
     default: Value  # required default
-    value_range: list = Field(..., alias="range")  # range required
     is_constant: bool = False
 
     class Config:
@@ -250,6 +249,7 @@ class ArrayVariable(BaseModel, NDVariableBase):
     variable_type: str = "array"
     units: Optional[List[str]] = None  # required for some output displays
     dim_labels: Optional[List[str]] = None
+    value_type: str = "float"
 
 
 class ScalarVariable(BaseModel):
@@ -267,6 +267,7 @@ class ScalarVariable(BaseModel):
     variable_type: str = "scalar"
     units: Optional[str] = None  # required for some output displays
     parent_variable: str = None  # indicates that this variable is an attribute of another
+    value_range: list = Field(..., alias="range")  # range required
 
 
 class ImageInputVariable(InputVariable[Image], ImageVariable):
@@ -390,7 +391,7 @@ class ImageOutputVariable(OutputVariable[Image], ImageVariable):
     y_max: Optional[float] = None
 
 
-class ScalarInputVariable(InputVariable[float], ScalarVariable):
+class ScalarInputVariable(InputVariable[Union[float, type(None)]], ScalarVariable):
     """
     Variable used for representing an scalar input. Scalar variables hold float values.
     Initialization requires name, default, and value_range.

@@ -120,30 +120,6 @@ def test_input_image_variable(
             y_max=y_max,
         )
 
-    # test missing value
-    with pytest.raises(ValidationError):
-        ImageInputVariable(
-            name=variable_name,
-            value_range=value_range,
-            axis_labels=axis_labels,
-            x_min=x_min,
-            y_min=y_min,
-            x_max=x_max,
-            y_max=y_max,
-        )
-
-    # test missing range
-    with pytest.raises(ValidationError):
-        ImageInputVariable(
-            name=variable_name,
-            default=default,
-            axis_labels=axis_labels,
-            x_min=x_min,
-            y_min=y_min,
-            x_max=x_max,
-            y_max=y_max,
-        )
-
     # test missing axis labels
     with pytest.raises(ValidationError):
         ImageInputVariable(
@@ -274,18 +250,6 @@ def test_input_array_variable(variable_name, default, value_range, dim_labels):
     with pytest.raises(ValidationError):
         ArrayInputVariable(
             default=default, value_range=value_range, dim_labels=dim_labels,
-        )
-
-    # test missing value
-    with pytest.raises(ValidationError):
-        ArrayInputVariable(
-            name=variable_name, value_range=value_range, dim_labels=dim_labels,
-        )
-
-    # test missing range
-    with pytest.raises(ValidationError):
-        ArrayInputVariable(
-            name=variable_name, default=default, dim_labels=dim_labels,
         )
 
     # test missing axis labels
