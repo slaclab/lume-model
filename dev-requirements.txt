@@ -1,7 +1,6 @@
 black
 pre-commit
 pytest
-mkdocs
 numpy
 pydantic>=1.6.1
 doctr

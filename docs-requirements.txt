@@ -1,3 +1,11 @@
+black
+pre-commit
+pytest
+numpy
+pydantic>=1.6.1
+doctr
+pyyaml
+mkdocs
 mkdocstrings
 mkdocs-material
 mkdocs-material-extensions
