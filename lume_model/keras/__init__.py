@@ -12,7 +12,6 @@ from lume_model.keras.layers import ScaleLayer, UnscaleLayer, UnscaleImgLayer
 
 logger = logging.getLogger(__name__)
 
-
 base_layers = {
     "ScaleLayer": ScaleLayer,
     "UnscaleLayer": UnscaleLayer,
@@ -64,9 +63,7 @@ class KerasModel(SurrogateModel):
         base_layers.update(custom_layers)
 
         # load model in thread safe manner
-        self._thread_graph = tf.Graph()
-        with self._thread_graph.as_default():
-            self._model = load_model(model_file, custom_objects=base_layers,)
+        self._model = load_model(model_file, custom_objects=base_layers,)
 
     def evaluate(self, input_variables: List[InputVariable]) -> List[OutputVariable]:
         """Evaluate model using new input variables.
@@ -90,8 +87,7 @@ class KerasModel(SurrogateModel):
         formatted_input = self.format_input(input_dictionary)
 
         # call prediction in threadsafe manner
-        with self._thread_graph.as_default():
-            model_output = self._model.predict(formatted_input)
+        model_output = self._model.predict(formatted_input)
 
         output = self.parse_output(model_output)
 
