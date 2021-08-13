@@ -24,11 +24,11 @@ jobs:
         with:
           auto-activate-base: true
           activate-environment: true
-          conda-build-version: "latest"
           python-version: ${{ matrix.python-version }}
           channels: anaconda,conda-forge
           channel-priority: flexible
       - name: Build package
         shell: bash -l {0}
         run: |
+          conda install conda-build
           conda build -q conda-recipe --python=${{ matrix.python-version }} --output-folder bld-dir
