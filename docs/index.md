@@ -163,7 +163,7 @@ input_variables:
 
 ## Keras/tensorflow toolkit
 
-At present, only the tensorflow backend is supported for this toolkit.
+At present, only the tensorflow v2 backend is supported for this toolkit.
 
 The `KerasModel` packaged in the toolkit will be compatible with models saved using the `keras.save_model()` method.
 
