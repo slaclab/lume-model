@@ -3,7 +3,6 @@ name: Build lume-model
 on:
   push:
     branches:
-      - master
       - github-actions
   pull_request:
     branches:

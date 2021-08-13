@@ -4,15 +4,13 @@ on:
   push:
     branches:
       - master
-      - github-actions
 
 jobs:
   build:
     if: ${{ github.repository == 'slaclab/lume-model' }}
-    runs-on: ${{ matrix.os }}
+    runs-on: ubuntu-latest
     strategy:
       matrix:
-        os: [ubuntu-latest]
         python-version: [3.7]
     name:  Build docs
     steps:
@@ -20,7 +18,6 @@ jobs:
       - uses: conda-incubator/setup-miniconda@v2
         with:
           auto-activate-base: true
-          activate-environment: true
           python-version: ${{ matrix.python-version }}
           channels: anaconda,conda-forge
           channel-priority: flexible
