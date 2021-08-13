@@ -4,7 +4,7 @@ model:
     requirements:
       tensorflow: 2.3.1
     kwargs:
-      model_file: examples/files/iris_model.h5
+      model_file: lume_model/tests/test_files/iris_model.h5
     output_format:
         type: softmax
 
