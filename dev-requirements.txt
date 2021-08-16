@@ -2,6 +2,6 @@ black
 pre-commit
 pytest
 numpy
-pydantic>=1.6.1
+pydantic>=1.6.1,<1.8.2
 doctr
 pyyaml
