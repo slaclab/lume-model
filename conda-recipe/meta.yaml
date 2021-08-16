@@ -6,7 +6,7 @@ package:
 
 build:
   noarch: python
-  number: 0
+  number: 2
 
 source:
   path: ..
@@ -16,9 +16,10 @@ requirements:
     - python
     - setuptools
     - pip
+    - pydantic >=1.6.1,<1.8.2
   run:
     - python
-    - pydantic>=1.6.1,<1.8.2
+    - pydantic >=1.6.1,<1.8.2
     - numpy
     - pyyaml
 
