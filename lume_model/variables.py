@@ -391,7 +391,7 @@ class ImageOutputVariable(OutputVariable[Image], ImageVariable):
     y_max: Optional[float] = None
 
 
-class ScalarInputVariable(InputVariable[Union[float, type(None)]], ScalarVariable):
+class ScalarInputVariable(InputVariable[Union[float]], ScalarVariable):
     """
     Variable used for representing an scalar input. Scalar variables hold float values.
     Initialization requires name, default, and value_range.
