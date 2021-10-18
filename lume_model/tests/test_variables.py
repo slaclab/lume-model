@@ -16,6 +16,7 @@ from lume_model.variables import (
     [
         ("test", 0.1, [0.1, 2]),
         pytest.param("test", np.array([1, 2, 3, 4]), [0, 1], marks=pytest.mark.xfail),
+        ("test", np.nan, [0, 1]),
     ],
 )
 def test_input_scalar_variable(variable_name, default, value_range):
@@ -91,6 +92,7 @@ def test_output_scalar_variable(variable_name, default, value_range):
         pytest.param(
             "test", 1.0, [0, 1], ["x", "y"], 0, 0, 1, 1, marks=pytest.mark.xfail
         ),
+        ("test", np.empty((3, 3)), [0, 1], ["x", "y"], 0, 0, 1, 1),
     ],
 )
 def test_input_image_variable(
