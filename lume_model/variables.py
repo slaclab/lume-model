@@ -10,7 +10,7 @@ float type values. Image variables hold numpy array representations of images.
 import numpy as np
 from enum import Enum
 import logging
-from typing import Any, List, Union, Optional, Generic, TypeVar
+from typing import Any, List, Union, Optional, Generic, TypeVar, Mapping
 from pydantic import BaseModel, Field, validator
 from pydantic.generics import GenericModel
 
@@ -391,7 +391,7 @@ class ImageOutputVariable(OutputVariable[Image], ImageVariable):
     y_max: Optional[float] = None
 
 
-class ScalarInputVariable(InputVariable[Union[float]], ScalarVariable):
+class ScalarInputVariable(InputVariable[float], ScalarVariable):
     """
     Variable used for representing an scalar input. Scalar variables hold float values.
     Initialization requires name, default, and value_range.
@@ -501,3 +501,106 @@ class ArrayOutputVariable(OutputVariable[NumpyNDArray], ArrayVariable):
     """
 
     pass
+
+
+class TableVariable(GenericModel):
+    """Table variables are used for creating tabular representations of data. Table variables should only be used for client tools.
+
+    Attributes:
+        table_rows (Optional[List[str]]): List of rows to assign to array data.
+
+        table_data (dict): Dictionary representation of columns and rows.
+
+        rows (list): List of rows.
+
+        columns (list): List of columns.
+    """
+
+    table_rows: Optional[List[str]] = None
+    table_data: dict
+
+    @property
+    def columns(self) -> tuple:
+        if self.table_data is not None:
+            return list(self.table_data.keys())
+        else:
+            return None
+
+    @validator("table_rows")
+    def validate_rows(cls, v):
+        if isinstance(v, list):
+            for val in v:
+                if not isinstance(val, str):
+                    raise TypeError("Rows must be defined as strings")
+
+        else:
+            raise TypeError("Rows must be passed as list")
+
+        return v
+
+    @validator("table_data")
+    def table_data_formatted(cls, v, values) -> dict:
+        passed_rows = values.get("table_rows", None)
+        # validate data...
+        if not isinstance(v, dict):
+            logger.exception(
+                "Must provide dictionary representation of table structure, outer level columns, inner level rows."
+            )
+            raise TypeError("Dictionary required")
+
+        # check that rows are represented in structure
+        for val in v.values():
+            if not isinstance(val, (dict, ArrayVariable)):
+                logger.exception(
+                    "Rows are not represented in structure. Structure should map column title to either dictionary of row names and values or array variables."
+                )
+                raise TypeError(
+                    "Rows are not represented in structure. Structure should map column title to either dictionary of row names and values or array variables."
+                )
+
+            if isinstance(val, ArrayVariable):
+                if passed_rows is None:
+                    logger.exception("Must pass table_rows when using array variables.")
+                    raise TypeError("Must pass table_rows when using array variables.")
+
+                # shape must match length of passed rows
+                elif val.shape[0] != len(passed_rows):
+                    raise TypeError(
+                        "Array first dimension must match passed rows length."
+                    )
+
+        # check row structures to make sure properly formatted
+        for val in v.values():
+
+            # check row dictionary
+            if isinstance(val, dict):
+                if val.get("variable_type", None) is None:
+                    for row_val in val.values():
+                        if not isinstance(row_val, (dict, ScalarVariable)):
+                            logger.exception(
+                                "Row dictionary must map row names to ScalarVariables."
+                            )
+                            raise TypeError(
+                                "Row dictionary must map row names to ScalarVariables."
+                            )
+
+                        # check that row keys align
+                        if isinstance(row_val, dict) and passed_rows is not None:
+                            row_rep = row_val.keys()
+                            for row in row_rep:
+                                if row not in passed_rows:
+                                    raise TypeError(
+                                        f"Row {row} not in row list passed during construction."
+                                    )
+        return v
+
+    @property
+    def rows(self) -> tuple:
+        if self.table_rows is not None:
+            return self.table_rows
+        else:
+            struct_rows = []
+            for col, row_item in self.table_data.items():
+                if isinstance(row_item, dict):
+                    struct_rows += list(row_item.keys())
+            return list(set(struct_rows))

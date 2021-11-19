@@ -8,6 +8,7 @@ from lume_model.variables import (
     ImageOutputVariable,
     ArrayInputVariable,
     ArrayOutputVariable,
+    TableVariable,
 )
 
 
@@ -288,3 +289,109 @@ def test_output_array_variable(variable_name, default, dim_labels):
     ArrayOutputVariable(
         name=variable_name, dim_labels=dim_labels,
     )
+
+
+@pytest.mark.parametrize(
+    "rows,variables",
+    [
+        (
+            None,
+            {
+                "col1": {
+                    "row1": ScalarInputVariable(
+                        name="col1_row1", default=0, value_range=[-1, -1]
+                    ),
+                    "row2": ScalarInputVariable(
+                        name="col1_row2", default=0, value_range=[-1, 1]
+                    ),
+                },
+                "col2": {
+                    "row1": ScalarInputVariable(
+                        name="col2_row1", default=0, value_range=[-1, -1]
+                    ),
+                    "row2": ScalarInputVariable(
+                        name="col2_row2", default=0, value_range=[-1, 1]
+                    ),
+                },
+            },
+        ),
+        pytest.param(
+            ["row1", "row2"],
+            {
+                "col1": {
+                    "row1": ScalarInputVariable(
+                        name="col1_row1", default=0, value_range=[-1, -1]
+                    ),
+                    "row2": 5,
+                },
+                "col2": {
+                    "row1": ScalarInputVariable(
+                        name="col2_row1", default=0, value_range=[-1, -1]
+                    ),
+                    "row2": ScalarInputVariable(
+                        name="col2_row2", default=0, value_range=[-1, 1]
+                    ),
+                },
+            },
+            marks=pytest.mark.xfail,
+        ),
+        pytest.param(
+            None,
+            {
+                "col1": ArrayInputVariable(
+                    name="test", default=np.array([1, 2]), value_range=[0, 10]
+                ),
+                "col2": {
+                    "row1": ScalarInputVariable(
+                        name="col2_row1", default=0, value_range=[-1, -1]
+                    ),
+                    "row2": ScalarInputVariable(
+                        name="col2_row2", default=0, value_range=[-1, 1]
+                    ),
+                },
+            },
+            marks=pytest.mark.xfail,
+        ),
+        (
+            ["row1", "row2"],
+            {
+                "col1": ArrayInputVariable(
+                    name="test", default=np.array([1, 2]), value_range=[0, 10]
+                ),
+                "col2": {
+                    "row1": ScalarInputVariable(
+                        name="col2_row1", default=0, value_range=[-1, -1]
+                    ),
+                    "row2": ScalarInputVariable(
+                        name="col2_row2", default=0, value_range=[-1, 1]
+                    ),
+                },
+            },
+        ),
+        pytest.param(
+            ["row1", "row2"],
+            {
+                "col1": ArrayInputVariable(
+                    name="test", default=np.array([1, 2, 3, 4]), value_range=[0, 10]
+                ),
+                "col2": {
+                    "row1": ScalarInputVariable(
+                        name="col2_row1", default=0, value_range=[-1, -1]
+                    ),
+                    "row2": ScalarInputVariable(
+                        name="col2_row2", default=0, value_range=[-1, 1]
+                    ),
+                },
+            },
+            marks=pytest.mark.xfail,
+        ),
+    ],
+)
+def test_variable_table(rows, variables):
+    if rows:
+        table_var = TableVariable(table_rows=rows, table_data=variables)
+    else:
+        table_var = TableVariable(table_data=variables)
+
+    with pytest.raises(ValueError):
+        table_var = TableVariable(table_data=None)
