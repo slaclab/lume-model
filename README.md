@@ -15,7 +15,7 @@ Lume-model can be installed with conda using the command:
 
 # Variables
 
-The lume-model variables are intended to enforce requirements for input and output variables by variable type. Current variable implementations are scalar (float) or image (numpy array) type.
+The lume-model variables are intended to enforce requirements for input and output variables by variable type. Current variable implementations are scalar (float), array (numpy array), and image (numpy array).
 
 Example of minimal implementation of scalar input and output variables:
 ```python

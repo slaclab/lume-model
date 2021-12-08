@@ -576,12 +576,12 @@ class TableVariable(GenericModel):
             if isinstance(val, dict):
                 if val.get("variable_type", None) is None:
                     for row_val in val.values():
-                        if not isinstance(row_val, (dict, ScalarVariable)):
+                        if not isinstance(row_val, (dict, ScalarVariable, float)):
                             logger.exception(
-                                "Row dictionary must map row names to ScalarVariables."
+                                "Row dictionary must map row names to ScalarVariables or float."
                             )
                             raise TypeError(
-                                "Row dictionary must map row names to ScalarVariables."
+                                "Row dictionary must map row names to ScalarVariables or float."
                             )
 
                         # check that row keys align
