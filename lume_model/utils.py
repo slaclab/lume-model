@@ -118,6 +118,7 @@ def parse_variables(config) -> Tuple[dict]:
                 lume_model_var = ScalarInputVariable(**variable_config)
 
             elif variable_config["type"] == "array":
+                variable_config["default"] = np.array(variable_config["default"])
                 lume_model_var = ArrayInputVariable(**variable_config)
 
             elif variable_config["type"] == "image":
@@ -221,6 +222,7 @@ def model_from_yaml(
             for req in config["model"]["requirements"]:
                 module = __import__(req)
                 if module:
+
                     # check for version
                     if isinstance(config["model"]["requirements"][req], (dict,)):
                         version = config["model"]["requirements"][req]
