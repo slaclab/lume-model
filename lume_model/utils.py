@@ -118,7 +118,7 @@ def parse_variables(config) -> Tuple[dict]:
                 lume_model_var = ScalarInputVariable(**variable_config)
 
             elif variable_config["type"] == "array":
-                if isinstance(variable_config["default"], "str"):
+                if isinstance(variable_config["default"], ("str")):
                     variable_config["default"] = np.load(variable_config["default"])
                 else:
                     variable_config["default"] = np.array(variable_config["default"])
