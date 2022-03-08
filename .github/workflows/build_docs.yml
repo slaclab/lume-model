@@ -19,7 +19,7 @@ jobs:
         with:
           auto-activate-base: true
           python-version: ${{ matrix.python-version }}
-          channels: anaconda,conda-forge
+          channels: conda-forge,anaconda
           channel-priority: flexible
       - name: Build package
         shell: bash -l {0}
