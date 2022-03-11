@@ -119,6 +119,7 @@ def parse_variables(config) -> Tuple[dict]:
 
             elif variable_config["type"] == "array":
                 value_type = variable_config.get("value_type")
+
                 if (
                     isinstance(variable_config["default"], (str,))
                     and value_type is not None
@@ -126,10 +127,8 @@ def parse_variables(config) -> Tuple[dict]:
                 ):
                     pass
 
-                if (
-                    isinstance(variable_config["default"], (str,))
-                    and value_type is None
-                    or value_type != "str"
+                if isinstance(variable_config["default"], (str,)) and (
+                    value_type is None or value_type != "str"
                 ):
                     variable_config["default"] = np.load(variable_config["default"])
 
