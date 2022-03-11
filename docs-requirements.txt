@@ -1,4 +1,4 @@
 mkdocs
-mkdocstrings
+mkdocstrings==0.17
 mkdocs-material
 mkdocs-material-extensions
