@@ -118,10 +118,24 @@ def parse_variables(config) -> Tuple[dict]:
                 lume_model_var = ScalarInputVariable(**variable_config)
 
             elif variable_config["type"] == "array":
-                if isinstance(variable_config["default"], (str,)):
+                value_type = variable_config.get("value_type")
+                if (
+                    isinstance(variable_config["default"], (str,))
+                    and value_type is not None
+                    and value_type == "str"
+                ):
+                    pass
+
+                if (
+                    isinstance(variable_config["default"], (str,))
+                    and value_type is None
+                    or value_type != "str"
+                ):
                     variable_config["default"] = np.load(variable_config["default"])
+
                 else:
                     variable_config["default"] = np.array(variable_config["default"])
+
                 lume_model_var = ArrayInputVariable(**variable_config)
 
             elif variable_config["type"] == "image":
