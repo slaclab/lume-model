@@ -2,7 +2,7 @@ from lume_model import utils
 import os
 import sys
 import pytest
-from lume_model.models import SurrogateModel
+from lume_model.models import BaseModel
 from lume_model.variables import (
     InputVariable,
     OutputVariable,

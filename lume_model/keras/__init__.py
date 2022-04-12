@@ -5,7 +5,7 @@ from typing import List, Dict
 import logging
 from tensorflow.keras.models import load_model
 
-from lume_model.models import SurrogateModel
+from lume_model.models import BaseModel
 from lume_model.utils import load_variables
 from lume_model.variables import InputVariable, OutputVariable
 from lume_model.keras.layers import ScaleLayer, UnscaleLayer, UnscaleImgLayer
@@ -19,7 +19,7 @@ base_layers = {
 }
 
 
-class BaseModel(SurrogateModel):
+class KerasModel(BaseModel):
     """
     The KerasModel class is used for the loading and evaluation of online models. It is  designed to
     implement the general behaviors expected for models used with the Keras lume-model tool kit.
@@ -116,7 +116,7 @@ class BaseModel(SurrogateModel):
 
     def _prepare_outputs(self, predicted_output: dict):
         """Prepares the model outputs to be served so that no additional manipulation
-        occurs in the OnlineSurrogateModel class.
+        occurs in the BaseModel class.
 
         Args:
             model_outputs (dict): Dictionary of output variables to np.ndarrays of outputs
