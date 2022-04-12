@@ -1,10 +1,10 @@
-from lume_model.models import SurrogateModel
+from lume_model.models import BaseModel
 from lume_model.variables import ScalarOutputVariable, ScalarInputVariable
 import pytest
 
 
 def test_surrogate_model_construction():
-    class ExampleModel(SurrogateModel):
+    class ExampleModel(BaseModel):
         input_variables = {
             "input1": ScalarInputVariable(name="input1", default=1, range=[0.0, 5.0]),
             "input2": ScalarInputVariable(name="input2", default=2, range=[0.0, 5.0]),
@@ -33,7 +33,7 @@ def test_surrogate_model_construction():
 
     ExampleModel()
 
-    class ExampleFailureModel(SurrogateModel):
+    class ExampleFailureModel(BaseModel):
         input_variables = {
             "input1": ScalarInputVariable(name="input1", default=1, range=[0.0, 5.0]),
             "input2": ScalarInputVariable(name="input2", default=2, range=[0.0, 5.0]),

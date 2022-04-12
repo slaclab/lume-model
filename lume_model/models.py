@@ -22,7 +22,7 @@ model's output variables with value attributes updated based on model execution.
 Example:
     Example 1, hard coded variables:
     ```
-    class ExampleModel(SurrogateModel):
+    class ExampleModel(BaseModel):
             input_variables = {
                 "input": ScalarInputVariable(name="input", default=1, range=[0.0, 5.0]),\
             }
@@ -48,7 +48,7 @@ Example:
 
     Example 2, variables passed during __init__:
     ```
-    class ExampleModel(SurrogateModel):
+    class ExampleModel(BaseModel):
 
         def __init__(self, input_variables, output_variables):
             self.input_variables = input_variables
@@ -74,7 +74,7 @@ Example:
     ```
     from lume_model.utils import load_variables
 
-    class ExampleModel(SurrogateModel):
+    class ExampleModel(BaseModel):
 
         def __init__(self, variable_file):
 
@@ -108,7 +108,7 @@ from lume_model.variables import InputVariable, OutputVariable
 logger = logging.getLogger(__name__)
 
 
-class SurrogateModel(ABC):
+class BaseModel(ABC):
     """
     Base class for the surrogate models that includes abstract predict method, which
     must be initialized by children.

@@ -32,7 +32,7 @@ def save_variables(input_variables, output_variables, variable_file: str) -> Non
     unique.
 
     Args:
-        model_class (SurrogateModel): Model class
+        model_class (BaseModel): Model class
 
         variable_file (str): Filename for saving
 

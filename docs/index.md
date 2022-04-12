@@ -51,7 +51,7 @@ All input variables may be made into constants by passing the `is_constant=True`
 
 ## Surrogate models
 
-Lume-model model classes are intended to guide user development while allowing for flexibility and customizability. The base class `lume_model.models.SurrogateModel` is used to enforce LUME tool compatable classes for the execution of trained models. For this case, model loading and execution should be organized into class methods.
+Lume-model model classes are intended to guide user development while allowing for flexibility and customizability. The base class `lume_model.models.BaseModel` is used to enforce LUME tool compatable classes for the execution of trained models. For this case, model loading and execution should be organized into class methods.
 
 Surrogate Model Requirements:
 
@@ -61,9 +61,9 @@ Surrogate Model Requirements:
 Example model implementation:
 
 ```python
-from lume_model.models import SurrogateModel
+from lume_model.models import BaseModel
 
-class ExampleModel(SurrogateModel):
+class ExampleModel(BaseModel):
     input_variables = {
         "input1": ScalarInputVariable(name="input1", default=1, range=[0.0, 5.0]),
         "input2": ScalarInputVariable(name="input2", default=2, range=[0.0, 5.0]),
