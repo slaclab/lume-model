@@ -45,7 +45,7 @@ output_variable = ImageOutputVariable(
 
 ## Surrogate models
 
-Lume-model model classes are intended to guide user development while allowing for flexibility and customizability. The base class `lume_model.models.SurrogateModel` is used to enforce LUME tool compatable classes for the execution of trained models. For this case, model loading and execution should be organized into class methods.
+Lume-model model classes are intended to guide user development while allowing for flexibility and customizability. The base class `lume_model.models.BaseModel` is used to enforce LUME tool compatable classes for the execution of trained models. For this case, model loading and execution should be organized into class methods.
 
 Surrogate Model Requirements:
 * input_variables, output_variables: lume-model input and output variables are required for use with lume-epics tools. The user can optionally define these as class attributes or design the subclass so that these are passed during initialization . Names of all variables must be unique in order to be served using the EPICS tools. A utility function for saving these variables, which also enforces the uniqueness constraint, is provided (lume_model.utils.save_variables).
@@ -54,7 +54,7 @@ Surrogate Model Requirements:
 Example model implementation:
 
 ```python
-class ExampleModel(SurrogateModel):
+class ExampleModel(BaseModel):
     input_variables = {
         "input1": ScalarInputVariable(name="input1", default=1, range=[0.0, 5.0]),
         "input2": ScalarInputVariable(name="input2", default=2, range=[0.0, 5.0]),
