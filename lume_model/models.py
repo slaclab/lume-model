@@ -108,7 +108,7 @@ from lume_model.variables import InputVariable, OutputVariable
 logger = logging.getLogger(__name__)
 
 
-class SurrogateModel(ABC):
+class BaseModel(ABC):
     """
     Base class for the surrogate models that includes abstract predict method, which
     must be initialized by children.

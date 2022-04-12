@@ -19,7 +19,7 @@ base_layers = {
 }
 
 
-class KerasModel(SurrogateModel):
+class BaseModel(SurrogateModel):
     """
     The KerasModel class is used for the loading and evaluation of online models. It is  designed to
     implement the general behaviors expected for models used with the Keras lume-model tool kit.
