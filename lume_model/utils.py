@@ -11,7 +11,7 @@ import sys
 import yaml
 from pydoc import locate
 import numpy as np
-from typing import Tuple, List
+from typing import Tuple, TextIO, Dict
 import logging
 
 from lume_model.variables import (
@@ -23,18 +23,23 @@ from lume_model.variables import (
     ArrayInputVariable,
     ArrayOutputVariable,
 )
+from lume_model.models import BaseModel
 
 logger = logging.getLogger(__name__)
 
 
-def save_variables(input_variables, output_variables, variable_file: str) -> None:
+def save_variables(
+    input_variables: Dict[str, Variable],
+    output_variables: Dict[str, Variable],
+    variable_file: str,
+) -> None:
     """Save input and output variables to file. Validates that all variable names are
     unique.
 
     Args:
-        model_class (BaseModel): Model class
-
-        variable_file (str): Filename for saving
+        input_variables (dict): Dictionary of input variable names to variable.
+        output_variables (dict): Dictionary of output variable names to variable.
+        variable_file (str): Name of file to save.
 
     Example:
         ```
@@ -73,13 +78,13 @@ def save_variables(input_variables, output_variables, variable_file: str) -> Non
 
 
 def load_variables(variable_file: str) -> Tuple[dict]:
-    """ Load variables from the given variable file.
+    """Load variables from the given variable file.
 
     Args:
         variable_file (str): Name of variable file.
 
     Returns:
-        Tuple of input variable dictionary and output variable dictionary.
+        Tuple[dict]: Tuple of input variable dictionary and output variable dictionary.
 
     Example:
         ```
@@ -93,16 +98,15 @@ def load_variables(variable_file: str) -> Tuple[dict]:
         return variables["input_variables"], variables["output_variables"]
 
 
-def parse_variables(config) -> Tuple[dict]:
+def parse_variables(config: dict) -> Tuple[dict]:
     """
     Accepts a yaml config and returns initalized input and output variables.
 
     Args:
-        config: Opened configuration file
+        config (dict): Opened configuration file
 
     Returns:
-        input_variables: Input variables for a given model
-        output_variables: Output variables for a given model
+        Tuple[dict]: Tuple of input and output variable dicts.
 
     """
     # set up the input variables
@@ -147,7 +151,8 @@ def parse_variables(config) -> Tuple[dict]:
 
             else:
                 logger.exception(
-                    "Variable type %s not defined.", variable_config["type"],
+                    "Variable type %s not defined.",
+                    variable_config["type"],
                 )
                 sys.exit()
 
@@ -182,7 +187,8 @@ def parse_variables(config) -> Tuple[dict]:
 
             else:
                 logger.exception(
-                    "Variable type %s not defined.", variable_config["type"],
+                    "Variable type %s not defined.",
+                    variable_config["type"],
                 )
                 sys.exit()
 
@@ -196,19 +202,23 @@ def parse_variables(config) -> Tuple[dict]:
 
 
 def model_from_yaml(
-    config_file, model_class=None, model_kwargs: dict = None, load_model: bool = True
+    config_file: TextIO,
+    model_class=None,
+    model_kwargs: dict = None,
+    load_model: bool = True,
 ):
     """Creates model from yaml configuration. The model class for initialization may
     either be passed to the function as a kwarg or defined in the config file. This function will
     attempt to import the path specified in the yaml.
 
     Args:
-        config_file: Config file
-        model_class: Class for initializing model
+        config_file (TextIO): Config file
+        model_class (BaseModel): Class for initializing model
+        model_kwargs (dict): Kwargs for initializing model.
         load_model (bool): If True, will return model. If False, will return model class and model_kwargs.
 
     Returns:
-        model: Initialized model
+        model (BaseModel): Initialized model
 
     """
 
@@ -301,14 +311,14 @@ def model_from_yaml(
         return model_class, model_kwargs
 
 
-def variables_from_yaml(config_file):
+def variables_from_yaml(config_file: TextIO) -> Tuple[dict]:
     """Returns variables from yaml configuration.
 
     Args:
-        config_file: Yaml file
+        config_file (TextIO): Yaml file
 
     Returns:
-        tuple
+        Tuple[dict]: Tuple of input and output variable dicts.
 
     """
 
