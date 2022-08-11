@@ -13,6 +13,10 @@ dev_requirements = []
 with open(path.join(cur_dir, "dev-requirements.txt"), "r") as f:
     dev_requirements = f.read().split()
 
+docs_requirements = []
+with open(path.join(cur_dir, "docs-requirements.txt"), "r") as f:
+    docs_requirements = f.read().split()
+
 
 setup(
     name="lume-model",
@@ -26,7 +30,7 @@ setup(
     # set up development requirements
     extras_require={
         "dev": dev_requirements,
-        "test": ["pytest"],
+        "docs": docs_requirements,
         "keras": ["tensorflow"],
     },
     url="https://github.com/slaclab/lume-model",

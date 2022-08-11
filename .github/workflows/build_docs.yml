@@ -14,18 +14,20 @@ jobs:
         python-version: [3.8]
     name:  Build docs
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - uses: conda-incubator/setup-miniconda@v2
         with:
-          auto-activate-base: true
           python-version: ${{ matrix.python-version }}
-          channels: conda-forge,anaconda
-          channel-priority: flexible
+          mamba-version: "*"
+          channels: conda-forge
+          activate-environment: lume-model-dev
+          environment-file: dev-environment.yml
       - name: Build package
         shell: bash -l {0}
         run: |
-          conda config --set always_yes yes --set changeps1 no
-          conda install --file dev-requirements.txt
-          conda install --file docs-requirements.txt
+          pip install -e .
+      - name: Build docs
+        shell: bash -l {0}
+        run: |
           mkdocs build
           mkdocs gh-deploy --force

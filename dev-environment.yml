@@ -1,0 +1,21 @@
+# conda env create -f environment.yml
+name: lume-model-dev
+channels:
+  - conda-forge
+dependencies:
+  - python=3.9
+  - pydantic>=1.9
+  - numpy
+  - pyyaml
+
+  # dev requirements
+  - pytest
+  - pre-commit
+  - black
+
+  # docs requirements
+  - mkdocs
+  - mkdocstrings
+  - mkdocstrings-python
+  - mkdocs-material
+  - mkdocs-material-extensions

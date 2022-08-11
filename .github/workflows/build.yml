@@ -18,14 +18,18 @@ jobs:
 
     name: Python ${{ matrix.python-version }}, ${{ matrix.os }} build
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - uses: conda-incubator/setup-miniconda@v2
         with:
-          auto-activate-base: true
-          activate-environment: true
           python-version: ${{ matrix.python-version }}
-          channels: conda-forge,anaconda
-          channel-priority: strict
+          mamba-version: "*"
+          channels: conda-forge
+          activate-environment: lume-model-dev
+          environment-file: dev-environment.yml
+      - name: Build package
+        shell: bash -l {0}
+        run: |
+          pip install -e .
       - name: Build package
         shell: bash -l {0}
         run: |

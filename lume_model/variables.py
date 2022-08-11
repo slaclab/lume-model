@@ -8,7 +8,6 @@ float type values. Image variables hold numpy array representations of images.
 """
 
 import numpy as np
-from enum import Enum
 import logging
 from typing import Any, List, Union, Optional, Generic, TypeVar, Mapping
 from pydantic import BaseModel, Field, validator
@@ -83,10 +82,20 @@ class NumpyNDArray(np.ndarray):
     @classmethod
     def validate(cls, v: Any) -> np.ndarray:
         # validate data...
+
+        if isinstance(v, list):
+            # conver to array, keep order
+            v = np.ndarray(v, order="K")
+
         if not isinstance(v, np.ndarray):
             logger.exception("A numpy array is required for the value")
             raise TypeError("Numpy array required")
         return v
+
+    class Config:
+        json_encoders = {
+            np.ndarray: lambda v: v.tolist(),  # may lose some precision
+        }
 
 
 class Image(np.ndarray):
@@ -266,7 +275,9 @@ class ScalarVariable(BaseModel):
 
     variable_type: str = "scalar"
     units: Optional[str] = None  # required for some output displays
-    parent_variable: str = None  # indicates that this variable is an attribute of another
+    parent_variable: str = (
+        None  # indicates that this variable is an attribute of another
+    )
     value_range: list = Field(..., alias="range")  # range required
 
 

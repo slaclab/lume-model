@@ -1,5 +1,5 @@
-mkdocs==1.2.3
-jinja2==3.0.0
-mkdocstrings==0.17
+mkdocs
+mkdocstrings
+mkdocstrings-python
 mkdocs-material
 mkdocs-material-extensions
