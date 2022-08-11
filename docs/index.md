@@ -1,6 +1,6 @@
-# lume-model
+# LUME-model
 
-Lume-model holds data structures used in the LUME modeling toolset. Variables and models built using lume-model will be compatible with other tools. Lume-model uses [pydantic](https://pydantic-docs.helpmanual.io/) models to enforce typed attributes upon instantiation.
+LUME-model holds data structures used in the LUME modeling toolset. Variables and models built using LUME-model will be compatible with other tools. LUME-model uses [pydantic](https://pydantic-docs.helpmanual.io/) models to enforce typed attributes upon instantiation.
 
 ## Requirements
 * Python >= 3.7
@@ -9,9 +9,17 @@ Lume-model holds data structures used in the LUME modeling toolset. Variables an
 
 ## Install
 
-Lume-model can be installed with conda using the command:
+LUME-model can be installed with conda using the command:
 
-``` $ conda install lume-model -c jrgarrahan ```
+``` $ conda install lume-model -c conda-forge ```
+
+## Developer
+
+A development environment may be created using the packaged `dev-environment.yml` file.
+
+```
+$ conda env create -f dev-environment.yml
+```
 
 ## Variables
 
@@ -51,7 +59,7 @@ All input variables may be made into constants by passing the `is_constant=True`
 
 ## Surrogate models
 
-Lume-model model classes are intended to guide user development while allowing for flexibility and customizability. The base class `lume_model.models.BaseModel` is used to enforce LUME tool compatable classes for the execution of trained models. For this case, model loading and execution should be organized into class methods.
+LUME-model model classes are intended to guide user development while allowing for flexibility and customizability. The base class `lume_model.models.BaseModel` is used to enforce LUME tool compatable classes for the execution of trained models. For this case, model loading and execution should be organized into class methods.
 
 Surrogate Model Requirements:
 
