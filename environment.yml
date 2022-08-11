@@ -1,0 +1,9 @@
+# conda env create -f environment.yml
+name: lume-model
+channels:
+  - conda-forge
+dependencies:
+  - python=3.9
+  - pydantic>=1.9
+  - numpy
+  - pyyaml
