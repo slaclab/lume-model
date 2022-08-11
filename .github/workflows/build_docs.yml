@@ -9,15 +9,12 @@ jobs:
   build:
     if: ${{ github.repository == 'slaclab/lume-model' }}
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        python-version: [3.8]
     name:  Build docs
     steps:
       - uses: actions/checkout@v3
       - uses: conda-incubator/setup-miniconda@v2
         with:
-          python-version: ${{ matrix.python-version }}
+          python-version: 3.9
           mamba-version: "*"
           channels: conda-forge
           activate-environment: lume-model-dev
