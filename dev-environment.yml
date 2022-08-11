@@ -18,4 +18,3 @@ dependencies:
   - mkdocstrings
   - mkdocstrings-python
   - mkdocs-material
-  - mkdocs-material-extensions
