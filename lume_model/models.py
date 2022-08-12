@@ -1,5 +1,5 @@
 """
-This module contains the surrogate model class used for running models using
+This module contains the model class used for running models using
 lume-model variables. Models build using this framework will be compatible with the
 lume-epics EPICS server and associated tools. The base class is intentionally
 minimal with the purpose of extensibility and customizability to the user's
@@ -99,8 +99,9 @@ Example:
 
 """
 from abc import ABC, abstractmethod
-from typing import Dict
+from typing import Dict, List
 import logging
+from pydantic import BaseModel as PydanticBaseModel
 import numpy as np
 
 from lume_model.variables import InputVariable, OutputVariable
@@ -108,17 +109,22 @@ from lume_model.variables import InputVariable, OutputVariable
 logger = logging.getLogger(__name__)
 
 
-class BaseModel(ABC):
+class BaseModel(ABC, PydanticBaseModel):
     """
-    Base class for the surrogate models that includes abstract predict method, which
-    must be initialized by children.
+    Base class for models that includes abstract `evaluate` method, which must be
+    initialized by children.
 
     Attributes:
-        input_variables (List[InputVariable]): Must be defined after __init__.
-
-        output_variables (List[OutputVariable]): Must be defined after __init__.
-
+        input_variables (Dict[str, InputVariable]): Input variables to model. Must be
+            assigned after __init__. Users can assign input_variables directly as
+            an attributes of their subclass or accept as an __init__ argument.
+        output_variables (Dict[str, OutputVariable]): Output variables to model. Must be
+            assigned after __init__. Users can assign output directly as
+            an attributes of their subclass or accept as an __init__ argument.
     """
+
+    input_variables: Dict[str, InputVariable]
+    output_variable: Dict[str, OutputVariable]
 
     @abstractmethod
     def evaluate(self):
