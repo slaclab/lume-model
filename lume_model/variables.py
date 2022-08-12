@@ -236,11 +236,11 @@ class ImageVariable(BaseModel, NDVariableBase):
 
     variable_type: str = "image"
     axis_labels: List[str]
-    axis_units: List[str] = None
-    x_min_variable: str = None
-    x_max_variable: str = None
-    y_min_variable: str = None
-    y_max_variable: str = None
+    axis_units: Optional[List[str]]
+    x_min_variable: Optional[str]
+    x_max_variable: Optional[str]
+    y_min_variable: Optional[str]
+    y_max_variable: Optional[str]
 
 
 class ArrayVariable(BaseModel, NDVariableBase):
