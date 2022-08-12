@@ -9,7 +9,7 @@ float type values. Image variables hold numpy array representations of images.
 
 import numpy as np
 import logging
-from typing import Any, List, Union, Optional, Generic, TypeVar, Mapping, Literal
+from typing import Any, List, Union, Optional, Generic, TypeVar, Literal
 from pydantic import BaseModel, Field, validator
 from pydantic.generics import GenericModel
 
