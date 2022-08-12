@@ -9,7 +9,7 @@ float type values. Image variables hold numpy array representations of images.
 
 import numpy as np
 import logging
-from typing import Any, List, Union, Optional, Generic, TypeVar, Mapping
+from typing import Any, List, Union, Optional, Generic, TypeVar, Literal
 from pydantic import BaseModel, Field, validator
 from pydantic.generics import GenericModel
 
@@ -236,11 +236,11 @@ class ImageVariable(BaseModel, NDVariableBase):
 
     variable_type: str = "image"
     axis_labels: List[str]
-    axis_units: List[str] = None
-    x_min_variable: str = None
-    x_max_variable: str = None
-    y_min_variable: str = None
-    y_max_variable: str = None
+    axis_units: Optional[List[str]]
+    x_min_variable: Optional[str]
+    x_max_variable: Optional[str]
+    y_min_variable: Optional[str]
+    y_max_variable: Optional[str]
 
 
 class ArrayVariable(BaseModel, NDVariableBase):
@@ -250,15 +250,18 @@ class ArrayVariable(BaseModel, NDVariableBase):
     Attributes:
         variable_type (str): Indicates array variable.
 
-        dim_labels (List[str]): Labels to use for rendering axes.
+        dim_labels (Optional[List[str]]): Labels to use for rendering axes.
 
-        dim_units (Optional[List[str]]): Units to use for rendering axes labels.
+        units (Optional[List[str]]): Units to use for rendering axes labels.
+
+        value_type (Literal["float", "string"]): Type of value held by array.
+
     """
 
     variable_type: str = "array"
-    units: Optional[List[str]] = None  # required for some output displays
-    dim_labels: Optional[List[str]] = None
-    value_type: str = "float"
+    units: Optional[List[str]]  # required for some output displays
+    dim_labels: Optional[List[str]]
+    value_type: Literal["float", "string"] = "float"
 
 
 class ScalarVariable(BaseModel):
@@ -267,10 +270,10 @@ class ScalarVariable(BaseModel):
 
     Attributes:
         variable_type (tuple): Indicates scalar variable.
-
         units (Optional[str]): Units associated with scalar value.
-
         parent_variable (Optional[str]): Variable for which this is an attribute.
+        value_range (list): Acceptable range for value
+
     """
 
     variable_type: str = "scalar"
@@ -290,35 +293,20 @@ class ImageInputVariable(InputVariable[Image], ImageVariable):
     Attributes:
 
         name (str): Name of the variable.
-
         default (Value):  Default value assigned to the variable.
-
         precision (Optional[int]): Precision to use for the value.
-
         value (Optional[Value]): Value assigned to variable
-
         value_range (list): Acceptable range for value
-
         variable_type (str): Indicates image variable.
-
         axis_labels (List[str]): Labels to use for rendering axes.
-
         axis_units (Optional[List[str]]): Units to use for rendering axes labels.
-
         x_min (float): Minimum x value of image.
-
         x_max (float): Maximum x value of image.
-
         y_min (float): Minimum y value of image.
-
         y_max (float): Maximum y value of image.
-
         x_min_variable (Optional[str]): Scalar variable associated with image minimum x.
-
         x_max_variable (Optional[str]): Scalar variable associated with image maximum x.
-
         y_min_variable (Optional[str]): Scalar variable associated with image minimum y.
-
         y_max_variable (Optional[str]): Scalar variable associated with image maximum y.
 
 
@@ -352,35 +340,20 @@ class ImageOutputVariable(OutputVariable[Image], ImageVariable):
 
     Attributes:
         name (str): Name of the variable.
-
         default (Optional[Value]):  Default value assigned to the variable.
-
         precision (Optional[int]): Precision to use for the value.
-
         value (Optional[Value]): Value assigned to variable
-
         value_range (Optional[list]): Acceptable range for value
-
         variable_type (str): Indicates image variable.
-
         axis_labels (List[str]): Labels to use for rendering axes.
-
         axis_units (Optional[List[str]]): Units to use for rendering axes labels.
-
         x_min (Optional[float]): Minimum x value of image.
-
         x_max (Optional[float]): Maximum x value of image.
-
         y_min (Optional[float]): Minimum y value of image.
-
         y_max (Optional[float]): Maximum y value of image.
-
         x_min_variable (Optional[str]): Scalar variable associated with image minimum x.
-
         x_max_variable (Optional[str]): Scalar variable associated with image maximum x.
-
         y_min_variable (Optional[str]): Scalar variable associated with image minimum y.
-
         y_max_variable (Optional[str]): Scalar variable associated with image maximum y.
 
     Example:
@@ -409,19 +382,12 @@ class ScalarInputVariable(InputVariable[float], ScalarVariable):
 
     Attributes:
         name (str): Name of the variable.
-
         default (Value):  Default value assigned to the variable
-
         precision (Optional[int]): Precision to use for the value
-
         value (Optional[Value]): Value assigned to variable
-
         value_range (list): Acceptable range for value
-
         variable_type (str): Indicates scalar variable.
-
         units (Optional[str]): Units associated with scalar value.
-
         parent_variable (Optional[str]): Variable for which this is an attribute.
 
     Example:
@@ -441,19 +407,12 @@ class ScalarOutputVariable(OutputVariable[float], ScalarVariable):
 
     Attributes:
         name (str): Name of the variable.
-
         default (Optional[Value]):  Default value assigned to the variable.
-
         precision (Optional[int]): Precision to use for the value.
-
         value (Optional[Value]): Value assigned to variable.
-
         value_range (Optional[list]): Acceptable range for value.
-
         variable_type (str): Indicates scalar variable.
-
         units (Optional[str]): Units associated with scalar value.
-
         parent_variable (Optional[str]): Variable for which this is an attribute.
 
     Example:
@@ -472,20 +431,14 @@ class ArrayInputVariable(InputVariable[NumpyNDArray], ArrayVariable):
 
     Attributes:
         name (str): Name of the variable.
-
         default (np.ndarray):  Default value assigned to the variable.
-
         precision (Optional[int]): Precision to use for the value.
-
         value (Optional[Value]): Value assigned to variable
-
         value_range (Optional[list]): Acceptable range for value
-
         variable_type (str): Indicates array variable.
-
         dim_labels (List[str]): Labels to use for dimensions
-
         dim_units (Optional[List[str]]): Units to use for dimensions.
+
     """
 
     pass
@@ -519,11 +472,8 @@ class TableVariable(GenericModel):
 
     Attributes:
         table_rows (Optional[List[str]]): List of rows to assign to array data.
-
         table_data (dict): Dictionary representation of columns and rows.
-
         rows (list): List of rows.
-
         columns (list): List of columns.
     """
 
