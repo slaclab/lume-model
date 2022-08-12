@@ -11,7 +11,7 @@ Lume-model holds data structures used in the LUME modeling toolset. Variables an
 
 Lume-model can be installed with conda using the command:
 
-``` $ conda install lume-model -c jrgarrahan ```
+``` $ conda install lume-model -c conda-forge ```
 
 # Variables
 
