@@ -43,12 +43,12 @@ output_variable = ImageOutputVariable(
 )
 ```
 
-## Surrogate models
+## Models
 
 Lume-model model classes are intended to guide user development while allowing for flexibility and customizability. The base class `lume_model.models.BaseModel` is used to enforce LUME tool compatable classes for the execution of trained models. For this case, model loading and execution should be organized into class methods.
 
-Surrogate Model Requirements:
-* input_variables, output_variables: lume-model input and output variables are required for use with lume-epics tools. The user can optionally define these as class attributes or design the subclass so that these are passed during initialization . Names of all variables must be unique in order to be served using the EPICS tools. A utility function for saving these variables, which also enforces the uniqueness constraint, is provided (lume_model.utils.save_variables).
+Model Requirements:
+* input_variables, output_variables: lume-model input and output variables are required for use with lume-epics tools. The user can optionally define these as class attributes or design the subclass so that these are passed during initialization. Names of all variables must be unique in order to be served using the EPICS tools. A utility function for saving these variables, which also enforces the uniqueness constraint, is provided (lume_model.utils.save_variables).
 * evaluate: The evaluate method is called by the serving model. Subclasses must implement the method, accepting a list of input variables and returning a list of the model's output variables with value attributes updated based on model execution.
 
 Example model implementation:

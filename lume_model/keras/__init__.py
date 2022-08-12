@@ -1,12 +1,10 @@
 import copy
 import numpy as np
-import tensorflow as tf
-from typing import List, Dict
+from typing import List, Dict, Optional, Any
 import logging
 from tensorflow.keras.models import load_model
 
 from lume_model.models import BaseModel
-from lume_model.utils import load_variables
 from lume_model.variables import InputVariable, OutputVariable
 from lume_model.keras.layers import ScaleLayer, UnscaleLayer, UnscaleImgLayer
 
@@ -29,8 +27,6 @@ class KerasModel(BaseModel):
         output_variables (Dict[str, OutputVariable]): Dictionary mapping output variable name to variable
         _input_format (dict): Instructions for formatting model input
         _output_format (dict): Instructions for parsing model output
-        _model_file (str): Model filename
-        _thread_graph (tf.Graph): default graph for model execution
 
     """
 
@@ -39,9 +35,9 @@ class KerasModel(BaseModel):
         model_file: str,
         input_variables: Dict[str, InputVariable],
         output_variables: Dict[str, OutputVariable],
-        input_format: dict = {},
-        output_format: dict = {},
-        custom_layers: dict = {},
+        input_format: Optional[dict],
+        output_format: Optional[dict],
+        custom_layers: Optional[dict],
     ) -> None:
         """Initializes the model and stores inputs/outputs.
 
@@ -49,7 +45,7 @@ class KerasModel(BaseModel):
             model_file (str): Path to model file generated with keras.save()
             input_variables (List[InputVariable]): list of model input variables
             output_variables (List[OutputVariable]): list of model output variables
-            custom_layers
+            custom_layers (dict):
 
         """
 
@@ -63,7 +59,10 @@ class KerasModel(BaseModel):
         base_layers.update(custom_layers)
 
         # load model in thread safe manner
-        self._model = load_model(model_file, custom_objects=base_layers,)
+        self._model = load_model(
+            model_file,
+            custom_objects=base_layers,
+        )
 
     def evaluate(self, input_variables: List[InputVariable]) -> List[OutputVariable]:
         """Evaluate model using new input variables.
@@ -114,7 +113,9 @@ class KerasModel(BaseModel):
 
         return self.evaluate(list(random_input.values()))
 
-    def _prepare_outputs(self, predicted_output: dict):
+    def _prepare_outputs(
+        self, predicted_output: Dict[str, Any]
+    ) -> List[OutputVariable]:
         """Prepares the model outputs to be served so that no additional manipulation
         occurs in the BaseModel class.
 
@@ -122,7 +123,7 @@ class KerasModel(BaseModel):
             model_outputs (dict): Dictionary of output variables to np.ndarrays of outputs
 
         Returns:
-            dict: Dictionary of output variables to respective scalars
+            List[OutputVariable]: List of output variables.
         """
         for variable in self.output_variables.values():
             if variable.variable_type == "scalar":
@@ -158,12 +159,19 @@ class KerasModel(BaseModel):
 
         return list(self.output_variables.values())
 
-    def format_input(self, input_dictionary: dict):
+    def format_input(
+        self, input_dictionary: Dict[str, InputVariable]
+    ) -> Dict[str, InputVariable]:
         """Formats input to be fed into model. For the base KerasModel, inputs should
         be assumed in dictionary format.
 
         Args:
-            input_dictionary (dict): Dictionary mapping input to value.
+            input_dictionary (Dict[str, InputVariable]): Dictionary mapping input to
+                value.
+
+        Returns:
+            Dict[str, InputVariable]: Dictionary mapping variable name to formatted
+                InputVariable.
         """
         formatted_dict = {}
         for input_variable, value in input_dictionary.items():
@@ -180,6 +188,9 @@ class KerasModel(BaseModel):
 
         Args:
             model_output (np.ndarray): Raw model output
+
+        Returns:
+            Dict[str, OutputVariable]
         """
         output_dict = {}
 
