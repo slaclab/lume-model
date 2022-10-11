@@ -23,8 +23,10 @@ class KerasModel(BaseModel):
     implement the general behaviors expected for models used with the Keras lume-model tool kit.
 
     Attributes:
-        input_valiables (Dict[str, InputVariable]): Dictionary mapping input variable name to variable
+        input_variables (Dict[str, InputVariable]): Dictionary mapping input variable name to variable
         output_variables (Dict[str, OutputVariable]): Dictionary mapping output variable name to variable
+        _input_format (List[str]): Ordered list of variable names used to prepare
+                inputs.
         _output_format (dict): Instructions for parsing model output
 
     """
@@ -34,6 +36,7 @@ class KerasModel(BaseModel):
         model_file: str,
         input_variables: Dict[str, InputVariable],
         output_variables: Dict[str, OutputVariable],
+        input_format: List[str],
         output_format: Optional[dict],
         custom_layers: Optional[dict],
     ) -> None:
@@ -45,6 +48,8 @@ class KerasModel(BaseModel):
             output_variables (List[OutputVariable]): list of model output variables
             custom_layers (dict): Dictionary mapping name of custom layer to layer 
                 class.
+            input_format (List[str]): Ordered list of variable names used to prepare
+                inputs.
             output_format (dict): Wrapper for interpreting outputs. This now handles 
                 raw or softmax values, but should be expanded to accomodate misc 
                 functions. Now, dictionary should look like:
@@ -56,6 +61,7 @@ class KerasModel(BaseModel):
         self.input_variables = input_variables
         self.output_variables = output_variables
         self._model_file = model_file
+        self._input_format = input_format
         self._output_format = output_format
 
         base_layers.update(custom_layers)
@@ -65,6 +71,9 @@ class KerasModel(BaseModel):
             model_file,
             custom_objects=base_layers,
         )
+
+        if not all([key in input_format for key in self.input_variables.keys()]):
+            raise ValueError("Input variables: %s, do not correspond to the passed input format: %s.", list(self.input_variables.keys()), self.input_format)
 
     def evaluate(self, input_variables: Dict[str, InputVariable]) -> Dict[str, OutputVariable]:
         """Evaluate model using new input variables.
