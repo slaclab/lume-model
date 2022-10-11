@@ -23,9 +23,10 @@ class KerasModel(BaseModel):
     implement the general behaviors expected for models used with the Keras lume-model tool kit.
 
     Attributes:
-        input_valiables (Dict[str, InputVariable]): Dictionary mapping input variable name to variable
+        input_variables (Dict[str, InputVariable]): Dictionary mapping input variable name to variable
         output_variables (Dict[str, OutputVariable]): Dictionary mapping output variable name to variable
-        _input_format (dict): Instructions for formatting model input
+        _input_format (List[str]): Ordered list of variable names used to prepare
+                inputs.
         _output_format (dict): Instructions for parsing model output
 
     """
@@ -35,9 +36,9 @@ class KerasModel(BaseModel):
         model_file: str,
         input_variables: Dict[str, InputVariable],
         output_variables: Dict[str, OutputVariable],
-        input_format: Optional[dict],
-        output_format: Optional[dict],
-        custom_layers: Optional[dict],
+        input_format: List[str],
+        output_format: Optional[dict] = None,
+        custom_layers: Optional[dict] = None,
     ) -> None:
         """Initializes the model and stores inputs/outputs.
 
@@ -45,7 +46,14 @@ class KerasModel(BaseModel):
             model_file (str): Path to model file generated with keras.save()
             input_variables (List[InputVariable]): list of model input variables
             output_variables (List[OutputVariable]): list of model output variables
-            custom_layers (dict):
+            custom_layers (Optional[dict]): Dictionary mapping name of custom layer to layer 
+                class.
+            input_format (List[str]): Ordered list of variable names used to prepare
+                inputs.
+            output_format (Optional[dict]): Wrapper for interpreting outputs. This now handles 
+                raw or softmax values, but should be expanded to accomodate misc 
+                functions. Now, dictionary should look like:
+                    {"type": Literal["raw", "string"]}
 
         """
 
@@ -56,13 +64,17 @@ class KerasModel(BaseModel):
         self._input_format = input_format
         self._output_format = output_format
 
-        base_layers.update(custom_layers)
+        if custom_layers is not None:
+            base_layers.update(custom_layers)
 
         # load model in thread safe manner
         self._model = load_model(
             model_file,
             custom_objects=base_layers,
         )
+
+        if not all([key in input_format for key in self.input_variables.keys()]):
+            raise ValueError("Input variables: %s, do not correspond to the passed input format: %s.", list(self.input_variables.keys()), self.input_format)
 
     def evaluate(self, input_variables: Dict[str, InputVariable]) -> Dict[str, OutputVariable]:
         """Evaluate model using new input variables.
