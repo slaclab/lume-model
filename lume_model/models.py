@@ -114,14 +114,14 @@ class BaseModel(ABC):
     must be initialized by children.
 
     Attributes:
-        input_variables (List[InputVariable]): Must be defined after __init__.
+        input_variables (Dict[str, InputVariable]): Must be defined after __init__.
 
-        output_variables (List[OutputVariable]): Must be defined after __init__.
+        output_variables (Dict[str,  OutputVariable]): Must be defined after __init__.
 
     """
 
     @abstractmethod
-    def evaluate(self):
+    def evaluate(self, input_variables: Dict[str, InputVariable]) -> (Dict[str,  OutputVariable]):
         """
         Abstract evaluate method that must be overwritten by inheriting classes.
 
