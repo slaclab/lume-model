@@ -118,13 +118,6 @@ model:
       tensorflow: 2.3.1
     args:
       model_file: examples/files/iris_model.h5
-    input_format:
-        order:
-            - SepalLength
-            - SepalWidth
-            - PetalLength
-            - PetalWidth
-        shape: [1, 4]
     output_format:
         type: softmax
 

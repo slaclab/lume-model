@@ -294,11 +294,6 @@ def model_from_yaml(
         if "output_format" in config["model"]:
             model_kwargs["output_format"] = config["model"]["output_format"]
 
-        if "input_format" in config["model"]:
-            model_kwargs["input_format"] = config["model"]["input_format"]
-        else:
-            model_kwargs["input_format"] = list(input_variables.keys())
-
 
     if model_class is None:
         logger.exception("No model class found.")
