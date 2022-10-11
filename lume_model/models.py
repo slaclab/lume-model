@@ -121,7 +121,7 @@ class BaseModel(ABC):
     """
 
     @abstractmethod
-    def evaluate(self, input_variables, Dict[str, InputVariable]) -> (Dict[str,  OutputVariable]):
+    def evaluate(self, input_variables: Dict[str, InputVariable]) -> (Dict[str,  OutputVariable]):
         """
         Abstract evaluate method that must be overwritten by inheriting classes.
 
