@@ -64,14 +64,14 @@ class KerasModel(BaseModel):
             custom_objects=base_layers,
         )
 
-    def evaluate(self, input_variables: List[InputVariable]) -> List[OutputVariable]:
+    def evaluate(self, input_variables: Dict[str, InputVariable]) -> Dict[str, OutputVariable]:
         """Evaluate model using new input variables.
 
         Args:
-            input_variables (List[InputVariable]): List of updated input variables
+            input_variables (Dict[str, InputVariable]): List of updated input variables
 
         Returns:
-            List[OutputVariable]: List of output variables
+            Dict[str, OutputVariable]: List of output variables
 
         """
         self.input_variables = {var.name: var for var in input_variables}
@@ -157,7 +157,7 @@ class KerasModel(BaseModel):
                         self.output_variables[variable.name].y_max_variable
                     ]
 
-        return list(self.output_variables.values())
+        return self.output_variables
 
     def format_input(
         self, input_dictionary: Dict[str, InputVariable]
