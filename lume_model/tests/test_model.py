@@ -29,7 +29,7 @@ def test_surrogate_model_construction():
             )
 
             # return inputs * 2
-            return list(self.output_variables.values())
+            return self.output_variables
 
     ExampleModel()
 
@@ -58,7 +58,7 @@ def test_surrogate_model_construction():
             )
 
             # return inputs * 2
-            return list(self.output_variables.values())
+            return self.output_variables
 
     # now a failure:
 

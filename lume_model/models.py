@@ -102,6 +102,7 @@ from abc import ABC, abstractmethod
 from typing import Dict, List
 import logging
 from pydantic import BaseModel as PydanticBaseModel
+from pydantic import validator
 import numpy as np
 
 from lume_model.variables import InputVariable, OutputVariable
@@ -123,8 +124,32 @@ class BaseModel(ABC, PydanticBaseModel):
             an attributes of their subclass or accept as an __init__ argument.
     """
 
-    input_variables: Dict[str, InputVariable]
-    output_variable: Dict[str, OutputVariable]
+    input_variables: dict
+    output_variable: dict
+
+    @validator("input_variables", always=True, pre=True)
+    def validate_input_vars(cls, v):
+        if not isinstance(v, dict):
+            raise ValueError("Must provide dictionary mapping variable name to \
+                lume_model OutputVariables")
+
+        if not all([isinstance(var, OutputVariable) for var in v.values()]):
+            raise ValueError("Must pass OutputVariables as values of \
+                output_variable dictionary")
+
+        return v
+
+    @validator("output_variables", always=True, pre=True)
+    def validate_output_vars(cls, v):
+        if not isinstance(v, dict):
+            raise ValueError("Must provide dictionary mapping variable name to \
+                lume_model OutputVariables")
+
+        if not all([isinstance(var, OutputVariable) for var in v.values()]):
+            raise ValueError("Must pass OutputVariables as values of \
+                output_variable dictionary")
+
+        return v
 
     @abstractmethod
     def evaluate(self):
