@@ -25,7 +25,6 @@ class KerasModel(BaseModel):
     Attributes:
         input_valiables (Dict[str, InputVariable]): Dictionary mapping input variable name to variable
         output_variables (Dict[str, OutputVariable]): Dictionary mapping output variable name to variable
-        _input_format (dict): Instructions for formatting model input
         _output_format (dict): Instructions for parsing model output
 
     """
@@ -35,7 +34,6 @@ class KerasModel(BaseModel):
         model_file: str,
         input_variables: Dict[str, InputVariable],
         output_variables: Dict[str, OutputVariable],
-        input_format: Optional[dict],
         output_format: Optional[dict],
         custom_layers: Optional[dict],
     ) -> None:
@@ -45,7 +43,12 @@ class KerasModel(BaseModel):
             model_file (str): Path to model file generated with keras.save()
             input_variables (List[InputVariable]): list of model input variables
             output_variables (List[OutputVariable]): list of model output variables
-            custom_layers (dict):
+            custom_layers (dict): Dictionary mapping name of custom layer to layer 
+                class.
+            output_format (dict): Wrapper for interpreting outputs. This now handles 
+                raw or softmax values, but should be expanded to accomodate misc 
+                functions. Now, dictionary should look like:
+                    {"type": Literal["raw", "string"]}
 
         """
 
@@ -53,7 +56,6 @@ class KerasModel(BaseModel):
         self.input_variables = input_variables
         self.output_variables = output_variables
         self._model_file = model_file
-        self._input_format = input_format
         self._output_format = output_format
 
         base_layers.update(custom_layers)
