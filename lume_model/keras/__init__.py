@@ -80,8 +80,12 @@ class KerasModel(BaseModel):
         """
         self.input_variables = input_variables
 
+        input_dict = {var.name: var.value for var in input_variables.values()}
+
         # converts from input_dict -> formatted input
-        formatted_input = self.format_input(input_dictionary)
+        formatted_input = self.format_input(input_dict)
+
+        print(formatted_input)
 
         # call prediction in threadsafe manner
         model_output = self._model.predict(formatted_input)
