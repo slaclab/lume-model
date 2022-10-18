@@ -84,9 +84,7 @@ class ExampleModel(BaseModel):
 
     def evaluate(self, input_variables):
 
-        self.input_variables = {
-            variable.name: variable for variable in input_variables
-        }
+        self.input_variables = input_variables
 
         self.output_variables["output1"].value = (
             self.input_variables["input1"].value * 2
@@ -96,7 +94,7 @@ class ExampleModel(BaseModel):
         )
 
         # return inputs * 2
-        return list(self.output_variables.values())
+        return self.output_variables.values()
 ```
 
 ## Configuration files
