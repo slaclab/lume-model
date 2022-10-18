@@ -97,6 +97,53 @@ class ExampleModel(BaseModel):
         return self.output_variables.values()
 ```
 
+Variables can be loaded from a yaml file formatted as below:
+
+`my_variables.yml`
+```yaml
+input_variables:
+  input1:
+      name: input1
+      type: scalar
+      default: 1
+      range: [0, 256]
+
+  input2:
+      name: input2
+      type: scalar
+      default: 2.0
+      range: [0, 256]
+
+output_variables:
+  output1:
+    name: output1
+    type: image
+    x_label: "value1"
+    y_label: "value2"
+    axis_units: ["mm", "mm"]
+    x_min: 0
+    x_max: 10
+    y_min: 0
+    y_max: 10
+
+  output2:
+    name: output2
+    type: scalar
+  
+  output3:
+    name: output3
+    type: scalar
+```
+
+And subsequently loaded using:
+```python
+from lume_model.utils import variables_from_yaml
+
+with open("my_variables.yml", "r") as f:
+  input_variables, output_variables = variables_from_yaml(f)
+```
+
+
 ## Configuration files
 
 Models and variables may be constructed using a yaml configuration file. The configuration file consists of three sections:
