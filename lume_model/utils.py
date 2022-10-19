@@ -127,12 +127,12 @@ def parse_variables(config: dict) -> Tuple[dict]:
                 if (
                     isinstance(variable_config["default"], (str,))
                     and value_type is not None
-                    and value_type == "str"
+                    and value_type == "string"
                 ):
                     pass
 
                 if isinstance(variable_config["default"], (str,)) and (
-                    value_type is None or value_type != "str"
+                    value_type is None or value_type != "string"
                 ):
                     variable_config["default"] = np.load(variable_config["default"])
 

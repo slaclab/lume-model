@@ -9,7 +9,6 @@
             - ImageOutputVariable
             - ArrayInputVariable
             - ArrayOutputVariable
-            - TableInputVariable
-            - TableOutputVariable
+            - TableVariable
     rendering:
         show_source: true
