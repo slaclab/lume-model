@@ -127,7 +127,7 @@ def parse_variables(config: dict) -> Tuple[dict]:
                 if (
                     isinstance(variable_config["default"], (str,))
                     and value_type is not None
-                    and value_type == "str"
+                    and value_type == "string"
                 ):
                     pass
 
