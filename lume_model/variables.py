@@ -245,7 +245,9 @@ class ImageVariable(BaseModel, NDVariableBase):
 
 class ArrayVariable(BaseModel, NDVariableBase):
     """
-    Base class used for constructing an array variable.
+    Base class used for constructing an array variable.  Array variables can capture
+    strings by passing `variable_type="string"` during initialization. Otherwise, the
+    value will default to an array of floats.
 
     Attributes:
         variable_type (str): Indicates array variable.
@@ -427,7 +429,9 @@ class ScalarOutputVariable(OutputVariable[float], ScalarVariable):
 
 class ArrayInputVariable(InputVariable[NumpyNDArray], ArrayVariable):
     """
-    Variable used for representing an array input.
+    Variable used for representing an array input. Array variables can capture
+    strings by passing `variable_type="string"` during initialization. Otherwise, the
+    value will default to an array of floats.
 
     Attributes:
         name (str): Name of the variable.
@@ -446,6 +450,10 @@ class ArrayInputVariable(InputVariable[NumpyNDArray], ArrayVariable):
 
 class ArrayOutputVariable(OutputVariable[NumpyNDArray], ArrayVariable):
     """
+    Variable used for representing an array output. Array variables can capture
+    strings by passing `variable_type="string"` during initialization. Otherwise, the
+    value will default to an array of floats.
+
     Attributes:
         name (str): Name of the variable.
 
@@ -467,7 +475,7 @@ class ArrayOutputVariable(OutputVariable[NumpyNDArray], ArrayVariable):
     pass
 
 
-class TableVariable(GenericModel):
+class TableVariable(BaseModel):
     """Table variables are used for creating tabular representations of data. Table variables should only be used for client tools.
 
     Attributes:
