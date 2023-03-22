@@ -113,7 +113,6 @@ def parse_variables(config: dict) -> Tuple[dict]:
     input_variables = {}
     if "input_variables" in config:
         for variable in config["input_variables"]:
-
             variable_config = config["input_variables"][variable]
             variable_config["name"] = variable
 
@@ -167,7 +166,6 @@ def parse_variables(config: dict) -> Tuple[dict]:
     output_variables = {}
     if "output_variables" in config:
         for variable in config["output_variables"]:
-
             variable_config = config["output_variables"][variable]
             variable_config["name"] = variable
 
@@ -242,13 +240,11 @@ def model_from_yaml(
     }
 
     if "model" in config:
-
         # check model requirements before proceeding
         if "requirements" in config["model"]:
             for req in config["model"]["requirements"]:
                 module = __import__(req)
                 if module:
-
                     # check for version
                     if isinstance(config["model"]["requirements"][req], (dict,)):
                         version = config["model"]["requirements"][req]
@@ -271,7 +267,6 @@ def model_from_yaml(
 
         model_class = locate(config["model"]["model_class"])
         if "kwargs" in config["model"]:
-
             if "custom_layers" in config["model"]["kwargs"]:
                 custom_layers = config["model"]["kwargs"]["custom_layers"]
 
@@ -294,6 +289,12 @@ def model_from_yaml(
         if "output_format" in config["model"]:
             model_kwargs["output_format"] = config["model"]["output_format"]
 
+        # load the feature orders from the model_info file if it's there
+        if "model_info" in config["model"]:
+            with open(config["model"]["model_info"], "r") as f:
+                model_info = json.load(f)
+            model_kwargs["feature_order"] = model_info["model_in_list"]
+            model_kwargs["output_order"] = model_info["model_out_list"]
 
     if model_class is None:
         logger.exception("No model class found.")
@@ -302,8 +303,10 @@ def model_from_yaml(
     if load_model:
         try:
             model = model_class(**model_kwargs)
-        except:
-            logger.exception(f"Unable to load model with args: {model_kwargs}")
+        except Exception as e:
+            logger.exception(
+                f"Unable to load model with args: {model_kwargs} due to {e}"
+            )
             sys.exit()
 
         return model

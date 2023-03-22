@@ -1,0 +1,61 @@
+model:
+  kwargs:
+    model_file: lume_model/tests/test_files/california_regression/california_regression.pt
+  model_class: lume_model.pytorch.PyTorchModel
+  model_info: lume_model/tests/test_files/california_regression/model_info.json
+  output_format:
+    type: raw
+  requirements:
+    torch: 1.12
+input_variables:
+  MedInc:
+    default: 3.7857346534729004
+    range:
+    - 0.4999000132083893
+    - 15.000100135803223
+    type: scalar
+  HouseAge:
+    default: 29.282135009765625
+    range:
+    - 1.0
+    - 52.0
+    type: scalar
+  AveRooms:
+    default: 5.4074907302856445
+    range:
+    - 0.8461538553237915
+    - 141.90908813476562
+    type: scalar
+  AveBedrms:
+    default: 1.1071722507476807
+    range:
+    - 0.375
+    - 34.06666564941406
+    type: scalar
+  Population:
+    default: 1437.0687255859375
+    range:
+    - 3.0
+    - 28566.0
+    type: scalar
+  AveOccup:
+    default: 3.035413980484009
+    range:
+    - 0.692307710647583
+    - 599.7142944335938
+    type: scalar
+  Latitude:
+    default: 35.28323745727539
+    range:
+    - 32.65999984741211
+    - 41.95000076293945
+    type: scalar
+  Longitude:
+    default: -119.11573028564453
+    range:
+    - -124.3499984741211
+    - -114.30999755859375
+    type: scalar
+output_variables:
+  MedHouseVal:
+    type: scalar

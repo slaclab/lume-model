@@ -1,0 +1,48 @@
+{
+    "train_input_mins": [
+        0.4999000132083893,
+        1.0,
+        0.8461538553237915,
+        0.375,
+        3.0,
+        0.692307710647583,
+        32.65999984741211,
+        -124.3499984741211
+    ],
+    "train_input_maxs": [
+        15.000100135803223,
+        52.0,
+        141.90908813476562,
+        34.06666564941406,
+        28566.0,
+        599.7142944335938,
+        41.95000076293945,
+        -114.30999755859375
+    ],
+    "model_in_list": [
+        "MedInc",
+        "HouseAge",
+        "AveRooms",
+        "AveBedrms",
+        "Population",
+        "AveOccup",
+        "Latitude",
+        "Longitude"
+    ],
+    "model_out_list": [
+        "MedHouseVal"
+    ],
+    "loc_in": {
+        "MedInc": 0,
+        "HouseAge": 1,
+        "AveRooms": 2,
+        "AveBedrms": 3,
+        "Population": 4,
+        "AveOccup": 5,
+        "Latitude": 6,
+        "Longitude": 7
+    },
+    "loc_out": {
+        "MedHouseVal": 0
+    }
+}
