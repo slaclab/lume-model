@@ -1,11 +1,11 @@
 import logging
-from typing import Dict, Optional, List
+from typing import Dict, List, Optional, Tuple
 
 import torch
+from botorch.models.transforms.input import ReversibleInputTransform
 
 from lume_model.models import BaseModel
 from lume_model.variables import InputVariable, OutputVariable
-from botorch.models.transforms.input import ReversibleInputTransform
 
 logger = logging.getLogger(__name__)
 
@@ -58,11 +58,6 @@ class PyTorchModel(BaseModel):
             transformer.eval()
         self._output_transformers = output_transformers
         for transformer in self._output_transformers:
-            # this swaps the transform/untransform so the
-            # forward pass is now the inverse transformation
-            # which allows us to use the input->model scaling
-            # factors
-            transformer.reverse = True
             transformer.eval()
 
         self._model = torch.load(model_file)
@@ -77,6 +72,26 @@ class PyTorchModel(BaseModel):
     @property
     def outputs(self):
         return self._output_order
+
+    @property
+    def input_transformers(self):
+        return self._input_transformers
+
+    @property
+    def output_transformers(self):
+        return self._output_transformers
+
+    @input_transformers.setter
+    def input_transformers(self, new_transformer: Tuple[ReversibleInputTransform, int]):
+        transformer, loc = new_transformer
+        self._input_transformers.insert(loc, transformer)
+
+    @output_transformers.setter
+    def output_transformers(
+        self, new_transformer: Tuple[ReversibleInputTransform, int]
+    ):
+        transformer, loc = new_transformer
+        self._output_transformers.insert(loc, transformer)
 
     def evaluate(
         self, input_variables: Dict[str, InputVariable], return_raw: bool = False
@@ -190,7 +205,7 @@ class PyTorchModel(BaseModel):
         """
         # NOTE do we need to sort these to reverse them?
         for transformer in self._output_transformers:
-            model_output = transformer(model_output)
+            model_output = transformer.untransform(model_output)
         return model_output
 
     def _parse_outputs(self, model_output: torch.Tensor) -> Dict[str, float]:

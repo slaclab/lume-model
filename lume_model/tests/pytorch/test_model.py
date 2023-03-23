@@ -96,6 +96,12 @@ def test_model_from_yaml_load_model():
     assert test_model._input_transformers == []
     assert test_model._output_transformers == []
 
+    # now we want to test whether we can add the transformers afterwards
+    test_model.input_transformers = (input_transformer, 0)
+    test_model.output_transformers = (output_transformer, 0)
+    assert test_model.input_transformers == [input_transformer]
+    assert test_model.output_transformers == [output_transformer]
+
 
 def test_california_housing_model_construction():
     cal_model = PyTorchModel(**model_kwargs)
