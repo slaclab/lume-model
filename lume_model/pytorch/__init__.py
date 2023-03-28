@@ -61,6 +61,7 @@ class PyTorchModel(BaseModel):
             transformer.eval()
 
         self._model = torch.load(model_file).double()
+        self._model.eval()
 
         self._feature_order = feature_order
         self._output_order = output_order
@@ -123,7 +124,7 @@ class PyTorchModel(BaseModel):
         return output
 
     def _prepare_inputs(
-        self, input_variables: Dict[str, InputVariable]
+        self, input_variables: Dict[str, Union[InputVariable, float, torch.Tensor]]
     ) -> Dict[str, torch.Tensor]:
         """
         Prepares the input variables dictionary as a format appropriate
@@ -149,7 +150,7 @@ class PyTorchModel(BaseModel):
             except KeyError as e:
                 # NOTE should we be using the default value here, or the previous
                 # value?
-                logger.warning(f"{e} missing from input_dict, using default value")
+                logger.info(f"{e} missing from input_dict, using default value")
                 var.value = var.default
         # we want to make sure that everything is a tensor at the end of this
         input_variables = {}
