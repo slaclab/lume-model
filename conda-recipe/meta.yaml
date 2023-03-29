@@ -28,6 +28,8 @@ test:
     - lume_model
   requires:
     - pytest
+    - tensorflow
+    - botorch
   commands:
     - py.test --pyargs lume_model
 
