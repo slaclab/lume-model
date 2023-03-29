@@ -2,4 +2,4 @@ black
 pre-commit
 pytest
 tensorflow
-botorch<=0.8.3
+botorch

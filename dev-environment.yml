@@ -8,7 +8,7 @@ dependencies:
   - numpy
   - pyyaml
   - tensorflow
-  - botorch<=0.8.3
+  - botorch
 
   # dev requirements
   - pytest
