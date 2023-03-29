@@ -30,6 +30,8 @@ test:
     - pytest
     - tensorflow
     - botorch
+  source_files:
+    - lume_model/tests/test_files
   commands:
     - py.test --pyargs lume_model
 
