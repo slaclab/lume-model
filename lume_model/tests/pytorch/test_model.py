@@ -20,7 +20,8 @@ Things to Test:
 - [x] the model correctly orders the features according to the
     specified feature order
 - [x] pytorch model can be run using dictionary of:
-    - [x] tensors
+    - [x] tensors (individual)
+    - [x] tensors (of multiple samples for each feature)
     - [x] InputVariables
     - [x] floats
 - [x] pytorch model evaluate() can return dictionary of either tensors
@@ -158,6 +159,24 @@ def test_california_housing_model_tensor(
         cal_model,
         "HouseAge",
         "MedHouseVal",
+    )
+
+
+def test_california_housing_model_multi_tensor(
+    california_test_x, cal_model: PyTorchModel
+):
+    test_dict = {
+        key: california_test_x[:, idx] for idx, key in enumerate(cal_model.features)
+    }
+    results = cal_model.evaluate(test_dict)
+    # in this case we don't expect the input/output variables to be updated,
+    # because we don't know which value to update them with so we only check
+    # for the resulting values
+    assert all(
+        torch.isclose(
+            results["MedHouseVal"],
+            torch.tensor([4.063651, 2.7774928, 2.792812], dtype=torch.double),
+        )
     )
 
 
