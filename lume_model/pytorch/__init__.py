@@ -113,6 +113,8 @@ class PyTorchModel(BaseModel):
         # are passed through the model, and transformed again on the
         # other side. The final dictionary is then converted into a
         # useful form
+        # shape of inputs should always be {str: tensor.Size([]) or
+        # tensor.Size(n,))}
         input_vals = self._prepare_inputs(input_variables)
         input_vals = self._arrange_inputs(input_vals)
         features = self._transform_inputs(input_vals)
@@ -120,6 +122,8 @@ class PyTorchModel(BaseModel):
         transformed_output = self._transform_outputs(raw_output)
         output = self._parse_outputs(transformed_output)
         output = self._prepare_outputs(output)
+        # shape of outputs should always be {str: tensor.Size([]) or
+        # tensor.Size(n,))}
 
         return output
 
@@ -139,37 +143,40 @@ class PyTorchModel(BaseModel):
             dict (Dict[str, torch.Tensor]): dictionary of input variable
                 values to be passed to the transformers
         """
-        for var_name, var in self.input_variables.items():
-            try:
-                if isinstance(input_variables[var_name], InputVariable):
-                    var.value = input_variables[var_name].value
-                elif isinstance(input_variables[var_name], float):
-                    var.value = input_variables[var_name]
-                else:
-                    var.value = input_variables[var_name].item()
-            except KeyError as e:
-                # NOTE should we be using the default value here, or the previous
-                # value?
-                logger.info(f"{e} missing from input_dict, using default value")
-                var.value = var.default
-        # we want to make sure that everything is a tensor at the end of this
-        input_variables = {}
-        for var_name, var in self.input_variables.items():
-            if not torch.is_tensor(var.value):
-                # by default we assume that we want the gradients to maintain
-                # differentiability
-                input_variables[var_name] = torch.tensor(
+        # NOTE we only update the input variable if we receive a singular
+        # value, otherwise we don't know which value to assign so we just
+        # leave it
+        model_vals = {}
+        for var_name, var in input_variables.items():
+            if isinstance(var, InputVariable):
+                model_vals[var_name] = torch.tensor(
                     var.value, dtype=torch.double, requires_grad=True
                 )
+                self.input_variables[var_name].value = var.value
+            elif isinstance(var, float):
+                model_vals[var_name] = torch.tensor(
+                    var, dtype=torch.double, requires_grad=True
+                )
+                self.input_variables[var_name].value = var
+            elif isinstance(var, torch.Tensor):
+                var = var.double()
+                var = var.squeeze()
+                if not var.requires_grad:
+                    var.requires_grad = True
+                model_vals[var_name] = var
+                if var.dim() == 0:
+                    self.input_variables[var_name].value = var.item()
             else:
-                input_variables[var_name] = var.value
-
-        return input_variables
+                TypeError(
+                    f"Unknown type {type(var)} passed to evaluate. Should be one of InputVariable, float or torch.Tensor"
+                )
+        return model_vals
 
     def _arrange_inputs(self, input_variables: Dict[str, torch.Tensor]) -> torch.Tensor:
         """
         Enforces the order of the input variables to be passed to the transformers
-        and models
+        and models and updates the model with default values for any features that
+        are missing.
 
         Args:
             input_variables (dict): Dictionary of input variable names to raw
@@ -180,17 +187,35 @@ class PyTorchModel(BaseModel):
                 transformers
 
         """
-        features = []
         if self._feature_order is not None:
-            for feature_name in self._feature_order:
-                features.append(input_variables[feature_name])
+            enforced_order = self.features
         else:
-            # if there's no order specified, we assume it's the same as the
-            # order passed in the variables.yml file
-            for feature_name in self.input_variables.keys():
-                features.append(input_variables[feature_name])
+            # if there's no specified order, we make the assumption
+            # that the variables were passed in the desired order
+            # in the configuration file
+            enforced_order = list(self.input_variables.keys())
 
-        return torch.stack(features)
+        features = []
+        for feature_name in enforced_order:
+            try:
+                features.append(input_variables[feature_name])
+            except KeyError as e:
+                logger.info(f"{e} missing from input_dict, using default value")
+                # we create a tensor of the default values like the ones we see in
+                # the variables specified if the input is missing
+                default_vals = torch.full_like(
+                    list(input_variables.items())[0][1],
+                    self.input_variables[feature_name].default,
+                )
+                features.append(default_vals)
+        all_features = torch.stack(features).squeeze()
+        if all_features.dim() > 1:
+            # the stack call returns (n_features, n_samples) so we transpose
+            # the result to get (n_samples, n_features) when we have more
+            # than one sample
+            return torch.transpose(all_features, 1, 0)
+        else:
+            return all_features
 
     def _transform_inputs(self, input_values: torch.Tensor) -> torch.Tensor:
         """
@@ -236,21 +261,24 @@ class PyTorchModel(BaseModel):
                 value
         """
         output = {}
+        if model_output.dim() == 1 or model_output.dim() == 0:
+            model_output = model_output.unsqueeze(0)
         if self._output_order is not None:
             for idx, output_name in enumerate(self._output_order):
-                output[output_name] = model_output[idx]
+                output[output_name] = model_output[:, idx].squeeze()
         else:
             # if there's no order specified, we assume it's the same as the
             # order passed in the variables.yml file
             for idx, output_name in enumerate(self.output_variables.keys()):
-                output[output_name] = model_output[idx]
+                output[output_name] = model_output[:, idx].squeeze()
         return output
 
     def _prepare_outputs(
         self, predicted_output: Dict[str, torch.Tensor]
     ) -> Dict[str, Union[OutputVariable, torch.Tensor]]:
         """
-        Updates the output variables within the model to reflect the new values.
+        Updates the output variables within the model to reflect the new values
+        if we only have a singular data point.
         Args:
             predicted_output (Dict[str, torch.Tensor]): Dictionary of output
                 variable name to value
@@ -261,41 +289,46 @@ class PyTorchModel(BaseModel):
                 on model's _ouptut_format
         """
         for variable in self.output_variables.values():
-            if variable.variable_type == "scalar":
-                self.output_variables[variable.name].value = predicted_output[
-                    variable.name
-                ].item()
-
-            elif variable.variable_type == "image":
-                # OutputVariables should be numpy arrays so we need to convert
-                # the tensor to a numpy array
-                self.output_variables[variable.name].value = (
-                    predicted_output[variable.name].reshape(variable.shape).numpy()
-                )
-
-                # update limits
-                if self.output_variables[variable.name].x_min_variable:
-                    self.output_variables[variable.name].x_min = predicted_output[
-                        self.output_variables[variable.name].x_min_variable
+            if predicted_output[variable.name].dim() == 0:
+                if variable.variable_type == "scalar":
+                    self.output_variables[variable.name].value = predicted_output[
+                        variable.name
                     ].item()
+                elif variable.variable_type == "image":
+                    # OutputVariables should be numpy arrays so we need to convert
+                    # the tensor to a numpy array
+                    self.output_variables[variable.name].value = (
+                        predicted_output[variable.name].reshape(variable.shape).numpy()
+                    )
+                    self._update_image_limits(variable, predicted_output)
 
-                if self.output_variables[variable.name].x_max_variable:
-                    self.output_variables[variable.name].x_max = predicted_output[
-                        self.output_variables[variable.name].x_max_variable
-                    ].item()
-
-                if self.output_variables[variable.name].y_min_variable:
-                    self.output_variables[variable.name].y_min = predicted_output[
-                        self.output_variables[variable.name].y_min_variable
-                    ].item()
-
-                if self.output_variables[variable.name].y_max_variable:
-                    self.output_variables[variable.name].y_max = predicted_output[
-                        self.output_variables[variable.name].y_max_variable
-                    ].item()
         if self._output_format.get("type") == "tensor":
             return predicted_output
         elif self._output_format.get("type") == "variable":
             return self.output_variables
         else:
             return {key: var.value for key, var in self.output_variables.items()}
+
+    def _update_image_limits(
+        self, variable: OutputVariable, predicted_output: Dict[str, torch.Tensor]
+    ):
+        # update limits
+        if self.output_variables[variable.name].x_min_variable:
+            self.output_variables[variable.name].x_min = predicted_output[
+                self.output_variables[variable.name].x_min_variable
+            ].item()
+
+        if self.output_variables[variable.name].x_max_variable:
+            self.output_variables[variable.name].x_max = predicted_output[
+                self.output_variables[variable.name].x_max_variable
+            ].item()
+
+        if self.output_variables[variable.name].y_min_variable:
+            self.output_variables[variable.name].y_min = predicted_output[
+                self.output_variables[variable.name].y_min_variable
+            ].item()
+
+        if self.output_variables[variable.name].y_max_variable:
+            self.output_variables[variable.name].y_max = predicted_output[
+                self.output_variables[variable.name].y_max_variable
+            ].item()
