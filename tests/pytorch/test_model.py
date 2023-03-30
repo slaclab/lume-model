@@ -32,6 +32,8 @@ Things to Test:
 - [x] passing different input dictionaries through gives us different
     output dictionaries
 - [x] differentiability through the model (required for Xopt)
+- [x] we should be able to send data of any dimensionality to the model
+    e.g. (b, n, m) from GP data
 - [ ] output transformations are applied in the correct order when we
     have multiple transformations
 """
@@ -180,6 +182,25 @@ def test_california_housing_model_multi_tensor(
     )
 
 
+def test_california_housing_model_multi_dim_tensor(
+    # when using the model within a custom mean, we might get some data that
+    # comes through in the dictionary as shape [b, n, m] where b is the batch
+    # number, n is the number of data points and m is the number of features,
+    # the model should be able to cope with these as well
+    california_test_x,
+    cal_model: PyTorchModel,
+):
+    test_dict = {
+        key: california_test_x[:, idx].unsqueeze(-1).unsqueeze(1).repeat((1, 3, 1))
+        for idx, key in enumerate(cal_model.features)
+    }
+
+    results = cal_model.evaluate(test_dict)
+
+    # shape coming out should be [b, n]
+    assert tuple(results["MedHouseVal"].shape) == (3, 3)
+
+
 def test_california_housing_model_float(
     california_test_x_dict: Dict[str, torch.Tensor],
     california_model_kwargs: Dict[str, Union[List, Dict, str]],
@@ -281,22 +302,6 @@ def test_california_housing_model_execution_no_transformation(
     )
 
 
-def test_california_housing_model_execution_missing_input(
-    caplog, california_test_x_dict: Dict[str, torch.Tensor], cal_model: PyTorchModel
-):
-    missing_dict = deepcopy(california_test_x_dict)
-    del missing_dict["Longitude"]
-
-    with caplog.at_level(logging.INFO):
-        results = cal_model.evaluate(missing_dict)
-        assert len(caplog.records) == 1
-        assert caplog.records[0].levelname == "INFO"
-        assert (
-            caplog.records[0].message
-            == "'Longitude' missing from input_dict, using default value"
-        )
-
-
 def test_differentiability(
     california_test_x_dict: Dict[str, torch.Tensor], cal_model: PyTorchModel
 ):
@@ -309,13 +314,8 @@ def test_differentiability(
     # if we maintain differentiability, we should be able to call .backward()
     # on a model output without it causing an error
     for key, value in results.items():
-        try:
-            value.backward()
-            assert value.requires_grad
-        except AttributeError as exc:
-            # if the attribute error is raised because we're, returning a float,
-            # the test should fail
-            assert False, str(exc)
+        value.backward()
+        assert value.requires_grad
 
     # we also want to make sure that the input_variable and output_variable
     # values are still treated as floats

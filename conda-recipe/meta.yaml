@@ -31,7 +31,7 @@ test:
     - tensorflow
     - botorch
   commands:
-    - py.test --pyargs lume_model
+    - py.test --pyargs .
 
 about:
   home: https://github.com/slaclab/lume-model
