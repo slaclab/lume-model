@@ -31,7 +31,12 @@ test:
     - tensorflow
     - botorch
   commands:
+    # all these commands are executed in the conda-recipe directory so to run the
+    # tests we need to move out of this folder, run them and then move back into
+    # it
+    - cd ..
     - py.test --pyargs .
+    - cd conda-recipe
 
 about:
   home: https://github.com/slaclab/lume-model

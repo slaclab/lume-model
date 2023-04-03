@@ -10,9 +10,11 @@ from lume_model.variables import InputVariable, OutputVariable
 logger = logging.getLogger(__name__)
 
 
-
-
 class PyTorchModel(BaseModel):
+    """The PyTorchModel class is used for the loading and evaluation of online models.
+    It is  designed to implement the general behaviors expected for models used with
+    the pytorch lume-model tool kit."""
+
     def __init__(
         self,
         model_file: str,
@@ -24,7 +26,8 @@ class PyTorchModel(BaseModel):
         feature_order: Optional[list] = None,
         output_order: Optional[list] = None,
     ) -> None:
-        """Initializes the model and stores inputs/outputs.
+        """Initializes the model, stores inputs/outputs and determines the format
+        in which the model results will be output.
 
         Args:
             model_file (str): Path to model file generated with torch.save()
@@ -131,8 +134,6 @@ class PyTorchModel(BaseModel):
         # are passed through the model, and transformed again on the
         # other side. The final dictionary is then converted into a
         # useful form
-        # shape of inputs should always be {str: tensor.Size([]) or
-        # tensor.Size(n,))}
         input_vals = self._prepare_inputs(input_variables)
         input_vals = self._arrange_inputs(input_vals)
         features = self._transform_inputs(input_vals)
@@ -140,8 +141,6 @@ class PyTorchModel(BaseModel):
         transformed_output = self._transform_outputs(raw_output)
         output = self._parse_outputs(transformed_output)
         output = self._prepare_outputs(output)
-        # shape of outputs should always be {str: tensor.Size([]) or
-        # tensor.Size(n,))}
 
         return output
 
