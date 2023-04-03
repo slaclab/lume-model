@@ -30,12 +30,13 @@ test:
     - pytest
     - tensorflow
     - botorch
+    - hypothesis
   commands:
     # all these commands are executed in the conda-recipe directory so to run the
     # tests we need to move out of this folder, run them and then move back into
     # it
     - cd ..
-    - py.test --pyargs .
+    - py.test --pyargs tests
     - cd conda-recipe
 
 about:
