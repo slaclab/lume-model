@@ -266,9 +266,9 @@ In the same way as the KerasModel, the PyTorchModel can also be loaded using the
 ```yaml
 model:
   kwargs:
-    model_file: lume_model/tests/test_files/california_regression/california_regression.pt
+    model_file: tests/test_files/california_regression/california_regression.pt
   model_class: lume_model.torch.PyTorchModel
-  model_info: lume_model/tests/test_files/california_regression/model_info.json
+  model_info: tests/test_files/california_regression/model_info.json
   output_format:
     type: tensor
   requirements:
