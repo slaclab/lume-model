@@ -221,7 +221,7 @@ In the same way as the KerasModel, a PyTorchModel can also be loaded using the `
 model:
   kwargs:
     model_file: /path/to/california_regression.pt
-  model_class: lume_model.pytorch.PyTorchModel
+  model_class: lume_model.torch.PyTorchModel
   model_info: path/to/model_info.json
   output_format:
     type: tensor
@@ -271,7 +271,7 @@ It is important to note that currently the **transformers are not loaded** into 
 ```python
 import torch
 import json
-from lume_model.pytorch import PyTorchModel
+from lume_model.torch import PyTorchModel
 
 # load the model class and kwargs
 with open(f"california_variables.yml","r") as f:

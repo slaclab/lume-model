@@ -6,7 +6,7 @@ import torch
 from botorch.models.transforms.input import AffineInputTransform
 
 from lume_model.utils import variables_from_yaml
-from lume_model.pytorch import PyTorchModel
+from lume_model.torch import PyTorchModel
 from lume_model.variables import InputVariable, OutputVariable
 from typing import Dict, List, Union, Tuple, TextIO
 

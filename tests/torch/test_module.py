@@ -6,7 +6,7 @@ import pytest
 import torch
 from botorch.models import SingleTaskGP
 
-from lume_model.pytorch import LUMEModule, PyTorchModel
+from lume_model.torch import LUMEModule, PyTorchModel
 
 """
 Things to Test

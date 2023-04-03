@@ -6,7 +6,7 @@ from typing import Dict, List, Tuple, Union
 import pytest
 import torch
 
-from lume_model.pytorch import PyTorchModel
+from lume_model.torch import PyTorchModel
 from lume_model.utils import model_from_yaml
 from lume_model.variables import ScalarOutputVariable
 

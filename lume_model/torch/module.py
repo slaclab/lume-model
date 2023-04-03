@@ -3,7 +3,7 @@ from typing import Dict, List, Union
 import torch
 from gpytorch.means import Mean
 
-from lume_model.pytorch import PyTorchModel
+from lume_model.torch import PyTorchModel
 
 
 class LUMEModule(torch.nn.Module):
