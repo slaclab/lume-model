@@ -24,6 +24,8 @@ requirements:
     - pyyaml
 
 test:
+  source-files:
+    - ../tests/test_files/*/*
   imports:
     - lume_model
   requires:
