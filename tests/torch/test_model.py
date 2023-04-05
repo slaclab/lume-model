@@ -4,11 +4,14 @@ from copy import deepcopy
 from typing import Dict, List, Tuple, Union
 
 import pytest
-import torch
+try:
+    import torch
+    from lume_model.torch import PyTorchModel
+    from lume_model.utils import model_from_yaml
+    from lume_model.variables import ScalarOutputVariable
+except ImportError:
+    pytest.skip("Torch not available", allow_module_level=True)
 
-from lume_model.torch import PyTorchModel
-from lume_model.utils import model_from_yaml
-from lume_model.variables import ScalarOutputVariable
 
 """
 Things to Test:

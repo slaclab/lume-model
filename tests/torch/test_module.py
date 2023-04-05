@@ -3,10 +3,14 @@ from copy import deepcopy
 from typing import Dict, List
 
 import pytest
-import torch
-from botorch.models import SingleTaskGP
+try:
+    import torch
+    from botorch.models import SingleTaskGP
 
-from lume_model.torch import LUMEModule, PyTorchModel
+    from lume_model.torch import LUMEModule, PyTorchModel
+except ImportError:
+    pytest.skip("Torch not available", allow_module_level=True)
+
 
 """
 Things to Test

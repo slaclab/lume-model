@@ -1,14 +1,19 @@
 import json
 import os
+from typing import Dict, List, TextIO, Tuple, Union
 
 import pytest
-import torch
-from botorch.models.transforms.input import AffineInputTransform
 
 from lume_model.utils import variables_from_yaml
-from lume_model.torch import PyTorchModel
 from lume_model.variables import InputVariable, OutputVariable
-from typing import Dict, List, Union, Tuple, TextIO
+
+try:
+    import torch
+    from botorch.models.transforms.input import AffineInputTransform
+
+    from lume_model.torch import PyTorchModel
+except ModuleNotFoundError:
+    pass
 
 
 @pytest.fixture(scope="session")
@@ -40,20 +45,19 @@ def california_variables(
 
 
 @pytest.fixture(scope="module")
-def california_transformers(
-    rootdir,
-) -> Tuple[AffineInputTransform, AffineInputTransform]:
+def california_transformers(rootdir):
     with open(
         f"{rootdir}/test_files/california_regression/normalization.json", "r"
     ) as f:
         normalizations = json.load(f)
+    botorch = pytest.importorskip("botorch")
 
-    input_transformer = AffineInputTransform(
+    input_transformer = botorch.models.transforms.input.AffineInputTransform(
         len(normalizations["x_mean"]),
         coefficient=torch.tensor(normalizations["x_scale"]),
         offset=torch.tensor(normalizations["x_mean"]),
     )
-    output_transformer = AffineInputTransform(
+    output_transformer = botorch.models.transforms.input.AffineInputTransform(
         len(normalizations["y_mean"]),
         coefficient=torch.tensor(normalizations["y_scale"]),
         offset=torch.tensor(normalizations["y_mean"]),
@@ -81,7 +85,9 @@ def california_model_kwargs(
 
 
 @pytest.fixture(scope="module")
-def california_test_x(rootdir: str) -> torch.Tensor:
+def california_test_x(rootdir: str):
+    torch = pytest.importorskip("torch")
+
     test_x = torch.load(f"{rootdir}/test_files/california_regression/X_test_raw.pt")
     # for speed/memory in tests we set requires grad to false and only activate it
     # when testing for differentiability
@@ -90,9 +96,7 @@ def california_test_x(rootdir: str) -> torch.Tensor:
 
 
 @pytest.fixture(scope="module")
-def california_test_x_dict(
-    california_test_x, california_model_info
-) -> Dict[str, torch.Tensor]:
+def california_test_x_dict(california_test_x, california_model_info):
     test_x_dict = {
         key: california_test_x[0][idx]
         for idx, key in enumerate(california_model_info["model_in_list"])
@@ -101,6 +105,6 @@ def california_test_x_dict(
 
 
 @pytest.fixture
-def cal_model(california_model_kwargs) -> PyTorchModel:
+def cal_model(california_model_kwargs):
     model = PyTorchModel(**california_model_kwargs)
     return model

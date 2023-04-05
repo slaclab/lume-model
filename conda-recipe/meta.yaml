@@ -24,22 +24,12 @@ requirements:
     - pyyaml
 
 test:
-  source-files:
-    - ../tests/test_files/*/*
   imports:
     - lume_model
   requires:
     - pytest
-    - tensorflow
-    - botorch
-    - hypothesis
   commands:
-    # all these commands are executed in the conda-recipe directory so to run the
-    # tests we need to move out of this folder, run them and then move back into
-    # it
-    - cd ..
     - py.test --pyargs tests
-    - cd conda-recipe
 
 about:
   home: https://github.com/slaclab/lume-model
