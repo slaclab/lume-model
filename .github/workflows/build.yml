@@ -34,5 +34,5 @@ jobs:
       - name: Build package
         shell: bash -l {0}
         run: |
-          conda install conda-build
-          conda build -q conda-recipe --python=${{ matrix.python-version }} --output-folder bld-dir
+          mamba install conda-build
+          mamba build -q conda-recipe --python=${{ matrix.python-version }} --output-folder bld-dir
