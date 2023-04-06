@@ -3,13 +3,14 @@ from copy import deepcopy
 from typing import Dict, List
 
 import pytest
+
 try:
     import torch
     from botorch.models import SingleTaskGP
 
     from lume_model.torch import LUMEModule, PyTorchModel
 except ImportError:
-    pytest.skip("Torch not available", allow_module_level=True)
+    pass
 
 
 """
@@ -35,7 +36,7 @@ Things to Test
 """
 
 
-def test_differentiable(california_test_x: torch.Tensor, cal_model: PyTorchModel):
+def test_differentiable(california_test_x, cal_model):
     custom_mean = LUMEModule(cal_model, cal_model.features, cal_model.outputs)
 
     input_tensor = deepcopy(california_test_x)
@@ -50,9 +51,7 @@ def test_differentiable(california_test_x: torch.Tensor, cal_model: PyTorchModel
         row.backward(retain_graph=True)
 
 
-def test_model_call_single_feature(
-    california_test_x: torch.Tensor, cal_model: PyTorchModel
-):
+def test_model_call_single_feature(california_test_x, cal_model):
     custom_mean = LUMEModule(
         cal_model,
         [cal_model.features[0]],
@@ -64,9 +63,7 @@ def test_model_call_single_feature(
     assert tuple(result.size()) == (3,)
 
 
-def test_model_call_single_feature_bad_shape(
-    california_test_x: torch.Tensor, cal_model: PyTorchModel
-):
+def test_model_call_single_feature_bad_shape(california_test_x, cal_model):
     custom_mean = LUMEModule(
         cal_model,
         [cal_model.features[0]],
@@ -82,9 +79,7 @@ def test_model_call_single_feature_bad_shape(
         )
 
 
-def test_model_call_single_datapoint(
-    california_test_x: torch.Tensor, cal_model: PyTorchModel
-):
+def test_model_call_single_datapoint(california_test_x, cal_model):
     custom_mean = LUMEModule(
         cal_model,
         cal_model.features,
@@ -98,7 +93,7 @@ def test_model_call_single_datapoint(
     assert tuple(result.size()) == ()
 
 
-def test_model_call(california_test_x: torch.Tensor, cal_model: PyTorchModel):
+def test_model_call(california_test_x, cal_model):
     custom_mean = LUMEModule(
         cal_model,
         cal_model.features,
@@ -113,9 +108,7 @@ def test_model_call(california_test_x: torch.Tensor, cal_model: PyTorchModel):
     assert torch.isclose(result, torch.tensor(4.063651, dtype=torch.double))
 
 
-def test_model_shuffled_inputs(
-    california_test_x: torch.Tensor, cal_model: PyTorchModel
-):
+def test_model_shuffled_inputs(california_test_x, cal_model):
     # shuffle the gaussian process features and the values associated with them
     shuffled_x = list(zip(cal_model.features, california_test_x[0]))
     random.shuffle(shuffled_x)
@@ -134,9 +127,7 @@ def test_model_shuffled_inputs(
     assert torch.isclose(result, torch.tensor(4.063651, dtype=torch.double))
 
 
-def test_model_call_modified_output(
-    california_test_x: torch.Tensor, cal_model: PyTorchModel
-):
+def test_model_call_modified_output(california_test_x, cal_model):
     multiple = 2
     output_order = deepcopy(cal_model.outputs)
     output_order.append(f"{str(multiple)}_MedHouseVal")
@@ -144,7 +135,7 @@ def test_model_call_modified_output(
     class MultipleLUMEModule(LUMEModule):
         def __init__(
             self,
-            model: PyTorchModel,
+            model,
             gp_input_names: List[str] = ...,
             gp_outcome_names: List[str] = ...,
         ):
@@ -175,7 +166,7 @@ def test_model_call_modified_output(
     )
 
 
-def test_model_call_dataset(california_test_x: torch.Tensor, cal_model: PyTorchModel):
+def test_model_call_dataset(california_test_x, cal_model):
     custom_mean = LUMEModule(
         cal_model,
         cal_model.features,
@@ -196,7 +187,7 @@ def test_model_call_dataset(california_test_x: torch.Tensor, cal_model: PyTorchM
 
 def test_california_housing_model_multi_dim_tensor(
     california_test_x,
-    cal_model: PyTorchModel,
+    cal_model,
 ):
     # when using the model within a custom mean, we might get some data that
     # comes through in the dictionary as shape [b, n, m] where b is the batch
@@ -222,7 +213,7 @@ def test_california_housing_model_multi_dim_tensor(
     )
 
 
-def test_gp_loop(california_test_x: torch.Tensor, cal_model: PyTorchModel):
+def test_gp_loop(california_test_x, cal_model):
     # if it works, this should produce the expected results
     custom_mean = LUMEModule(
         cal_model,

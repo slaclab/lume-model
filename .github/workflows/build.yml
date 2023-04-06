@@ -30,7 +30,7 @@ jobs:
         shell: bash -l {0}
         run: |
           pip install -e .
-          py.test --pyargs .
+          pytest -ra --pyargs tests
       - name: Build package
         shell: bash -l {0}
         run: |

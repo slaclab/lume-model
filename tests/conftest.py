@@ -23,34 +23,48 @@ def rootdir() -> str:
 
 @pytest.fixture
 def config_file(rootdir) -> TextIO:
-    return open(f"{rootdir}/test_files/iris_config.yml", "r")
+    try:
+        return open(f"{rootdir}/test_files/iris_config.yml", "r")
+    except FileNotFoundError as e:
+        pytest.skip(str(e))
 
 
 @pytest.fixture(scope="module")
 def california_model_info(rootdir) -> Dict[str, str]:
-    with open(f"{rootdir}/test_files/california_regression/model_info.json", "r") as f:
-        model_info = json.load(f)
-    return model_info
+    try:
+        with open(
+            f"{rootdir}/test_files/california_regression/model_info.json", "r"
+        ) as f:
+            model_info = json.load(f)
+        return model_info
+    except FileNotFoundError as e:
+        pytest.skip(str(e))
 
 
 @pytest.fixture(scope="module")
 def california_variables(
     rootdir,
 ) -> Tuple[Dict[str, InputVariable], Dict[str, OutputVariable]]:
-    with open(
-        f"{rootdir}/test_files/california_regression/california_variables.yml", "r"
-    ) as f:
-        input_variables, output_variables = variables_from_yaml(f)
-    return input_variables, output_variables
+    try:
+        with open(
+            f"{rootdir}/test_files/california_regression/california_variables.yml", "r"
+        ) as f:
+            input_variables, output_variables = variables_from_yaml(f)
+        return input_variables, output_variables
+    except FileNotFoundError as e:
+        pytest.skip(str(e))
 
 
 @pytest.fixture(scope="module")
 def california_transformers(rootdir):
-    with open(
-        f"{rootdir}/test_files/california_regression/normalization.json", "r"
-    ) as f:
-        normalizations = json.load(f)
     botorch = pytest.importorskip("botorch")
+    try:
+        with open(
+            f"{rootdir}/test_files/california_regression/normalization.json", "r"
+        ) as f:
+            normalizations = json.load(f)
+    except FileNotFoundError as e:
+        pytest.skip(str(e))
 
     input_transformer = botorch.models.transforms.input.AffineInputTransform(
         len(normalizations["x_mean"]),
@@ -69,6 +83,8 @@ def california_transformers(rootdir):
 def california_model_kwargs(
     rootdir, california_model_info, california_variables, california_transformers
 ) -> Dict[str, Union[List, Dict, str]]:
+    botorch = pytest.importorskip("botorch")
+
     input_variables, output_variables = california_variables
     input_transformer, output_transformer = california_transformers
     model_kwargs = {
@@ -88,7 +104,10 @@ def california_model_kwargs(
 def california_test_x(rootdir: str):
     torch = pytest.importorskip("torch")
 
-    test_x = torch.load(f"{rootdir}/test_files/california_regression/X_test_raw.pt")
+    try:
+        test_x = torch.load(f"{rootdir}/test_files/california_regression/X_test_raw.pt")
+    except FileNotFoundError as e:
+        pytest.skip(str(e))
     # for speed/memory in tests we set requires grad to false and only activate it
     # when testing for differentiability
     test_x.requires_grad = False
@@ -97,6 +116,7 @@ def california_test_x(rootdir: str):
 
 @pytest.fixture(scope="module")
 def california_test_x_dict(california_test_x, california_model_info):
+    pytest.importorskip("botorch")
     test_x_dict = {
         key: california_test_x[0][idx]
         for idx, key in enumerate(california_model_info["model_in_list"])
@@ -106,5 +126,6 @@ def california_test_x_dict(california_test_x, california_model_info):
 
 @pytest.fixture
 def cal_model(california_model_kwargs):
+    botorch = pytest.importorskip("botorch")
     model = PyTorchModel(**california_model_kwargs)
     return model

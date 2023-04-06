@@ -4,13 +4,15 @@ from copy import deepcopy
 from typing import Dict, List, Tuple, Union
 
 import pytest
+
 try:
     import torch
+
     from lume_model.torch import PyTorchModel
     from lume_model.utils import model_from_yaml
     from lume_model.variables import ScalarOutputVariable
 except ImportError:
-    pytest.skip("Torch not available", allow_module_level=True)
+    pass
 
 
 """
@@ -45,7 +47,7 @@ Things to Test:
 def assert_variables_updated(
     input_value: float,
     output_value: float,
-    model: PyTorchModel,
+    model,
     input_name: str,
     output_name: str,
 ):
@@ -108,7 +110,7 @@ def test_model_from_objects(
     california_model_kwargs: Dict[str, Union[List, Dict, str]],
     california_variables: Tuple[dict, dict],
     california_transformers: Tuple[list, list],
-    cal_model: PyTorchModel,
+    cal_model,
 ):
     input_variables, output_variables = california_variables
     input_transformer, output_transformer = california_transformers
@@ -125,7 +127,7 @@ def test_model_from_objects(
 
 
 def test_california_housing_model_variable(
-    california_test_x_dict: Dict[str, torch.Tensor],
+    california_test_x_dict,
     california_model_kwargs: Dict[str, Union[List, Dict, str]],
 ):
     args = deepcopy(california_model_kwargs)
@@ -150,7 +152,7 @@ def test_california_housing_model_variable(
 
 
 def test_california_housing_model_tensor(
-    california_test_x_dict: Dict[str, torch.Tensor], cal_model: PyTorchModel
+    california_test_x_dict, cal_model
 ):
     results = cal_model.evaluate(california_test_x_dict)
 
@@ -167,9 +169,7 @@ def test_california_housing_model_tensor(
     )
 
 
-def test_california_housing_model_multi_tensor(
-    california_test_x, cal_model: PyTorchModel
-):
+def test_california_housing_model_multi_tensor(california_test_x, cal_model):
     test_dict = {
         key: california_test_x[:, idx] for idx, key in enumerate(cal_model.features)
     }
@@ -191,7 +191,7 @@ def test_california_housing_model_multi_dim_tensor(
     # number, n is the number of data points and m is the number of features,
     # the model should be able to cope with these as well
     california_test_x,
-    cal_model: PyTorchModel,
+    cal_model,
 ):
     test_dict = {
         key: california_test_x[:, idx].unsqueeze(-1).unsqueeze(1).repeat((1, 3, 1))
@@ -205,7 +205,7 @@ def test_california_housing_model_multi_dim_tensor(
 
 
 def test_california_housing_model_float(
-    california_test_x_dict: Dict[str, torch.Tensor],
+    california_test_x_dict,
     california_model_kwargs: Dict[str, Union[List, Dict, str]],
 ):
     args = deepcopy(california_model_kwargs)
@@ -228,7 +228,7 @@ def test_california_housing_model_float(
 
 
 def test_california_housing_model_shuffled_input(
-    california_test_x_dict: Dict[str, torch.Tensor], cal_model: PyTorchModel
+    california_test_x_dict, cal_model
 ):
     shuffled_input = deepcopy(california_test_x_dict)
     l = list(shuffled_input.items())
@@ -253,16 +253,16 @@ def test_california_housing_model_shuffled_input(
 @pytest.mark.parametrize(
     "test_idx,expected",
     [
-        (0, torch.tensor(4.063651, dtype=torch.double)),
-        (1, torch.tensor(2.7774928, dtype=torch.double)),
-        (2, torch.tensor(2.792812, dtype=torch.double)),
+        (0, 4.063651),
+        (1, 2.7774928),
+        (2, 2.792812),
     ],
 )
 def test_california_housing_model_execution_diff_values(
     test_idx: int,
-    expected: torch.Tensor,
-    california_test_x: torch.Tensor,
-    cal_model: PyTorchModel,
+    expected,
+    california_test_x,
+    cal_model,
 ):
     test_input = {
         key: california_test_x[test_idx][idx]
@@ -271,10 +271,10 @@ def test_california_housing_model_execution_diff_values(
 
     results = cal_model.evaluate(test_input)
 
-    assert torch.isclose(results["MedHouseVal"], expected)
+    assert results["MedHouseVal"].item() == pytest.approx(expected)
     assert_variables_updated(
         test_input["HouseAge"].item(),
-        expected.item(),
+        expected,
         cal_model,
         "HouseAge",
         "MedHouseVal",
@@ -282,7 +282,7 @@ def test_california_housing_model_execution_diff_values(
 
 
 def test_california_housing_model_execution_no_transformation(
-    california_test_x_dict: Dict[str, torch.Tensor],
+    california_test_x_dict,
     california_model_kwargs: Dict[str, Union[List, Dict, str]],
 ):
     # if we don't pass in an output transformer, we expect to get the untransformed
@@ -305,9 +305,7 @@ def test_california_housing_model_execution_no_transformation(
     )
 
 
-def test_differentiability(
-    california_test_x_dict: Dict[str, torch.Tensor], cal_model: PyTorchModel
-):
+def test_differentiability(california_test_x_dict, cal_model):
     differentiable_dict = deepcopy(california_test_x_dict)
     for value in differentiable_dict.values():
         value.requires_grad = True
