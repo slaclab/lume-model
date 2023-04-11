@@ -32,6 +32,7 @@ setup(
         "dev": dev_requirements,
         "docs": docs_requirements,
         "keras": ["tensorflow"],
+        "torch": ["botorch"],
     },
     url="https://github.com/slaclab/lume-model",
     include_package_data=True,

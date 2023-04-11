@@ -29,7 +29,7 @@ test:
   requires:
     - pytest
   commands:
-    - py.test --pyargs lume_model
+    - pytest -ra --pyargs tests
 
 about:
   home: https://github.com/slaclab/lume-model
