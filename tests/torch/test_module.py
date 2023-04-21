@@ -36,31 +36,35 @@ Things to Test
 - [x] predicting multiple outputs in the LUMEModule returns the expected shape
     (.., n_samples, n_outputs)
 """
-y_test = torch.tensor(
-    [4.063651, 2.7774928, 2.792812], dtype=torch.double, requires_grad=True
-)
 
+try:
+    y_test = torch.tensor(
+        [4.063651, 2.7774928, 2.792812], dtype=torch.double, requires_grad=True
+    )
 
-class MultipleLUMEModule(LUMEModule):
-    def __init__(
-        self,
-        model,
-        gp_input_names: List[str] = ...,
-        gp_outcome_names: List[str] = ...,
-        multiple=2,
-    ):
-        super().__init__(
+    class MultipleLUMEModule(LUMEModule):
+        def __init__(
+            self,
             model,
-            gp_input_names,
-            gp_outcome_names,
-        )
-        self.multiple = multiple
+            gp_input_names: List[str] = ...,
+            gp_outcome_names: List[str] = ...,
+            multiple=2,
+        ):
+            super().__init__(
+                model,
+                gp_input_names,
+                gp_outcome_names,
+            )
+            self.multiple = multiple
 
-    def manipulate_outcome(self, y_model: Dict[str, torch.Tensor]):
-        y_model[f"{str(self.multiple)}_MedHouseVal"] = (
-            y_model["MedHouseVal"] * self.multiple
-        )
-        return y_model
+        def manipulate_outcome(self, y_model: Dict[str, torch.Tensor]):
+            y_model[f"{str(self.multiple)}_MedHouseVal"] = (
+                y_model["MedHouseVal"] * self.multiple
+            )
+            return y_model
+
+except NameError:
+    pass
 
 
 def test_differentiable(california_test_x, cal_model):
