@@ -72,7 +72,7 @@ class LUMEModule(torch.nn.Module):
 
     def _dictionary_to_tensor(self, y_model: Dict[str, torch.Tensor]):
         output_tensor = torch.stack(
-            [y_model[outcome] for outcome in self._output_order]
+            [y_model[outcome].unsqueeze(-1) for outcome in self._output_order], dim=-1
         )
         return output_tensor.squeeze()
 
