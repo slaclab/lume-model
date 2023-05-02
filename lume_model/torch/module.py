@@ -7,7 +7,12 @@ from lume_model.torch import PyTorchModel
 
 
 class LUMEModule(torch.nn.Module):
-    """Wrapper to allow a LUME PyTorchModel to be used as a torch Module"""
+    """Wrapper to allow a LUME PyTorchModel to be used as a torch Module.
+
+    It is assumed that these models will not be trained and will instead be updated
+    by additional calibration layers. Therefore we set requires_grad as false and
+    use the model in .eval() mode.
+    """
 
     def __init__(
         self,
@@ -29,7 +34,9 @@ class LUMEModule(torch.nn.Module):
         self._model = model
         self._feature_order = feature_order
         self._output_order = output_order
+        self._model.model.eval()
         self.requires_grad = False
+        self.eval()
 
     @property
     def feature_order(self):

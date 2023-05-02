@@ -13,7 +13,12 @@ logger = logging.getLogger(__name__)
 class PyTorchModel(BaseModel):
     """The PyTorchModel class is used for the loading and evaluation of online models.
     It is  designed to implement the general behaviors expected for models used with
-    the pytorch lume-model tool kit."""
+    the pytorch lume-model tool kit.
+
+    It is assumed that these models will not be trained and will instead be updated
+    by additional calibration layers. Therefore we set requires_grad as false and
+    use the model in .eval() mode.
+    """
 
     def __init__(
         self,
@@ -46,8 +51,6 @@ class PyTorchModel(BaseModel):
             output_order: List[str]: list containing the names of outputs in the
                 order the model produces them
 
-        TODO: make list of Transformer objects into botorch ChainedInputTransform?
-
         """
         super(BaseModel, self).__init__()
 
@@ -72,6 +75,7 @@ class PyTorchModel(BaseModel):
 
         self._model = torch.load(model_file).double()
         self._model.eval()
+        self._model.requires_grad = False
 
         self._feature_order = feature_order
         self._output_order = output_order
@@ -94,6 +98,10 @@ class PyTorchModel(BaseModel):
             # if there's no order specified, we assume it's the same as the
             # order passed in the variables.yml file
             return list(self.output_variables.keys())
+
+    @property
+    def model(self):
+        return self._model
 
     @property
     def input_transformers(self):
