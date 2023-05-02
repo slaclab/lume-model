@@ -29,6 +29,7 @@ class LUMEModule(torch.nn.Module):
         self._model = model
         self._feature_order = feature_order
         self._output_order = output_order
+        self.requires_grad = False
 
     @property
     def feature_order(self):
