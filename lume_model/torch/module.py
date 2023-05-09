@@ -1,7 +1,6 @@
-from typing import Dict, List, Union
+from typing import Dict, List
 
 import torch
-from gpytorch.means import Mean
 
 from lume_model.torch import PyTorchModel
 
@@ -9,9 +8,9 @@ from lume_model.torch import PyTorchModel
 class LUMEModule(torch.nn.Module):
     """Wrapper to allow a LUME PyTorchModel to be used as a torch Module.
 
-    It is assumed that these models will not be trained and will instead be updated
-    by additional calibration layers. Therefore we set requires_grad as false and
-    use the model in .eval() mode.
+    By default the torch Module within the PyTorchModel is assumed to be frozen
+    when we first instantiate the LUMEModule but this behaviour can be overridden
+    by setting the `trainable` flag.
     """
 
     def __init__(
@@ -34,8 +33,8 @@ class LUMEModule(torch.nn.Module):
         self._model = model
         self._feature_order = feature_order
         self._output_order = output_order
-        self._model.model.eval()
-        self.requires_grad = False
+        self.register_module("base_model", self._model.model)
+        self.requires_grad_(False)
         self.eval()
 
     @property
