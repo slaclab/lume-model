@@ -25,6 +25,7 @@ class PyTorchModel(BaseModel):
         output_format: Optional[Dict[str, str]] = {"type": "tensor"},
         feature_order: Optional[list] = None,
         output_order: Optional[list] = None,
+        device: Optional[str] = "cpu",
     ) -> None:
         """Initializes the model, stores inputs/outputs and determines the format
         in which the model results will be output.
@@ -45,6 +46,7 @@ class PyTorchModel(BaseModel):
                 order in which they are passed to the model
             output_order: List[str]: list containing the names of outputs in the
                 order the model produces them
+            device (Optional[str]): Device on which model evaluation will take place.
 
         TODO: make list of Transformer objects into botorch ChainedInputTransform?
 
@@ -61,17 +63,18 @@ class PyTorchModel(BaseModel):
         self.output_variables = output_variables
         self._model_file = model_file
         self._output_format = output_format
+        self.device = device
 
-        # make sure all of the transformers are in eval mode
+        # make sure all of the transformers are in eval mode and on device
         self._input_transformers = input_transformers
-        for transformer in self._input_transformers:
-            transformer.eval()
         self._output_transformers = output_transformers
-        for transformer in self._output_transformers:
+        for transformer in self._input_transformers + self._output_transformers:
             transformer.eval()
+            transformer.to(self.device)
 
         self._model = torch.load(model_file).double()
         self._model.eval()
+        self._model.to(self.device)
 
         self._feature_order = feature_order
         self._output_order = output_order
@@ -219,7 +222,7 @@ class PyTorchModel(BaseModel):
                 """
             )
         else:
-            return default_tensor
+            return default_tensor.to(self.device)
 
     def _transform_inputs(self, input_values: torch.Tensor) -> torch.Tensor:
         """
