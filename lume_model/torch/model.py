@@ -25,7 +25,7 @@ class PyTorchModel(BaseModel):
         output_format: Optional[Dict[str, str]] = {"type": "tensor"},
         feature_order: Optional[list] = None,
         output_order: Optional[list] = None,
-        device: Optional[str] = "cpu",
+        device: Optional[Union[torch.device, str]] = "cpu",
     ) -> None:
         """Initializes the model, stores inputs/outputs and determines the format
         in which the model results will be output.
@@ -46,7 +46,8 @@ class PyTorchModel(BaseModel):
                 order in which they are passed to the model
             output_order: List[str]: list containing the names of outputs in the
                 order the model produces them
-            device (Optional[str]): Device on which model evaluation will take place.
+            device (Optional[Union[torch.device, str]]): Device on which the
+              model will be evaluated. Defaults to "cpu".
 
         TODO: make list of Transformer objects into botorch ChainedInputTransform?
 
@@ -335,3 +336,14 @@ class PyTorchModel(BaseModel):
             self.output_variables[variable.name].y_max = predicted_output[
                 self.output_variables[variable.name].y_max_variable
             ].item()
+
+    def to(self, device: Union[torch.device, str]):
+        """Updates the device for the model and transformers.
+
+        Args:
+            device: Device on which the model will be evaluated.
+        """
+        self._model.to(device)
+        for transformer in self._input_transformers + self._output_transformers:
+            transformer.to(device)
+        self.device = device
