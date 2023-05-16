@@ -55,16 +55,17 @@ class PyTorchModel(BaseModel):
         super(BaseModel, self).__init__()
 
         # Save init
+        self.device = device
         self.input_variables = input_variables
         self.default_values = torch.tensor(
             [var.default for var in input_variables.values()],
             dtype=torch.double,
             requires_grad=True,
+            device=device
         )
         self.output_variables = output_variables
         self._model_file = model_file
         self._output_format = output_format
-        self.device = device
 
         # make sure all of the transformers are in eval mode and on device
         self._input_transformers = input_transformers
@@ -171,17 +172,18 @@ class PyTorchModel(BaseModel):
         for var_name, var in input_variables.items():
             if isinstance(var, InputVariable):
                 model_vals[var_name] = torch.tensor(
-                    var.value, dtype=torch.double, requires_grad=True
+                    var.value, dtype=torch.double, requires_grad=True,
+                    device=self.device
                 )
                 self.input_variables[var_name].value = var.value
             elif isinstance(var, float):
                 model_vals[var_name] = torch.tensor(
-                    var, dtype=torch.double, requires_grad=True
+                    var, dtype=torch.double, requires_grad=True,
+                    device=self.device
                 )
                 self.input_variables[var_name].value = var
             elif isinstance(var, torch.Tensor):
-                var = var.double()
-                var = var.squeeze()
+                var = var.double().squeeze().to(self.device)
                 if not var.requires_grad:
                     var.requires_grad = True
                 model_vals[var_name] = var
@@ -223,7 +225,7 @@ class PyTorchModel(BaseModel):
                 """
             )
         else:
-            return default_tensor.to(self.device)
+            return default_tensor
 
     def _transform_inputs(self, input_values: torch.Tensor) -> torch.Tensor:
         """
