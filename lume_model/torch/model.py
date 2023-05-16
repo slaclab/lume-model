@@ -61,7 +61,7 @@ class PyTorchModel(BaseModel):
             [var.default for var in input_variables.values()],
             dtype=torch.double,
             requires_grad=True,
-            device=device
+            device=self.device
         )
         self.output_variables = output_variables
         self._model_file = model_file
@@ -340,7 +340,7 @@ class PyTorchModel(BaseModel):
             ].item()
 
     def to(self, device: Union[torch.device, str]):
-        """Updates the device for the model and transformers.
+        """Updates the device for the model, transformers and default values.
 
         Args:
             device: Device on which the model will be evaluated.
@@ -348,4 +348,5 @@ class PyTorchModel(BaseModel):
         self._model.to(device)
         for transformer in self._input_transformers + self._output_transformers:
             transformer.to(device)
+        self.default_values = self.default_values.to(device)
         self.device = device
