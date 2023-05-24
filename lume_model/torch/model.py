@@ -60,23 +60,23 @@ class PyTorchModel(BaseModel):
         self.default_values = torch.tensor(
             [var.default for var in input_variables.values()],
             dtype=torch.double,
-            requires_grad=True,
-            device=self.device
+            requires_grad=True
         )
         self.output_variables = output_variables
         self._model_file = model_file
         self._output_format = output_format
 
-        # make sure all of the transformers are in eval mode and on device
+        # make sure all of the transformers are in eval mode
         self._input_transformers = input_transformers
         self._output_transformers = output_transformers
         for transformer in self._input_transformers + self._output_transformers:
             transformer.eval()
-            transformer.to(self.device)
 
         self._model = torch.load(model_file).double()
         self._model.eval()
-        self._model.to(self.device)
+
+        # move model, transformers and default values to device
+        self.to(self.device)
 
         self._feature_order = feature_order
         self._output_order = output_order
