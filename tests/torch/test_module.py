@@ -73,6 +73,10 @@ try:
             return y_model
 
 except NameError:
+    # if torch isn't installed then we won't be able to inherit from LUMEModel,
+    # doing so will throw an error. In this case we don't create the class and
+    # let the try/excepts in the tests allow pytest to skip the tests if torch
+    # isn't installed.
     pass
 
 

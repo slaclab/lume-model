@@ -15,9 +15,8 @@ class PyTorchModel(BaseModel):
     It is  designed to implement the general behaviors expected for models used with
     the pytorch lume-model tool kit.
 
-    It is assumed that these models will not be trained and will instead be updated
-    by additional calibration layers. Therefore we set requires_grad as false and
-    use the model in .eval() mode.
+    By default we assume that these models are 'frozen' so we set requires_grad as
+    false and use the model in .eval() mode.
     """
 
     def __init__(
