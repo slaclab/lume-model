@@ -66,9 +66,15 @@ class PyTorchModel(BaseModel):
         self._model_file = model_file
         self._output_format = output_format
 
-        # make sure all of the transformers are in eval mode
+        # make sure transformers are passed as lists
+        if not isinstance(input_transformers, list) or not isinstance(
+                output_transformers, list):
+            raise TypeError(
+                "In- and output transformers have to be passed as lists.")
         self._input_transformers = input_transformers
         self._output_transformers = output_transformers
+
+        # put all transformers in eval mode
         for transformer in self._input_transformers + self._output_transformers:
             transformer.eval()
 
