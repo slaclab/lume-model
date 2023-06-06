@@ -1,4 +1,5 @@
 import random
+from collections import OrderedDict
 from copy import deepcopy
 from typing import Dict, List
 
@@ -35,6 +36,14 @@ Things to Test
 - [x] test that it can be called in a GP loop
 - [x] predicting multiple outputs in the LUMEModule returns the expected shape
     (.., n_samples, n_outputs)
+- [x] on first creation the Model is frozen but if trainable flag set to True,
+    the parameters in the underlying torch module become trainable
+- [x] calling parameters in the LUMEModule should return the parameters in the
+    underlying torch module in the PyTorchModel
+- [x] calling .train() or .eval() on the LUMEModule should also affect the 
+    pre-trained model
+- [x] if requires grad is set to False, none of the parameters update during
+    a training loop (and vice versa)
 """
 
 try:
@@ -64,6 +73,10 @@ try:
             return y_model
 
 except NameError:
+    # if torch isn't installed then we won't be able to inherit from LUMEModel,
+    # doing so will throw an error. In this case we don't create the class and
+    # let the try/excepts in the tests allow pytest to skip the tests if torch
+    # isn't installed.
     pass
 
 
@@ -277,3 +290,166 @@ def test_gp_loop(california_test_x, cal_model):
     # before training the GP should just predict the custom mean value
     # for the posterior
     assert all(torch.isclose(mean, y_test))
+
+
+def test_trainable(cal_model):
+    custom_mean = LUMEModule(
+        cal_model,
+        cal_model.features,
+        cal_model.outputs,
+    )
+    # by default, the model is set to be not trainable
+    for param in custom_mean.parameters():
+        assert param.requires_grad is False
+    for param in custom_mean._model.model.parameters():
+        assert param.requires_grad is False
+
+    # if we enforce trainability in the module this should filter
+    # down to the pytorch model within the LUMEModule
+    custom_mean.requires_grad_(True)
+    for param in custom_mean.parameters():
+        assert param.requires_grad is True
+    for param in custom_mean._model.model.parameters():
+        assert param.requires_grad is True
+
+
+def test_parameters(cal_model):
+    custom_mean = LUMEModule(
+        cal_model,
+        cal_model.features,
+        cal_model.outputs,
+    )
+    assert len(list(custom_mean.parameters())) == len(
+        list(custom_mean._model.model.parameters())
+    )
+    params = [
+        a == b
+        for a, b in zip(custom_mean.parameters(), custom_mean._model.model.parameters())
+    ]
+    for param in params:
+        assert torch.all(param)
+
+
+def test_train_eval(cal_model):
+    custom_mean = LUMEModule(
+        cal_model,
+        cal_model.features,
+        cal_model.outputs,
+    )
+
+    # check that if we set the LUMEModule as eval() or training(), the underlying
+    # model changes as well
+    assert custom_mean.training is False
+    assert custom_mean._model.model.training is False
+    custom_mean.train()
+    assert custom_mean.training is True
+    assert custom_mean._model.model.training is True
+    custom_mean.eval()
+    assert custom_mean.training is False
+    assert custom_mean._model.model.training is False
+
+
+def test_non_trainable_loop(california_test_x, cal_model):
+    custom_mean = LUMEModule(
+        cal_model,
+        cal_model.features,
+        cal_model.outputs,
+    )
+    custom_mean.requires_grad_(False)
+
+    original_model = deepcopy(str(custom_mean._model.model.state_dict()))
+    base_model = deepcopy(
+        str(
+            OrderedDict(
+                {
+                    key.replace("base_model.", ""): value
+                    for key, value in custom_mean.state_dict().items()
+                }
+            )
+        )
+    )
+
+    optimizer = torch.optim.Adam(custom_mean.parameters())
+    loss_fn = torch.nn.MSELoss()
+    for _ in range(2):
+        custom_mean.train()
+        optimizer.zero_grad()
+        # Make predictions for this batch
+        outputs = custom_mean(california_test_x)
+
+        # Compute the loss and its gradients
+        loss = loss_fn(outputs, y_test)
+        loss.backward()
+
+        # Adjust learning weights
+        optimizer.step()
+    post_training_original_model = deepcopy(str(custom_mean._model.model.state_dict()))
+    post_training_base_model = deepcopy(
+        str(
+            OrderedDict(
+                {
+                    key.replace("base_model.", ""): value
+                    for key, value in custom_mean.state_dict().items()
+                }
+            )
+        )
+    )
+
+    assert (
+        post_training_original_model
+        == post_training_base_model
+        == original_model
+        == base_model
+    )
+
+
+def test_trainable_loop(california_test_x, cal_model):
+    custom_mean = LUMEModule(
+        cal_model,
+        cal_model.features,
+        cal_model.outputs,
+    )
+    custom_mean.requires_grad_(True)
+
+    original_model = deepcopy(str(custom_mean._model.model.state_dict()))
+    base_model = deepcopy(
+        str(
+            OrderedDict(
+                {
+                    key.replace("base_model.", ""): value
+                    for key, value in custom_mean.state_dict().items()
+                }
+            )
+        )
+    )
+
+    optimizer = torch.optim.Adam(custom_mean.parameters())
+    loss_fn = torch.nn.MSELoss()
+    for _ in range(2):
+        custom_mean.train()
+        optimizer.zero_grad()
+        # Make predictions for this batch
+        outputs = custom_mean(california_test_x)
+
+        # Compute the loss and its gradients
+        loss = loss_fn(outputs, y_test)
+        loss.backward()
+
+        # Adjust learning weights
+        optimizer.step()
+    post_training_original_model = deepcopy(str(custom_mean._model.model.state_dict()))
+    post_training_base_model = deepcopy(
+        str(
+            OrderedDict(
+                {
+                    key.replace("base_model.", ""): value
+                    for key, value in custom_mean.state_dict().items()
+                }
+            )
+        )
+    )
+
+    assert post_training_original_model == post_training_base_model
+    assert original_model == base_model
+    assert post_training_original_model != original_model
+    assert post_training_base_model != base_model
