@@ -82,7 +82,7 @@ class PyTorchModel(BaseModel):
 
         self._model = torch.load(model_file).double()
         self._model.eval()
-        self._model.requires_grad = False
+        self._model.requires_grad_(False)
 
         # move model, transformers and default values to device
         self.to(self.device)
