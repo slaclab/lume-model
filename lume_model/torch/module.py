@@ -31,6 +31,8 @@ class LUMEModule(torch.nn.Module):
         self._feature_order = feature_order
         self._output_order = output_order
         self.register_module("base_model", self._model.model)
+        if not model.model.training:  # PyTorchModel defines train/eval mode
+            self.eval()
 
     @property
     def feature_order(self):
