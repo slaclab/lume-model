@@ -57,9 +57,7 @@ class PyTorchModel(BaseModel):
         self.device = device
         self.input_variables = input_variables
         self.default_values = torch.tensor(
-            [var.default for var in input_variables.values()],
-            dtype=torch.double,
-            requires_grad=True
+            [var.default for var in input_variables.values()], dtype=torch.double
         )
         self.output_variables = output_variables
         self._model_file = model_file
@@ -175,20 +173,16 @@ class PyTorchModel(BaseModel):
         for var_name, var in input_variables.items():
             if isinstance(var, InputVariable):
                 model_vals[var_name] = torch.tensor(
-                    var.value, dtype=torch.double, requires_grad=True,
-                    device=self.device
+                    var.value, dtype=torch.double, device=self.device
                 )
                 self.input_variables[var_name].value = var.value
             elif isinstance(var, float):
                 model_vals[var_name] = torch.tensor(
-                    var, dtype=torch.double, requires_grad=True,
-                    device=self.device
+                    var, dtype=torch.double, device=self.device
                 )
                 self.input_variables[var_name].value = var
             elif isinstance(var, torch.Tensor):
                 var = var.double().squeeze().to(self.device)
-                if not var.requires_grad:
-                    var.requires_grad = True
                 model_vals[var_name] = var
                 if var.dim() == 0:
                     self.input_variables[var_name].value = var.item()
