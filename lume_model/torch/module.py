@@ -17,7 +17,7 @@ class LUMEModule(torch.nn.Module):
         self,
         model: PyTorchModel,
         feature_order: List[str] = [],
-        output_order: List[str] = [],
+        output_order: List[str] = []
     ):
         """Initializes the model, and the order the features and outputs are passed.
 
@@ -74,7 +74,8 @@ class LUMEModule(torch.nn.Module):
         )
         return output_tensor.squeeze()
 
-    def _validate_input(self, x: torch.Tensor) -> torch.Tensor:
+    @staticmethod
+    def _validate_input(x: torch.Tensor) -> torch.Tensor:
         if x.dim() <= 1:
             raise ValueError(
                 f"""Expected input dim to be at least 2 ([n_samples, n_features]), 

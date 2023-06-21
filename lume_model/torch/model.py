@@ -31,7 +31,7 @@ class PyTorchModel(BaseModel):
         output_order: Optional[List[str]] = None,
         device: Optional[Union[torch.device, str]] = "cpu",
         fixed_model: bool = True
-    ) -> None:
+    ):
         """Initializes the model.
 
         Stores inputs/outputs and determines the format in which the model results will be output.
@@ -132,7 +132,7 @@ class PyTorchModel(BaseModel):
 
     def evaluate(
         self,
-        input_variables: Dict[str, Union[InputVariable, float, torch.Tensor]],
+        input_variables: Dict[str, Union[InputVariable, float, torch.Tensor]]
     ) -> Dict[str, Union[torch.Tensor, OutputVariable, float]]:
         """Evaluates model using new input variables.
 
