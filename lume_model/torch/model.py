@@ -15,8 +15,8 @@ class PyTorchModel(BaseModel):
     It is  designed to implement the general behaviors expected for models used with
     the pytorch lume-model tool kit.
 
-    By default, we assume that these models are 'frozen' so we deactivate all gradients
-    and use the model in .eval() mode.
+    By default, we assume that these models are fixed, so we deactivate all gradients
+    and use the model in evaluation mode.
     """
 
     def __init__(
@@ -30,6 +30,7 @@ class PyTorchModel(BaseModel):
         feature_order: Optional[List[str]] = None,
         output_order: Optional[List[str]] = None,
         device: Optional[Union[torch.device, str]] = "cpu",
+        fixed_model: bool = True
     ) -> None:
         """Initializes the model.
 
@@ -49,6 +50,8 @@ class PyTorchModel(BaseModel):
                 passed to the model.
             output_order: List containing the names of outputs in the order the model
                 produces them.
+            fixed_model: If true, the model is put in evaluation mode and gradient computation
+                is deactivated.
             device: Device on which the model will be evaluated. Defaults to "cpu".
         """
         super(BaseModel, self).__init__()
@@ -75,8 +78,9 @@ class PyTorchModel(BaseModel):
             transformer.eval()
 
         self._model = torch.load(model_file).double()
-        self._model.eval()
-        self._model.requires_grad_(False)
+        if fixed_model:
+            self._model.eval()
+            self._model.requires_grad_(False)
 
         # move model, transformers and default values to device
         self.to(self.device)

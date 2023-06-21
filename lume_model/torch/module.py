@@ -8,9 +8,9 @@ from lume_model.torch import PyTorchModel
 class LUMEModule(torch.nn.Module):
     """Wrapper to allow a LUME PyTorchModel to be used as a torch Module.
 
-    By default, the torch Module within the PyTorchModel is assumed to be frozen
-    when we first instantiate the LUMEModule but this behaviour can be overridden
-    by setting the `trainable` flag.
+    As the model within the PyTorchModel is assumed to be fixed during instantiation,
+    so is the LUMEModule. Gradient computation can be retained by setting the fixed_model
+    flag to False when creating the PyTorchModel.
     """
 
     def __init__(
@@ -31,8 +31,6 @@ class LUMEModule(torch.nn.Module):
         self._feature_order = feature_order
         self._output_order = output_order
         self.register_module("base_model", self._model.model)
-        self.requires_grad_(False)
-        self.eval()
 
     @property
     def feature_order(self):
