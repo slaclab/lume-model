@@ -4,6 +4,6 @@ channels:
   - conda-forge
 dependencies:
   - python=3.9
-  - pydantic>=1.9
+  - pydantic==1.10.9
   - numpy
   - pyyaml
