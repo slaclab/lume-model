@@ -16,10 +16,10 @@ requirements:
     - python
     - setuptools
     - pip
-    - pydantic
+    - pydantic==1.10.9
   run:
     - python
-    - pydantic
+    - pydantic==1.10.9
     - numpy
     - pyyaml
 
