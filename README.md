@@ -4,7 +4,7 @@ LUME-model holds data structures used in the LUME modeling toolset. Variables an
 
 ## Requirements
 
-* Python >= 3.7
+* Python >= 3.9
 * pydantic
 * numpy
 
