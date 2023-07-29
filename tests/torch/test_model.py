@@ -127,7 +127,7 @@ def test_model_from_objects(
 
 
 def test_model_from_torch_module(
-        california_base_model: torch.nn.Module,
+        california_base_model,
         california_model_kwargs: Dict[str, Union[List, Dict, str]],
 ):
     model_from_file = PyTorchModel(**california_model_kwargs)
