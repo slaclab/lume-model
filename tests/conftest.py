@@ -81,6 +81,7 @@ def california_transformers(rootdir):
 
 @pytest.fixture
 def california_base_model(rootdir: str) -> torch.nn.Module:
+    torch = pytest.importorskip("torch")
     model_file = f"{rootdir}/test_files/california_regression/california_regression.pt"
     base_model = torch.load(model_file).double()
     return base_model
