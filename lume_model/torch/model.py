@@ -263,7 +263,7 @@ class PyTorchModel(BaseModel):
             model_output: Transformed output from NN model.
 
         Returns:
-            Dictionary of output variable name to output value.
+            Tensor of output variables untransformed to real units.
         """
         # NOTE if we have shape [50,3,1] coming out of the model, our output
         # dictionary should have shape [50,3]
