@@ -1,6 +1,6 @@
 model:
   kwargs:
-    model_file: tests/test_files/california_regression/california_regression.pt
+    model: tests/test_files/california_regression/california_regression.pt
   model_class: lume_model.torch.PyTorchModel
   model_info: tests/test_files/california_regression/model_info.json
   output_format:

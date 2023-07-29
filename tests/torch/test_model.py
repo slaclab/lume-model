@@ -126,6 +126,16 @@ def test_model_from_objects(
     assert cal_model.output_transformers == [output_transformer]
 
 
+def test_model_from_torch_module(
+        california_base_model: torch.nn.Module,
+        california_model_kwargs: Dict[str, Union[List, Dict, str]],
+):
+    model_from_file = PyTorchModel(**california_model_kwargs)
+    kwargs = {k: v for k, v in california_model_kwargs.items() if not k == "model"}
+    model_from_torch = PyTorchModel(model=california_base_model, **kwargs)
+    assert str(model_from_file._model.state_dict()) == str(model_from_torch._model.state_dict())
+
+
 def test_california_housing_model_variable(
     california_test_x_dict,
     california_model_kwargs: Dict[str, Union[List, Dict, str]],

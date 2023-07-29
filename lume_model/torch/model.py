@@ -21,7 +21,7 @@ class PyTorchModel(BaseModel):
 
     def __init__(
         self,
-        model_file: str,
+        model: Union[torch.nn.Module, str],
         input_variables: Dict[str, InputVariable],
         output_variables: Dict[str, OutputVariable],
         input_transformers: Optional[List[ReversibleInputTransform]] = [],
@@ -37,7 +37,7 @@ class PyTorchModel(BaseModel):
         Stores inputs/outputs and determines the format in which the model results will be output.
 
         Args:
-            model_file: Path to model file generated with torch.save().
+            model: A PyTorch model or path to a model file which can be loaded with torch.load().
             input_variables: List of model input variables.
             output_variables: list of model output variables.
             input_transformers: List of transformer objects to apply to input before passing
@@ -63,7 +63,6 @@ class PyTorchModel(BaseModel):
             [var.default for var in input_variables.values()], dtype=torch.double
         )
         self.output_variables = output_variables
-        self._model_file = model_file
         self._output_format = output_format
 
         # make sure transformers are passed as lists
@@ -77,7 +76,10 @@ class PyTorchModel(BaseModel):
         for transformer in self._input_transformers + self._output_transformers:
             transformer.eval()
 
-        self._model = torch.load(model_file).double()
+        if isinstance(model, torch.nn.Module):
+            self._model = model.double()
+        else:
+            self._model = torch.load(model).double()
         if fixed_model:
             self._model.eval()
             self._model.requires_grad_(False)
