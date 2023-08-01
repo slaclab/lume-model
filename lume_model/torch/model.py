@@ -11,12 +11,11 @@ logger = logging.getLogger(__name__)
 
 
 class PyTorchModel(BaseModel):
-    """The PyTorchModel class is used for the loading and evaluation of online models.
-    It is  designed to implement the general behaviors expected for models used with
-    the pytorch lume-model tool kit.
+    """The PyTorchModel class is used for the loading and evaluation of online models. It is designed to
+    implement the general behaviors expected for models used with the PyTorch lume-model tool kit.
 
-    By default, we assume that these models are fixed, so we deactivate all gradients
-    and use the model in evaluation mode.
+    By default, the models are assumed to be fixed, so all gradient computation is deactivated and the model and
+    transformers are put in evaluation mode.
     """
 
     def __init__(
@@ -40,23 +39,21 @@ class PyTorchModel(BaseModel):
             model: A PyTorch model or path to a model file which can be loaded with torch.load().
             input_variables: List of model input variables.
             output_variables: list of model output variables.
-            input_transformers: List of transformer objects to apply to input before passing
-                to model.
+            input_transformers: List of transformer objects to apply to input before passing to model.
             output_transformers: List of transformer objects to apply to output of model.
-            output_format: Wrapper for interpreting outputs. This now handles raw or softmax values,
-                but should be expanded to accommodate miscellaneous functions. Now, dictionary
-                should look like: {"type": Literal["raw", "string", "tensor", "variable"]}.
-            feature_order: List containing the names of features in the order in which they are
-                passed to the model.
-            output_order: List containing the names of outputs in the order the model
-                produces them.
-            fixed_model: If true, the model is put in evaluation mode and gradient computation
-                is deactivated.
+            output_format: Wrapper for interpreting outputs. This now handles raw or softmax values, but should
+              be expanded to accommodate miscellaneous functions. Now, dictionary should look like:
+              {"type": Literal["raw", "string", "tensor", "variable"]}.
+            feature_order: List containing the names of features in the order in which they are passed to
+              the model.
+            output_order: List containing the names of outputs in the order the model produces them.
+            fixed_model: If true, the model and transformers are put in evaluation mode and all gradient
+              computation is deactivated.
             device: Device on which the model will be evaluated. Defaults to "cpu".
         """
         super(BaseModel, self).__init__()
 
-        # Save init
+        # save init
         self.device = device
         self.input_variables = input_variables
         self.default_values = torch.tensor(
@@ -64,6 +61,14 @@ class PyTorchModel(BaseModel):
         )
         self.output_variables = output_variables
         self._output_format = output_format
+        self._feature_order = feature_order
+        self._output_order = output_order
+
+        # load model
+        if isinstance(model, torch.nn.Module):
+            self._model = model.double()
+        else:
+            self._model = torch.load(model).double()
 
         # make sure transformers are passed as lists
         if not isinstance(input_transformers, list) or not isinstance(
@@ -72,31 +77,23 @@ class PyTorchModel(BaseModel):
         self._input_transformers = input_transformers
         self._output_transformers = output_transformers
 
-        # put all transformers in eval mode
-        for transformer in self._input_transformers + self._output_transformers:
-            transformer.eval()
-
-        if isinstance(model, torch.nn.Module):
-            self._model = model.double()
-        else:
-            self._model = torch.load(model).double()
+        # deactivate all gradient computation and put full model in evaluation mode
         if fixed_model:
             self._model.eval()
             self._model.requires_grad_(False)
+            for transformer in self._input_transformers + self._output_transformers:
+                transformer.requires_grad_(False)
+                transformer.eval()
 
         # move model, transformers and default values to device
         self.to(self.device)
-
-        self._feature_order = feature_order
-        self._output_order = output_order
 
     @property
     def features(self):
         if self._feature_order is not None:
             return self._feature_order
         else:
-            # if there's no specified order, we make the assumption that the variables were passed
-            # in the desired order in the configuration file
+            # if None, list of keys in input_variables determines order of features
             return list(self.input_variables.keys())
 
     @property
@@ -104,8 +101,7 @@ class PyTorchModel(BaseModel):
         if self._output_order is not None:
             return self._output_order
         else:
-            # if there's no order specified, we assume it's the same as the order passed in the
-            # variables.yml file
+            # if None, list of keys in output_variables determines order of outputs
             return list(self.output_variables.keys())
 
     @property
@@ -133,10 +129,14 @@ class PyTorchModel(BaseModel):
         self._output_transformers.insert(loc, transformer)
 
     def evaluate(
-        self,
-        input_variables: Dict[str, Union[InputVariable, float, torch.Tensor]]
+            self,
+            input_variables: Dict[str, Union[InputVariable, float, torch.Tensor]],
     ) -> Dict[str, Union[torch.Tensor, OutputVariable, float]]:
         """Evaluates model using new input variables.
+
+        All PyTorch models will follow the same process: The inputs are formatted and converted to model
+        features. Then they are passed through the model, and transformed again on the other side. The final
+        dictionary is then converted into a useful form.
 
         Args:
             input_variables: List of updated input variables.
@@ -144,10 +144,6 @@ class PyTorchModel(BaseModel):
         Returns:
             Dictionary mapping variable names to outputs.
         """
-        # all PyTorch models will follow the same process, the inputs are formatted,
-        # then converted to model features. Then they are passed through the model,
-        # and transformed again on the other side. The final dictionary is then converted
-        # into a useful form
         input_vals = self._prepare_inputs(input_variables)
         input_vals = self._arrange_inputs(input_vals)
         features = self._transform_inputs(input_vals)
@@ -159,22 +155,22 @@ class PyTorchModel(BaseModel):
         return output
 
     def _prepare_inputs(
-        self, input_variables: Dict[str, Union[InputVariable, float, torch.Tensor]]
+            self,
+            input_variables: Dict[str, Union[InputVariable, float, torch.Tensor]],
     ) -> Dict[str, torch.Tensor]:
         """Prepares inputs to pass them to the transformers.
 
-        Prepares the input variables dictionary as a format appropriate to be passed to the
-        transformers and updates the stored InputVariables with new values.
+        Prepares the input variables dictionary as a format appropriate to be passed to the transformers and
+        updates the stored InputVariables with new values.
 
         Args:
             input_variables: Dictionary of input variable names to variables in any format
-                (InputVariable or raw values).
+              (InputVariable or raw values).
 
         Returns:
             Dictionary of input variable values to be passed to the transformers.
         """
-        # NOTE we only update the input variable if we receive a singular value, otherwise we
-        # don't know which value to assign so we just leave it
+        # NOTE: The input variable is only updated if a singular value is given (ambiguous otherwise)
         model_vals = {}
         for var_name, var in input_variables.items():
             if isinstance(var, InputVariable):
@@ -202,9 +198,9 @@ class PyTorchModel(BaseModel):
     def _arrange_inputs(self, input_variables: Dict[str, torch.Tensor]) -> torch.Tensor:
         """Enforces order of input variables.
 
-        Enforces the order of the input variables to be passed to the transformers
-        and models and updates the model with default values for any features that
-        are missing, maintaining the shape of the incoming features.
+        Enforces the order of the input variables to be passed to the transformers and models and updates the
+        model with default values for any features that are missing, maintaining the shape of the incoming
+        features.
 
         Args:
             input_variables: Dictionary of input variable names to raw values of inputs.
@@ -249,7 +245,7 @@ class PyTorchModel(BaseModel):
             model_output: Tensor of outputs from the model.
 
         Returns:
-            Dictionary of variable name to tensor of untransformed output variables.
+            Tensor of output variables untransformed to real units.
         """
         # NOTE do we need to sort these to reverse them?
         for transformer in self._output_transformers:
@@ -260,13 +256,12 @@ class PyTorchModel(BaseModel):
         """Constructs dictionary from model outputs.
 
         Args:
-            model_output: Transformed output from NN model.
+            model_output: Transformed output from the model.
 
         Returns:
-            Tensor of output variables untransformed to real units.
+            Dictionary of output names to tensors of output variables untransformed to real units.
         """
-        # NOTE if we have shape [50,3,1] coming out of the model, our output
-        # dictionary should have shape [50,3]
+        # NOTE: If shape is [50,3,1] coming out of the model, output dictionary should have shape [50,3].
         output = {}
         if model_output.dim() == 1 or model_output.dim() == 0:
             model_output = model_output.unsqueeze(0)
@@ -275,28 +270,26 @@ class PyTorchModel(BaseModel):
         return output
 
     def _prepare_outputs(
-        self, predicted_output: Dict[str, torch.Tensor]
+            self,
+            predicted_output: Dict[str, torch.Tensor],
     ) -> Dict[str, Union[OutputVariable, torch.Tensor]]:
         """Updates and returns outputs according to _output_format.
 
-        Updates the output variables within the model to reflect the new values
-        if we only have a singular data point.
+        Updates the output variables within the model to reflect the new values if we only have a singular
+        data point.
 
         Args:
-            predicted_output: Dictionary of output variable name to value.
+            predicted_output: Dictionary of output variable names to values.
 
         Returns:
-            Dictionary of output variable name to output tensor or OutputVariable depending
-            on model's _output_format.
+            Dictionary of output variables depending on model's _output_format.
         """
         for variable in self.output_variables.values():
             if predicted_output[variable.name].dim() == 0:
                 if variable.variable_type == "scalar":
-                    self.output_variables[variable.name].value = \
-                        predicted_output[variable.name].item()
+                    self.output_variables[variable.name].value = predicted_output[variable.name].item()
                 elif variable.variable_type == "image":
-                    # OutputVariables should be numpy arrays so we need to convert
-                    # the tensor to a numpy array
+                    # OutputVariables should be numpy arrays
                     self.output_variables[variable.name].value = (
                         predicted_output[variable.name].reshape(variable.shape).numpy()
                     )
@@ -310,9 +303,9 @@ class PyTorchModel(BaseModel):
             return {key: var.value for key, var in self.output_variables.items()}
 
     def _update_image_limits(
-        self, variable: OutputVariable, predicted_output: Dict[str, torch.Tensor]
+            self,
+            variable: OutputVariable, predicted_output: Dict[str, torch.Tensor],
     ):
-        # update limits
         if self.output_variables[variable.name].x_min_variable:
             self.output_variables[variable.name].x_min = predicted_output[
                 self.output_variables[variable.name].x_min_variable
