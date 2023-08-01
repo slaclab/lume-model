@@ -23,8 +23,8 @@ class PyTorchModel(BaseModel):
         model: Union[torch.nn.Module, str],
         input_variables: Dict[str, InputVariable],
         output_variables: Dict[str, OutputVariable],
-        input_transformers: Optional[List[ReversibleInputTransform]] = [],
-        output_transformers: Optional[List[ReversibleInputTransform]] = [],
+        input_transformers: Optional[List[ReversibleInputTransform]] = None,
+        output_transformers: Optional[List[ReversibleInputTransform]] = None,
         output_format: Optional[Dict[str, str]] = {"type": "tensor"},
         feature_order: Optional[List[str]] = None,
         output_order: Optional[List[str]] = None,
@@ -71,6 +71,10 @@ class PyTorchModel(BaseModel):
             self._model = torch.load(model).double()
 
         # make sure transformers are passed as lists
+        if input_transformers is None:
+            input_transformers = []
+        if output_transformers is None:
+            output_transformers = []
         if not isinstance(input_transformers, list) or not isinstance(
                 output_transformers, list):
             raise TypeError("In- and output transformers have to be passed as lists.")
