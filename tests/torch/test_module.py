@@ -358,18 +358,13 @@ def test_non_trainable_loop(california_test_x, cal_model):
     custom_mean.requires_grad_(False)
 
     original_model = deepcopy(str(custom_mean._model.model.state_dict()))
-    base_model = deepcopy(
-        str(
-            OrderedDict(
-                {
-                    key.replace("base_model.", ""): value
-                    for key, value in custom_mean.state_dict().items()
-                }
-            )
-        )
-    )
+    base_model_dict = {
+        k.replace("base_model.", ""): v for k, v in custom_mean.state_dict().items() if
+        not k.startswith(("input_transformer", "output_transformer"))
+    }
+    base_model = deepcopy(str(OrderedDict(base_model_dict)))
 
-    optimizer = torch.optim.Adam(custom_mean.parameters())
+    optimizer = torch.optim.Adam(custom_mean._model.model.parameters())
     loss_fn = torch.nn.MSELoss()
     for _ in range(2):
         custom_mean.train()
@@ -384,16 +379,11 @@ def test_non_trainable_loop(california_test_x, cal_model):
         # Adjust learning weights
         optimizer.step()
     post_training_original_model = deepcopy(str(custom_mean._model.model.state_dict()))
-    post_training_base_model = deepcopy(
-        str(
-            OrderedDict(
-                {
-                    key.replace("base_model.", ""): value
-                    for key, value in custom_mean.state_dict().items()
-                }
-            )
-        )
-    )
+    post_training_base_model_dict = {
+        k.replace("base_model.", ""): v for k, v in custom_mean.state_dict().items() if
+        not k.startswith(("input_transformer", "output_transformer"))
+    }
+    post_training_base_model = deepcopy(str(OrderedDict(post_training_base_model_dict)))
 
     assert (
         post_training_original_model
@@ -412,18 +402,13 @@ def test_trainable_loop(california_test_x, cal_model):
     custom_mean.requires_grad_(True)
 
     original_model = deepcopy(str(custom_mean._model.model.state_dict()))
-    base_model = deepcopy(
-        str(
-            OrderedDict(
-                {
-                    key.replace("base_model.", ""): value
-                    for key, value in custom_mean.state_dict().items()
-                }
-            )
-        )
-    )
+    base_model_dict = {
+        k.replace("base_model.", ""): v for k, v in custom_mean.state_dict().items() if
+        not k.startswith(("input_transformer", "output_transformer"))
+    }
+    base_model = deepcopy(str(OrderedDict(base_model_dict)))
 
-    optimizer = torch.optim.Adam(custom_mean.parameters())
+    optimizer = torch.optim.Adam(custom_mean._model.model.parameters())
     loss_fn = torch.nn.MSELoss()
     for _ in range(2):
         custom_mean.train()
@@ -438,16 +423,11 @@ def test_trainable_loop(california_test_x, cal_model):
         # Adjust learning weights
         optimizer.step()
     post_training_original_model = deepcopy(str(custom_mean._model.model.state_dict()))
-    post_training_base_model = deepcopy(
-        str(
-            OrderedDict(
-                {
-                    key.replace("base_model.", ""): value
-                    for key, value in custom_mean.state_dict().items()
-                }
-            )
-        )
-    )
+    post_training_base_model_dict = {
+        k.replace("base_model.", ""): v for k, v in custom_mean.state_dict().items() if
+        not k.startswith(("input_transformer", "output_transformer"))
+    }
+    post_training_base_model = deepcopy(str(OrderedDict(post_training_base_model_dict)))
 
     assert post_training_original_model == post_training_base_model
     assert original_model == base_model

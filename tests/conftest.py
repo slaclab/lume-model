@@ -79,6 +79,14 @@ def california_transformers(rootdir):
     return input_transformer, output_transformer
 
 
+@pytest.fixture
+def california_base_model(rootdir: str):
+    torch = pytest.importorskip("torch")
+    model_file = f"{rootdir}/test_files/california_regression/california_regression.pt"
+    base_model = torch.load(model_file).double()
+    return base_model
+
+
 @pytest.fixture(scope="module")
 def california_model_kwargs(
     rootdir, california_model_info, california_variables, california_transformers
@@ -88,7 +96,7 @@ def california_model_kwargs(
     input_variables, output_variables = california_variables
     input_transformer, output_transformer = california_transformers
     model_kwargs = {
-        "model_file": f"{rootdir}/test_files/california_regression/california_regression.pt",
+        "model": f"{rootdir}/test_files/california_regression/california_regression.pt",
         "input_variables": input_variables,
         "output_variables": output_variables,
         "input_transformers": [input_transformer],

@@ -31,6 +31,10 @@ class LUMEModule(torch.nn.Module):
         self._feature_order = feature_order
         self._output_order = output_order
         self.register_module("base_model", self._model.model)
+        for i, input_transformer in enumerate(self._model.input_transformers):
+            self.register_module(f"input_transformer:{i}", input_transformer)
+        for i, output_transformer in enumerate(self._model.output_transformers):
+            self.register_module(f"output_transformer:{i}", output_transformer)
         if not model.model.training:  # PyTorchModel defines train/eval mode
             self.eval()
 
