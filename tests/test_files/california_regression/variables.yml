@@ -1,0 +1,43 @@
+input_variables:
+  MedInc:
+    variable_type: scalar
+    value_range: [0.4999000132083893, 15.000100135803223]
+    default: 3.7857346534729004
+    is_constant: false
+  HouseAge:
+    variable_type: scalar
+    value_range: [1.0, 52.0]
+    default: 29.282135009765625
+    is_constant: false
+  AveRooms:
+    variable_type: scalar
+    value_range: [0.8461538553237915, 141.90908813476562]
+    default: 5.4074907302856445
+    is_constant: false
+  AveBedrms:
+    variable_type: scalar
+    value_range: [0.375, 34.06666564941406]
+    default: 1.1071722507476807
+    is_constant: false
+  Population:
+    variable_type: scalar
+    value_range: [3.0, 28566.0]
+    default: 1437.0687255859375
+    is_constant: false
+  AveOccup:
+    variable_type: scalar
+    value_range: [0.692307710647583, 599.7142944335938]
+    default: 3.035413980484009
+    is_constant: false
+  Latitude:
+    variable_type: scalar
+    value_range: [32.65999984741211, 41.95000076293945]
+    default: 35.28323745727539
+    is_constant: false
+  Longitude:
+    variable_type: scalar
+    value_range: [-124.3499984741211, -114.30999755859375]
+    default: -119.11573028564453
+    is_constant: false
+output_variables:
+  MedHouseVal: {variable_type: scalar}

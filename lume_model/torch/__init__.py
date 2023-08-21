@@ -1,6 +1,5 @@
 try:
-    from .model import PyTorchModel
-    from .module import LUMEModule
+    from lume_model.torch.model import TorchModel
+    from lume_model.torch.module import TorchModule
 except ModuleNotFoundError:
-    from model import PyTorchModel
-    from lume_model.torch.module import LUMEModule
+    pass

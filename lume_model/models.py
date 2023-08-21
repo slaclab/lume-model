@@ -1,131 +1,63 @@
-"""
-This module contains the surrogate model class used for running models using
-lume-model variables. Models build using this framework will be compatible with the
-lume-epics EPICS server and associated tools. The base class is intentionally
-minimal with the purpose of extensibility and customizability to the user's
-preferred format.
+import os
+import yaml
+from typing import Any, Union
 
-Requirements for the  model:
+registered_models = []
 
-input_variables, output_variables: lume-model input and output variables are required
-for use with lume-epics tools. The user can optionally define these as class
-attributes or design the subclass so that these are passed during initialization
-(see example 2). Names of all variables must be unique in order to be served using
-the EPICS tools. A utility function for saving these variables, which also enforces
-the uniqueness constraint, is provided (lume_model.utils.save_variables).
+# models requiring torch
+try:
+    from lume_model.torch import TorchModel, TorchModule
+    registered_models += [TorchModel, TorchModule]
+except ModuleNotFoundError:
+    pass
 
-evaluate: The evaluate method is called by the serving model. Subclasses must
-implement the method, accepting a list of input variables and returning a list of the
-model's output variables with value attributes updated based on model execution.
-
-
-Example:
-    Example 1, hard coded variables:
-    ```
-    class ExampleModel(BaseModel):
-            input_variables = {
-                "input": ScalarInputVariable(name="input", default=1, range=[0.0, 5.0]),\
-            }
-
-            output_variables = {
-                "output": ScalarOutputVariable(name="output"),
-            }
-
-            def evaluate(self, input_variables):
-
-                self.input_variables = {
-                    variable.name: variable for variable in input_variables
-                }
-
-                self.output_variables["output"].value = (
-                    self.input_variables["input"].value * 2
-                )
-
-                # return input * 2
-                return list(self.output_variables.values())
-
-    ```
-
-    Example 2, variables passed during __init__:
-    ```
-    class ExampleModel(BaseModel):
-
-        def __init__(self, input_variables, output_variables):
-            self.input_variables = input_variables
-            self.output_variables = output_variables
-
-        def evaluate(self, input_variables):
-
-            self.input_variables = {
-                variable.name: variable for variable in input_variables
-            }
-
-            self.output_variables["output"].value = (
-                self.input_variables["input"].value * 2
-            )
-
-            # return input * 2
-            return list(self.output_variables.values())
-
-    ```
-
-    Example 3, load model variables from variable file (saved with lume_model.utils.save_variables):
-
-    ```
-    from lume_model.utils import load_variables
-
-    class ExampleModel(BaseModel):
-
-        def __init__(self, variable_file):
-
-            self.input_variables, self.output_variables = load_variables(variable_file)
-
-        def evaluate(self, input_variables):
-
-            self.input_variables = {
-                variable.name: variable for variable in input_variables
-            }
-
-            self.output_variables["output"].value = (
-                self.input_variables["input"].value * 2
-            )
-
-            # return input * 2
-            return list(self.output_variables.values())
-
-    ```
+# models requiring keras
+try:
+    from lume_model.keras import KerasModel
+    registered_models += [KerasModel]
+except ModuleNotFoundError:
+    pass
 
 
+def get_model(name: str):
+    """Returns the LUME model class for the given name.
 
-"""
-from abc import ABC, abstractmethod
-from typing import Dict
-import logging
-import numpy as np
+    Args:
+        name: Name of LUME model class.
 
-from lume_model.variables import InputVariable, OutputVariable
-
-logger = logging.getLogger(__name__)
-
-
-class BaseModel(ABC):
+    Returns:
+        LUME model class for the given name.
     """
-    Base class for the surrogate models that includes abstract predict method, which
-    must be initialized by children.
+    model_lookup = {m.__name__: m for m in registered_models}
+    if name not in model_lookup.keys():
+        raise KeyError(f"No model named {name}, available models are {list(model_lookup.keys())}")
+    return model_lookup[name]
 
-    Attributes:
-        input_variables (Dict[str, InputVariable]): Must be defined after __init__.
 
-        output_variables (Dict[str,  OutputVariable]): Must be defined after __init__.
+def model_from_dict(config: dict[str, Any]):
+    """Creates LUME model from the given configuration dictionary.
 
+    Args:
+        config: Model configuration dictionary.
+
+    Returns:
+        Created LUME model.
     """
+    model_class = get_model(config["model_class"])
+    return model_class(config)
 
-    @abstractmethod
-    def evaluate(self, input_variables: Dict[str, InputVariable]) -> (Dict[str,  OutputVariable]):
-        """
-        Abstract evaluate method that must be overwritten by inheriting classes.
 
-        Note:
-        Must return lume-model output variables.
-        """
-        pass
+def model_from_yaml(yaml_str: Union[str, os.PathLike]):
+    """Creates LUME model from the given YAML formatted string or file path.
+
+    Args:
+        yaml_str: YAML formatted string or file path.
+
+    Returns:
+        Created LUME model.
+    """
+    if os.path.exists(yaml_str):
+        with open(yaml_str) as f:
+            yaml_str = f.read()
+    config = yaml.safe_load(yaml_str)
+    return model_from_dict(config)
