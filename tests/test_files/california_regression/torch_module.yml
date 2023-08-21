@@ -49,6 +49,6 @@ model:
   model: tests/test_files/california_regression/model.pt
   input_transformers: [tests/test_files/california_regression/input_transformers_0.pt]
   output_transformers: [tests/test_files/california_regression/output_transformers_0.pt]
-  output_format: {type: tensor}
+  output_format: tensor
   device: cpu
   fixed_model: true

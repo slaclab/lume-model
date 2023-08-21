@@ -31,7 +31,7 @@ class TorchModel(LUMEBaseModel):
         output_variables: List defining the output variables and their order.
         input_transformers: List of transformer objects to apply to input before passing to model.
         output_transformers: List of transformer objects to apply to output of model.
-        output_format: Determines format of outputs.
+        output_format: Determines format of outputs: "tensor", "variable" or "raw".
         fixed_model: If true, the model and transformers are put in evaluation mode and all gradient
           computation is deactivated.
         device: Device on which the model will be evaluated. Defaults to "cpu".
@@ -39,7 +39,7 @@ class TorchModel(LUMEBaseModel):
     model: torch.nn.Module
     input_transformers: list[ReversibleInputTransform] = []
     output_transformers: list[ReversibleInputTransform] = []
-    output_format: dict[str, str] = {"type": "tensor"}
+    output_format: str = "tensor"
     device: Union[torch.device, str] = "cpu"
     fixed_model: bool = True
 
@@ -92,6 +92,13 @@ class TorchModel(LUMEBaseModel):
                         t = torch.load(t)
                 loaded_transformers.append(t)
             v = loaded_transformers
+        return v
+
+    @validator("output_format")
+    def validate_output_format(cls, v):
+        supported_formats = ["tensor", "variable", "raw"]
+        if v not in supported_formats:
+            raise ValueError(f"Unknown output format {v}, expected one of {supported_formats}.")
         return v
 
     def evaluate(
@@ -348,9 +355,9 @@ class TorchModel(LUMEBaseModel):
                     self.output_variables[idx].value = (parsed_outputs[var.name].reshape(var.shape).numpy())
                     self._update_image_limits(var, parsed_outputs)
 
-        if self.output_format.get("type") == "tensor":
+        if self.output_format == "tensor":
             return parsed_outputs
-        elif self.output_format.get("type") == "variable":
+        elif self.output_format == "variable":
             return {var.name: var for var in self.output_variables}
         else:
             return {var.name: var.value for var in self.output_variables}

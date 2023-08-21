@@ -97,7 +97,7 @@ class TestTorchModel:
             california_model_kwargs: dict[str, Union[list, dict, str]],
     ):
         kwargs = deepcopy(california_model_kwargs)
-        kwargs["output_format"] = {"type": "variable"}
+        kwargs["output_format"] = "variable"
         california_model = TorchModel(**kwargs)
         input_variables = deepcopy(california_model.input_variables)
         for var in input_variables:
@@ -149,7 +149,7 @@ class TestTorchModel:
             california_model_kwargs: dict[str, Union[list, dict, str]],
     ):
         kwargs = deepcopy(california_model_kwargs)
-        kwargs["output_format"] = {"type": "raw"}
+        kwargs["output_format"] = "raw"
         california_model = TorchModel(**kwargs)
         float_dict = {key: value.item() for key, value in california_test_input_dict.items()}
         results = california_model.evaluate(float_dict)

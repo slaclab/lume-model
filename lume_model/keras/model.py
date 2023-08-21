@@ -23,12 +23,12 @@ class KerasModel(LUMEBaseModel):
 
     Attributes:
         model: The keras base model.
-        output_format: Determines format of outputs.
+        output_format: Determines format of outputs: "array", "variable" or "raw".
         output_transforms: List of strings defining additional transformations applied to the outputs. For now,
           only "softmax" is supported.
     """
     model: keras.Model
-    output_format: dict[str, str] = {"type": "tensor"}
+    output_format: str = "array"
     output_transforms: list[str] = []
 
     def __init__(
@@ -50,6 +50,13 @@ class KerasModel(LUMEBaseModel):
         if isinstance(v, (str, os.PathLike)):
             if os.path.exists(v):
                 v = keras.models.load_model(v)
+        return v
+
+    @validator("output_format")
+    def validate_output_format(cls, v):
+        supported_formats = ["array", "variable", "raw"]
+        if v not in supported_formats:
+            raise ValueError(f"Unknown output format {v}, expected one of {supported_formats}.")
         return v
 
     def evaluate(
@@ -216,9 +223,9 @@ class KerasModel(LUMEBaseModel):
                     self.output_variables[idx].value = (parsed_outputs[var.name].reshape(var.shape).numpy())
                     self._update_image_limits(var, parsed_outputs)
 
-        if self.output_format.get("type") == "tensor":
+        if self.output_format == "array":
             return parsed_outputs
-        elif self.output_format.get("type") == "variable":
+        elif self.output_format == "variable":
             return {var.name: var for var in self.output_variables}
         else:
             return {var.name: var.value for var in self.output_variables}

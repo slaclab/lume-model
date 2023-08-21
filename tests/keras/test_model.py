@@ -21,7 +21,7 @@ def assert_variables_updated(
     output_name: str,
 ):
     """helper function to verify that model input_variables and output_variables
-    have been updated correctly with float values (NOT tensors)"""
+    have been updated correctly with float values (NOT arrays)"""
     assert isinstance(model.input_variables[model.input_names.index(input_name)].value, float)
     assert model.input_variables[model.input_names.index(input_name)].value == pytest.approx(input_value)
     assert isinstance(model.output_variables[model.output_names.index(output_name)].value, int)
@@ -84,7 +84,7 @@ class TestKerasModel:
             iris_test_input_dict: dict,
             iris_model_kwargs: dict[str, Union[list, dict, str]],
     ):
-        kwargs = {k: v if not k == "output_format" else {"type": "variable"} for k, v in iris_model_kwargs.items()}
+        kwargs = {k: v if not k == "output_format" else "variable" for k, v in iris_model_kwargs.items()}
         iris_model = KerasModel(**kwargs)
         input_variables = deepcopy(iris_model.input_variables)
         for var in input_variables:
@@ -133,7 +133,7 @@ class TestKerasModel:
             iris_test_input_dict: dict,
             iris_model_kwargs: dict[str, Union[list, dict, str]],
     ):
-        kwargs = {k: v if not k == "output_format" else {"type": "raw"} for k, v in iris_model_kwargs.items()}
+        kwargs = {k: v if not k == "output_format" else "raw" for k, v in iris_model_kwargs.items()}
         iris_model = KerasModel(**kwargs)
         float_dict = {key: value.item() for key, value in iris_test_input_dict.items()}
         results = iris_model.evaluate(float_dict)

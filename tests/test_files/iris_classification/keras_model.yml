@@ -23,5 +23,5 @@ input_variables:
 output_variables:
   Species: {variable_type: scalar}
 model: tests/test_files/iris_classification/model.keras
-output_format: {type: tensor}
+output_format: array
 output_transforms: [softmax]

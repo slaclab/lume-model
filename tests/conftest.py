@@ -96,7 +96,7 @@ def california_model_kwargs(
         "output_variables": output_variables,
         "input_transformers": [input_transformer],
         "output_transformers": [output_transformer],
-        "output_format": {"type": "tensor"},
+        "output_format": "tensor",
     }
     return model_kwargs
 
@@ -156,7 +156,7 @@ def iris_model_kwargs(rootdir, iris_variables) -> dict[str, Any]:
         "model": keras.models.load_model(f"{rootdir}/test_files/iris_classification/model.keras"),
         "input_variables": input_variables,
         "output_variables": output_variables,
-        "output_format": {"type": "tensor"},
+        "output_format": "array",
         "output_transforms": ["softmax"],
     }
     return model_kwargs
