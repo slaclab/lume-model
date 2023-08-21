@@ -1,6 +1,7 @@
 import os
 import logging
 from typing import Union
+from copy import deepcopy
 
 import torch
 from pydantic import validator
@@ -175,6 +176,41 @@ class TorchModel(LUMEBaseModel):
         """
         self.output_transformers = (self.output_transformers[:loc] + [new_transformer] +
                                     self.output_transformers[loc:])
+
+    def update_input_variables_to_transformer(self, transformer_loc: int) -> list[InputVariable]:
+        """Returns input variables updated to the transformer at the given location.
+
+        Updated are the value ranges and default of the input variables. This allows, e.g., to add a
+        calibration transformer and to update the input variable specification accordingly.
+
+        Args:
+            transformer_loc: The location of the input transformer to adjust for.
+
+        Returns:
+            The updated input variables.
+        """
+        x_old = {
+            "min": torch.tensor([var.value_range[0] for var in self.input_variables], dtype=torch.double),
+            "max": torch.tensor([var.value_range[1] for var in self.input_variables], dtype=torch.double),
+            "default": torch.tensor([var.default for var in self.input_variables], dtype=torch.double),
+        }
+        x_new = {}
+        for key in x_old.keys():
+            x = x_old[key]
+            # compute previous limits at transformer location
+            for i in range(transformer_loc):
+                x = self.input_transformers[i].transform(x)
+            # untransform of transformer to adjust for
+            x = self.input_transformers[transformer_loc].untransform(x)
+            # backtrack through transformers
+            for transformer in self.input_transformers[:transformer_loc][::-1]:
+                x = transformer.untransform(x)
+            x_new[key] = x
+        updated_variables = deepcopy(self.input_variables)
+        for i, var in enumerate(updated_variables):
+            var.value_range = [x_new["min"][i].item(), x_new["max"][i].item()]
+            var.default = x_new["default"][i].item()
+        return updated_variables
 
     def _format_inputs(
             self,

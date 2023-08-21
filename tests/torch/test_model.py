@@ -235,3 +235,30 @@ class TestTorchModel:
         outputs = torch.stack([v for k, v in output_dict.items()])
         loss = criterion(outputs, torch.zeros(outputs.shape, dtype=outputs.dtype))
         loss.backward()
+
+    def test_update_input_variables_to_transformer(self, california_model):
+        model = deepcopy(california_model)
+        input_variables = model.input_variables
+
+        def get_x_limits(v):
+            x_limits = {
+                "min": torch.tensor([var.value_range[0] for var in v], dtype=torch.double),
+                "max": torch.tensor([var.value_range[1] for var in v], dtype=torch.double),
+                "default": torch.tensor([var.default for var in v], dtype=torch.double),
+            }
+            return x_limits
+
+        x_lim = get_x_limits(input_variables)
+        x_lim_nn = {key: model._transform_inputs(x_lim[key]) for key in x_lim.keys()}
+        # add new transformer
+        d = len(model.input_variables)
+        new_transformer = AffineInputTransform(d=d, offset=torch.rand(d), coefficient=1.0 + torch.rand(d))
+        model.insert_input_transformer(new_transformer, loc=len(model.input_transformers))
+        updated_input_variables = model.update_input_variables_to_transformer(len(model.input_transformers) - 1)
+        model.input_variables = updated_input_variables
+        # compute new NN limits
+        x_lim_updated = get_x_limits(updated_input_variables)
+        x_lim_nn_updated = {key: model._transform_inputs(x_lim_updated[key]) for key in x_lim_updated.keys()}
+
+        for key in x_lim_nn.keys():
+            assert all(torch.isclose(x_lim_nn[key], x_lim_nn_updated[key]))
