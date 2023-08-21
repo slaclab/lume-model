@@ -127,15 +127,15 @@ class KerasModel(LUMEBaseModel):
         for var_name, var in input_dict.items():
             if isinstance(var, InputVariable):
                 formatted_inputs[var_name] = np.array(var.value, dtype=np.double)
-                self.input_variables[self.input_names.index(var_name)].value = var.value
+                # self.input_variables[self.input_names.index(var_name)].value = var.value
             elif isinstance(var, float):
                 formatted_inputs[var_name] = np.array(var, dtype=np.double)
-                self.input_variables[self.input_names.index(var_name)].value = var
+                # self.input_variables[self.input_names.index(var_name)].value = var
             elif isinstance(var, np.ndarray):
                 var = var.astype(np.double).squeeze()
                 formatted_inputs[var_name] = var
-                if var.ndim == 0:
-                    self.input_variables[self.input_names.index(var_name)].value = var.item()
+                # if var.ndim == 0:
+                #     self.input_variables[self.input_names.index(var_name)].value = var.item()
             else:
                 TypeError(
                     f"Unknown type {type(var)} passed to evaluate."
@@ -213,22 +213,28 @@ class KerasModel(LUMEBaseModel):
         Returns:
             Dictionary of output variable names to values depending on output_format.
         """
-        for var in self.output_variables:
-            if parsed_outputs[var.name].ndim == 0:
-                idx = self.output_names.index(var.name)
-                if isinstance(var, ScalarOutputVariable):
-                    self.output_variables[idx].value = parsed_outputs[var.name].item()
-                elif isinstance(var, ImageOutputVariable):
-                    # OutputVariables should be arrays
-                    self.output_variables[idx].value = (parsed_outputs[var.name].reshape(var.shape).numpy())
-                    self._update_image_limits(var, parsed_outputs)
+        # for var in self.output_variables:
+        #     if parsed_outputs[var.name].ndim == 0:
+        #         idx = self.output_names.index(var.name)
+        #         if isinstance(var, ScalarOutputVariable):
+        #             self.output_variables[idx].value = parsed_outputs[var.name].item()
+        #         elif isinstance(var, ImageOutputVariable):
+        #             # OutputVariables should be arrays
+        #             self.output_variables[idx].value = (parsed_outputs[var.name].reshape(var.shape).numpy())
+        #             self._update_image_limits(var, parsed_outputs)
 
         if self.output_format == "array":
             return parsed_outputs
         elif self.output_format == "variable":
-            return {var.name: var for var in self.output_variables}
+            output_dict = {var.name: var for var in self.output_variables}
+            for var in output_dict.values():
+                var.value = parsed_outputs[var.name].item()
+            return output_dict
+            # return {var.name: var for var in self.output_variables}
         else:
-            return {var.name: var.value for var in self.output_variables}
+            return {key: value.item() if value.squeeze().ndim == 0 else value
+                    for key, value in parsed_outputs.items()}
+            # return {var.name: var.value for var in self.output_variables}
 
     def _update_image_limits(
             self,
