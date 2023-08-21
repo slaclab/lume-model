@@ -23,7 +23,6 @@ setup(
     version=versioneer.get_version(),
     cmdclass=versioneer.get_cmdclass(),
     author="SLAC National Accelerator Laboratory",
-    author_email="jgarra@slac.stanford.edu",
     license="SLAC Open",
     packages=find_packages(),
     install_requires=requirements,
