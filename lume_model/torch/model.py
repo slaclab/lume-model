@@ -58,10 +58,10 @@ class TorchModel(LUMEBaseModel):
         super().__init__(config, **kwargs)
 
         # set precision
-        self.model.double()
+        self.model.to(dtype=self.dtype)
         for t in self.input_transformers + self.output_transformers:
             if isinstance(t, torch.nn.Module):
-                t.double()
+                t.to(dtype=self.dtype)
 
         # fixed model: set full model in eval mode and deactivate all gradients
         if self.fixed_model:
@@ -72,6 +72,14 @@ class TorchModel(LUMEBaseModel):
 
         # ensure consistent device
         self.to(self.device)
+
+    @property
+    def dtype(self):
+        return torch.double
+
+    @property
+    def _tkwargs(self):
+        return {"device": self.device, "dtype": self.dtype}
 
     @validator("model", pre=True)
     def validate_torch_model(cls, v):
@@ -137,7 +145,7 @@ class TorchModel(LUMEBaseModel):
                 input_dict[var.name] = var.value_range[0] + torch.rand(size=(n_samples,)) * (
                             var.value_range[1] - var.value_range[0])
             else:
-                torch.tensor(var.default, dtype=torch.double).repeat((n_samples, 1))
+                torch.tensor(var.default, **self._tkwargs).repeat((n_samples, 1))
         return input_dict
 
     def random_evaluate(self, n_samples: int = 1) -> dict[str, Union[OutputVariable, float, torch.Tensor]]:
@@ -197,9 +205,9 @@ class TorchModel(LUMEBaseModel):
             The updated input variables.
         """
         x_old = {
-            "min": torch.tensor([var.value_range[0] for var in self.input_variables], dtype=torch.double),
-            "max": torch.tensor([var.value_range[1] for var in self.input_variables], dtype=torch.double),
-            "default": torch.tensor([var.default for var in self.input_variables], dtype=torch.double),
+            "min": torch.tensor([var.value_range[0] for var in self.input_variables], dtype=self.dtype),
+            "max": torch.tensor([var.value_range[1] for var in self.input_variables], dtype=self.dtype),
+            "default": torch.tensor([var.default for var in self.input_variables], dtype=self.dtype),
         }
         x_new = {}
         for key in x_old.keys():
@@ -235,10 +243,10 @@ class TorchModel(LUMEBaseModel):
         formatted_inputs = {}
         for var_name, var in input_dict.items():
             if isinstance(var, InputVariable):
-                formatted_inputs[var_name] = torch.tensor(var.value, dtype=torch.double, device=self.device)
+                formatted_inputs[var_name] = torch.tensor(var.value, **self._tkwargs)
                 # self.input_variables[self.input_names.index(var_name)].value = var.value
             elif isinstance(var, float):
-                formatted_inputs[var_name] = torch.tensor(var, dtype=torch.double, device=self.device)
+                formatted_inputs[var_name] = torch.tensor(var, **self._tkwargs)
                 # self.input_variables[self.input_names.index(var_name)].value = var
             elif isinstance(var, torch.Tensor):
                 var = var.double().squeeze().to(self.device)
@@ -265,7 +273,7 @@ class TorchModel(LUMEBaseModel):
             Ordered input tensor to be passed to the transformers.
         """
         default_tensor = torch.tensor(
-            [var.default for var in self.input_variables], dtype=torch.double, device=self.device
+            [var.default for var in self.input_variables], **self._tkwargs
         )
 
         # determine input shape

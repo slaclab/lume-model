@@ -59,6 +59,10 @@ class KerasModel(LUMEBaseModel):
             raise ValueError(f"Unknown output format {v}, expected one of {supported_formats}.")
         return v
 
+    @property
+    def dtype(self):
+        return np.double
+
     def evaluate(
             self,
             input_dict: dict[str, Union[InputVariable, float, np.ndarray]],
@@ -73,7 +77,7 @@ class KerasModel(LUMEBaseModel):
         """
         formatted_inputs = self._format_inputs(input_dict)
         complete_input_dict = self._complete_inputs(formatted_inputs)
-        output_array = self.model.predict(complete_input_dict).astype(np.double)
+        output_array = self.model.predict(complete_input_dict).astype(self.dtype)
         output_array = self._output_transform(output_array)
         parsed_outputs = self._parse_outputs(output_array)
         output_dict = self._prepare_outputs(parsed_outputs)
@@ -93,7 +97,7 @@ class KerasModel(LUMEBaseModel):
             if isinstance(var, ScalarInputVariable):
                 input_dict[var.name] = np.random.uniform(*var.value_range, size=n_samples)
             else:
-                default_array = np.array(var.default, dtype=np.double)
+                default_array = np.array(var.default, dtype=self.dtype)
                 input_dict[var.name] = np.repeat(default_array.reshape((1, *default_array.shape)),
                                                  n_samples, axis=0)
         return input_dict
@@ -126,13 +130,13 @@ class KerasModel(LUMEBaseModel):
         formatted_inputs = {}
         for var_name, var in input_dict.items():
             if isinstance(var, InputVariable):
-                formatted_inputs[var_name] = np.array(var.value, dtype=np.double)
+                formatted_inputs[var_name] = np.array(var.value, dtype=self.dtype)
                 # self.input_variables[self.input_names.index(var_name)].value = var.value
             elif isinstance(var, float):
-                formatted_inputs[var_name] = np.array(var, dtype=np.double)
+                formatted_inputs[var_name] = np.array(var, dtype=self.dtype)
                 # self.input_variables[self.input_names.index(var_name)].value = var
             elif isinstance(var, np.ndarray):
-                var = var.astype(np.double).squeeze()
+                var = var.astype(self.dtype).squeeze()
                 formatted_inputs[var_name] = var
                 # if var.ndim == 0:
                 #     self.input_variables[self.input_names.index(var_name)].value = var.item()
@@ -159,7 +163,7 @@ class KerasModel(LUMEBaseModel):
 
         for i, key in enumerate(self.input_names):
             if key not in formatted_inputs.keys():
-                default_array = np.array(self.input_variables[i].default, dtype=np.double)
+                default_array = np.array(self.input_variables[i].default, dtype=self.dtype)
                 formatted_inputs[key] = np.tile(default_array, reps=input_shapes[0])
 
         if not input_shapes[0]:

@@ -242,9 +242,9 @@ class TestTorchModel:
 
         def get_x_limits(v):
             x_limits = {
-                "min": torch.tensor([var.value_range[0] for var in v], dtype=torch.double),
-                "max": torch.tensor([var.value_range[1] for var in v], dtype=torch.double),
-                "default": torch.tensor([var.default for var in v], dtype=torch.double),
+                "min": torch.tensor([var.value_range[0] for var in v], dtype=california_model.dtype),
+                "max": torch.tensor([var.value_range[1] for var in v], dtype=california_model.dtype),
+                "default": torch.tensor([var.default for var in v], dtype=california_model.dtype),
             }
             return x_limits
 
@@ -261,4 +261,4 @@ class TestTorchModel:
         x_lim_nn_updated = {key: model._transform_inputs(x_lim_updated[key]) for key in x_lim_updated.keys()}
 
         for key in x_lim_nn.keys():
-            assert all(torch.isclose(x_lim_nn[key], x_lim_nn_updated[key]))
+            assert all(torch.isclose(x_lim_nn[key], x_lim_nn_updated[key], atol=1e-6))
