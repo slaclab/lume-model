@@ -2,35 +2,38 @@ name: Build lume-model
 
 on:
   push:
-    branches:
-      - github-actions
   pull_request:
-    branches:
-      - master
+    types: [opened, reopened]
 
 jobs:
   build:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [macOS-latest, ubuntu-latest]
-        python-version: [3.9]
+        os: [ubuntu-latest, macOS-latest]
+        python-version: ["3.9"]
 
     name: Python ${{ matrix.python-version }}, ${{ matrix.os }} build
     steps:
       - uses: actions/checkout@v3
       - uses: conda-incubator/setup-miniconda@v2
         with:
-          python-version: 3.9
-          mamba-version: "*"
+          python-version: ${{ matrix.python-version }}
+          miniforge-variant: Mambaforge
           channels: conda-forge
           activate-environment: lume-model-dev
           environment-file: dev-environment.yml
-      - name: Build package
+
+      - name: Install lume-model
         shell: bash -l {0}
         run: |
           pip install -e .
+
+      - name: Run Tests
+        shell: bash -l {0}
+        run: |
           pytest -ra --pyargs tests
+
       - name: Build package
         shell: bash -l {0}
         run: |
