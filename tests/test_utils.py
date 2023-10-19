@@ -1,45 +1,40 @@
-from lume_model import utils
 import os
-import sys
+
 import pytest
-from lume_model.models import BaseModel
-from lume_model.variables import (
-    InputVariable,
-    OutputVariable,
-    ScalarInputVariable,
-    ScalarOutputVariable,
-)
+
+from lume_model.utils import verify_unique_variable_names, variables_as_yaml, variables_from_yaml
 
 
-def test_save():
-    input_variables = {
-        "input1": ScalarInputVariable(name="input1", default=1, range=[0.0, 5.0]),
-        "input2": ScalarInputVariable(name="input2", default=2, range=[0.0, 5.0]),
-    }
-
-    output_variables = {
-        "output1": ScalarOutputVariable(name="output1"),
-        "output2": ScalarOutputVariable(name="output2"),
-    }
-
-    file_name = "test_variables.pickle"
-    utils.save_variables(input_variables, output_variables, file_name)
-    utils.load_variables(file_name)
-    os.remove(file_name)
-
-
-def test_variables_with_same_name():
-    input_variables = {
-        "input1": ScalarInputVariable(name="input1", default=1, range=[0.0, 5.0]),
-        "input2": ScalarInputVariable(name="input2", default=2, range=[0.0, 5.0]),
-    }
-
-    output_variables = {
-        "input1": ScalarOutputVariable(name="input1"),
-        "output2": ScalarOutputVariable(name="output2"),
-    }
-
-    file_name = "test_variables.pickle"
-
+def test_verify_unique_variable_names(simple_variables):
+    input_variables = simple_variables["input_variables"]
+    output_variables = simple_variables["output_variables"]
+    # unique variables names
+    verify_unique_variable_names(input_variables)
+    verify_unique_variable_names(output_variables)
+    # non-unique input names
+    original_name = input_variables[1].name
+    input_variables[1].name = input_variables[0].name
     with pytest.raises(ValueError):
-        utils.save_variables(input_variables, output_variables, file_name)
+        verify_unique_variable_names(input_variables)
+    input_variables[1].name = original_name
+    # non-unique output names
+    original_name = output_variables[1].name
+    output_variables[1].name = output_variables[0].name
+    with pytest.raises(ValueError):
+        verify_unique_variable_names(output_variables)
+    output_variables[1].name = original_name
+
+
+def test_variables_as_yaml(simple_variables):
+    file = "test_variables.yml"
+    variables_as_yaml(**simple_variables, file=file)
+    os.remove(file)
+
+
+def test_variables_as_and_from_yaml(simple_variables):
+    file = "test_variables.yml"
+    variables_as_yaml(**simple_variables, file=file)
+    variables = variables_from_yaml(file)
+    os.remove(file)
+    assert simple_variables["input_variables"] == variables[0]
+    assert simple_variables["output_variables"] == variables[1]

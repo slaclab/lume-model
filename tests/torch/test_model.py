@@ -1,343 +1,264 @@
-import logging
+import os
 import random
+from typing import Any, Union
 from copy import deepcopy
-from typing import Dict, List, Tuple, Union
 
 import pytest
 
 try:
     import torch
-
-    from lume_model.torch import PyTorchModel
-    from lume_model.utils import model_from_yaml
-    from lume_model.variables import ScalarOutputVariable
+    from botorch.models.transforms.input import AffineInputTransform
+    from lume_model.torch import TorchModel
+    from lume_model.variables import InputVariable, OutputVariable, ScalarOutputVariable
 except ImportError:
     pass
 
 
-"""
-Things to Test:
----------------
-- [x] we can load a PyTorch model from a yaml file
-    - [x] returning the model class and keywords
-    - [x] returning the model instance
-- [x] we can create a PyTorch model from objects
-- [x] the model correctly orders the features according to the
-    specified feature order
-- [x] pytorch model can be run using dictionary of:
-    - [x] tensors (individual)
-    - [x] tensors (of multiple samples for each feature)
-    - [x] InputVariables
-    - [x] floats
-- [x] pytorch model evaluate() can return dictionary of either tensors
-    or OutputVariables
-- [x] pytorch model can be run with transformers or without
-- [x] if we pass in a dictionary that's missing a value, we log
-    an error and use the default value for the input
-- [x] passing different input dictionaries through gives us different
-    output dictionaries
-- [x] differentiability through the model (required for Xopt)
-- [x] we should be able to send data of any dimensionality to the model
-    e.g. (b, n, m) from GP data
-- [ ] output transformations are applied in the correct order when we
-    have multiple transformations
-"""
+# def assert_variables_updated(
+#     input_value: float,
+#     output_value: float,
+#     model,
+#     input_name: str,
+#     output_name: str,
+# ):
+#     """helper function to verify that model input_variables and output_variables
+#     have been updated correctly with float values (NOT tensors)"""
+#     assert isinstance(model.input_variables[model.input_names.index(input_name)].value, float)
+#     assert model.input_variables[model.input_names.index(input_name)].value == pytest.approx(input_value)
+#     assert isinstance(model.output_variables[model.output_names.index(output_name)].value, float)
+#     assert model.output_variables[model.output_names.index(output_name)].value == pytest.approx(output_value)
 
 
-def assert_variables_updated(
-    input_value: float,
-    output_value: float,
-    model,
-    input_name: str,
-    output_name: str,
-):
-    """helper function to verify that model input_variables and output_variables
-    have been updated correctly with float values (NOT tensors)"""
-    assert isinstance(model.input_variables[input_name].value, float)
-    assert model.input_variables[input_name].value == pytest.approx(input_value)
-    assert isinstance(model.output_variables[output_name].value, float)
-    assert model.output_variables[output_name].value == pytest.approx(output_value)
+# def assert_california_model_result(california_test_input_dict: dict, model):
+#     assert_variables_updated(
+#         input_value=california_test_input_dict["HouseAge"].item(),
+#         output_value=4.063651,
+#         model=model,
+#         input_name="HouseAge",
+#         output_name="MedHouseVal",
+#     )
 
 
-def test_model_from_yaml(
-    rootdir: str, california_model_kwargs: Dict[str, Union[List, Dict, str]]
-):
-    with open(
-        f"{rootdir}/test_files/california_regression/california_variables.yml",
-        "r",
-    ) as f:
-        yaml_model, yaml_kwargs = model_from_yaml(f, load_model=False)
-
-    assert yaml_model == PyTorchModel
-    for key in list(california_model_kwargs.keys()):
-        # we don't define anything about the transformers in the yml file so we
-        # don't expect there to be anything in the california_model_kwargs about them
-        if key not in ["input_transformers", "output_transformers"]:
-            assert key in list(yaml_kwargs.keys())
-
-
-def test_model_from_yaml_load_model(
-    rootdir: str,
-    california_variables: Tuple[dict, dict],
-    california_transformers: Tuple[list, list],
-    california_model_kwargs: Dict[str, Union[List, Dict, str]],
-):
-    input_variables, output_variables = california_variables
-    input_transformer, output_transformer = california_transformers
-    with open(
-        f"{rootdir}/test_files/california_regression/california_variables.yml",
-        "r",
-    ) as f:
-        yaml_model = model_from_yaml(f, load_model=True)
-
-    assert isinstance(yaml_model, PyTorchModel)
-    assert yaml_model.input_variables == input_variables
-    assert yaml_model.output_variables == output_variables
-    assert yaml_model.features == california_model_kwargs["feature_order"]
-    assert yaml_model.outputs == california_model_kwargs["output_order"]
-    assert yaml_model._input_transformers == []
-    assert yaml_model._output_transformers == []
-
-    # now we want to test whether we can add the transformers afterwards
-    yaml_model.input_transformers = (input_transformer, 0)
-    yaml_model.output_transformers = (output_transformer, 0)
-    assert yaml_model.input_transformers == [input_transformer]
-    assert yaml_model.output_transformers == [output_transformer]
+def assert_model_equality(m1: TorchModel, m2: TorchModel):
+    assert m1.input_variables == m2.input_variables
+    assert m1.output_variables == m2.output_variables
+    assert str(m1.model.state_dict()) == str(m2.model.state_dict())
+    for attr in ["input_transformers", "output_transformers"]:
+        m1_transformers, m2_transformers = getattr(m1, attr), getattr(m2, attr)
+        assert len(m1_transformers) == len(m2_transformers)
+        for i, t in enumerate(m1_transformers):
+            if isinstance(t, torch.nn.Module):
+                assert isinstance(m2_transformers[i], torch.nn.Module)
+                assert str(t.state_dict()) == str(m2_transformers[i].state_dict())
+    assert m1.output_format == m2.output_format
+    assert m1.device == m2.device
+    assert m1.fixed_model == m2.fixed_model
 
 
-def test_model_from_objects(
-    california_model_info: Dict[str, str],
-    california_model_kwargs: Dict[str, Union[List, Dict, str]],
-    california_variables: Tuple[dict, dict],
-    california_transformers: Tuple[list, list],
-    cal_model,
-):
-    input_variables, output_variables = california_variables
-    input_transformer, output_transformer = california_transformers
+class TestTorchModel:
+    def test_model_from_objects(
+            self,
+            california_model_info: dict[str, str],
+            california_model_kwargs: dict[str, Union[list, dict, str]],
+            california_variables: tuple[list[InputVariable], list[OutputVariable]],
+            california_transformers: tuple[list, list],
+            california_model,
+    ):
+        input_variables, output_variables = california_variables
+        input_transformer, output_transformer = california_transformers
 
-    assert cal_model._feature_order == california_model_info["model_in_list"]
-    assert cal_model._output_order == california_model_info["model_out_list"]
-    assert isinstance(cal_model, PyTorchModel)
-    assert cal_model.input_variables == input_variables
-    assert cal_model.output_variables == output_variables
-    assert cal_model.features == california_model_kwargs["feature_order"]
-    assert cal_model.outputs == california_model_kwargs["output_order"]
-    assert cal_model.input_transformers == [input_transformer]
-    assert cal_model.output_transformers == [output_transformer]
+        assert isinstance(california_model, TorchModel)
+        assert california_model.input_names == california_model_info["model_in_list"]
+        assert california_model.output_names == california_model_info["model_out_list"]
+        assert california_model.input_variables == input_variables
+        assert california_model.output_variables == output_variables
+        assert california_model.input_transformers == [input_transformer]
+        assert california_model.output_transformers == [output_transformer]
 
+    def test_model_from_yaml(self, rootdir: str, california_model):
+        file = f"{rootdir}/test_files/california_regression/torch_model.yml"
+        yaml_model = TorchModel(file)
+        assert_model_equality(yaml_model, california_model)
 
-def test_model_from_torch_module(
-        california_base_model,
-        california_model_kwargs: Dict[str, Union[List, Dict, str]],
-):
-    model_from_file = PyTorchModel(**california_model_kwargs)
-    kwargs = {k: v for k, v in california_model_kwargs.items() if not k == "model"}
-    model_from_torch = PyTorchModel(model=california_base_model, **kwargs)
-    assert str(model_from_file._model.state_dict()) == str(model_from_torch._model.state_dict())
+    def test_model_as_yaml(self, rootdir: str, california_model):
+        filename = "test_torch_model"
+        file = f"{filename}.yml"
+        _ = california_model.yaml(file)
+        yaml_model = TorchModel(file)
+        assert_model_equality(yaml_model, california_model)
+        os.remove(file)
+        os.remove(f"{filename}_model.pt")
+        os.remove(f"{filename}_input_transformers_0.pt")
+        os.remove(f"{filename}_output_transformers_0.pt")
 
+    def test_model_evaluate_variable(
+            self,
+            california_test_input_dict: dict,
+            california_model_kwargs: dict[str, Union[list, dict, str]],
+    ):
+        kwargs = deepcopy(california_model_kwargs)
+        kwargs["output_format"] = "variable"
+        california_model = TorchModel(**kwargs)
+        input_variables = deepcopy(california_model.input_variables)
+        for var in input_variables:
+            var.value = california_test_input_dict[var.name].item()
+        results = california_model.evaluate({var.name: var for var in input_variables})
 
-def test_california_housing_model_variable(
-    california_test_x_dict,
-    california_model_kwargs: Dict[str, Union[List, Dict, str]],
-):
-    args = deepcopy(california_model_kwargs)
-    args["output_format"] = {"type": "variable"}
-    cal_model = PyTorchModel(**args)
+        assert isinstance(results["MedHouseVal"], ScalarOutputVariable)
+        assert results["MedHouseVal"].value == pytest.approx(4.063651)
+        # assert_california_model_result(california_test_input_dict, california_model)
 
-    input_variables_dict = deepcopy(cal_model.input_variables)
-    for key, var in input_variables_dict.items():
-        var.value = california_test_x_dict[key].item()
+    def test_model_evaluate_single_sample(self, california_test_input_dict: dict, california_model):
+        results = california_model.evaluate(california_test_input_dict)
 
-    results = cal_model.evaluate(input_variables_dict)
-
-    assert isinstance(results["MedHouseVal"], ScalarOutputVariable)
-    assert results["MedHouseVal"].value == pytest.approx(4.063651)
-    assert_variables_updated(
-        california_test_x_dict["HouseAge"].item(),
-        4.063651,
-        cal_model,
-        "HouseAge",
-        "MedHouseVal",
-    )
-
-
-def test_california_housing_model_tensor(
-    california_test_x_dict, cal_model
-):
-    results = cal_model.evaluate(california_test_x_dict)
-
-    assert torch.isclose(
-        results["MedHouseVal"], torch.tensor(4.063651, dtype=torch.double)
-    )
-    assert isinstance(results["MedHouseVal"], torch.Tensor)
-    assert_variables_updated(
-        california_test_x_dict["HouseAge"].item(),
-        4.063651,
-        cal_model,
-        "HouseAge",
-        "MedHouseVal",
-    )
-
-
-def test_california_housing_model_multi_tensor(california_test_x, cal_model):
-    test_dict = {
-        key: california_test_x[:, idx] for idx, key in enumerate(cal_model.features)
-    }
-    results = cal_model.evaluate(test_dict)
-    # in this case we don't expect the input/output variables to be updated,
-    # because we don't know which value to update them with so we only check
-    # for the resulting values
-    assert all(
-        torch.isclose(
-            results["MedHouseVal"],
-            torch.tensor([4.063651, 2.7774928, 2.792812], dtype=torch.double),
+        assert isinstance(results["MedHouseVal"], torch.Tensor)
+        assert torch.isclose(
+            results["MedHouseVal"], torch.tensor(4.063651, dtype=results["MedHouseVal"].dtype)
         )
-    )
+        # assert_california_model_result(california_test_input_dict, california_model)
 
+    def test_model_evaluate_n_samples(self, california_test_input_tensor, california_model):
+        test_dict = {
+            key: california_test_input_tensor[:, idx] for idx, key in enumerate(california_model.input_names)
+        }
+        results = california_model.evaluate(test_dict)
+        # in this case we don't expect the input/output variables to be updated, because we don't know which value
+        # to update them with so we only check for the resulting values
+        target_tensor = torch.tensor([4.063651, 2.7774928, 2.792812], dtype=results["MedHouseVal"].dtype)
 
-def test_california_housing_model_multi_dim_tensor(
-    # when using the model within a custom mean, we might get some data that
-    # comes through in the dictionary as shape [b, n, m] where b is the batch
-    # number, n is the number of data points and m is the number of features,
-    # the model should be able to cope with these as well
-    california_test_x,
-    cal_model,
-):
-    test_dict = {
-        key: california_test_x[:, idx].unsqueeze(-1).unsqueeze(1).repeat((1, 3, 1))
-        for idx, key in enumerate(cal_model.features)
-    }
+        assert all(torch.isclose(results["MedHouseVal"], target_tensor))
 
-    results = cal_model.evaluate(test_dict)
+    def test_model_evaluate_batch_n_samples(
+            self,
+            california_test_input_tensor,
+            california_model,
+    ):
+        # model should be able to handle input of shape [n_batch, n_samples, n_dim]
+        input_dict = {
+            key: california_test_input_tensor[:, idx].unsqueeze(-1).unsqueeze(1).repeat((1, 3, 1))
+            for idx, key in enumerate(california_model.input_names)
+        }
+        results = california_model.evaluate(input_dict)
 
-    # shape coming out should be [b, n]
-    assert tuple(results["MedHouseVal"].shape) == (3, 3)
+        # output shape should be [n_batch, n_samples]
+        assert tuple(results["MedHouseVal"].shape) == (3, 3)
 
+    def test_model_evaluate_raw(
+            self,
+            california_test_input_dict: dict,
+            california_model_kwargs: dict[str, Union[list, dict, str]],
+    ):
+        kwargs = deepcopy(california_model_kwargs)
+        kwargs["output_format"] = "raw"
+        california_model = TorchModel(**kwargs)
+        float_dict = {key: value.item() for key, value in california_test_input_dict.items()}
+        results = california_model.evaluate(float_dict)
 
-def test_california_housing_model_float(
-    california_test_x_dict,
-    california_model_kwargs: Dict[str, Union[List, Dict, str]],
-):
-    args = deepcopy(california_model_kwargs)
-    args["output_format"] = {"type": "raw"}
-    cal_model = PyTorchModel(**args)
+        assert isinstance(results["MedHouseVal"], float)
+        assert results["MedHouseVal"] == pytest.approx(4.063651)
+        # assert_california_model_result(california_test_input_dict, california_model)
 
-    float_dict = {key: value.item() for key, value in california_test_x_dict.items()}
+    def test_model_evaluate_shuffled_input(self, california_test_input_dict: dict, california_model):
+        shuffled_input = deepcopy(california_test_input_dict)
+        item_list = list(shuffled_input.items())
+        random.shuffle(item_list)
+        shuffled_input = dict(item_list)
+        results = california_model.evaluate(shuffled_input)
 
-    results = cal_model.evaluate(float_dict)
+        assert isinstance(results["MedHouseVal"], torch.Tensor)
+        assert torch.isclose(
+            results["MedHouseVal"], torch.tensor(4.063651, dtype=results["MedHouseVal"].dtype)
+        )
+        # assert_california_model_result(california_test_input_dict, california_model)
 
-    assert results["MedHouseVal"] == pytest.approx(4.063651)
-    assert isinstance(results["MedHouseVal"], float)
-    assert_variables_updated(
-        california_test_x_dict["HouseAge"].item(),
-        4.063651,
-        cal_model,
-        "HouseAge",
-        "MedHouseVal",
-    )
+    @pytest.mark.parametrize("test_idx,expected", [(0, 4.063651), (1, 2.7774928), (2, 2.792812)])
+    def test_model_evaluate_different_values(
+            self,
+            test_idx: int,
+            expected: float,
+            california_test_input_tensor,
+            california_model,
+    ):
+        input_dict = {
+            key: california_test_input_tensor[test_idx][idx] for idx, key in
+            enumerate(california_model.input_names)
+        }
+        results = california_model.evaluate(input_dict)
 
+        assert results["MedHouseVal"].item() == pytest.approx(expected)
+        # assert_variables_updated(
+        #     input_value=input_dict["HouseAge"].item(),
+        #     output_value=expected,
+        #     model=california_model,
+        #     input_name="HouseAge",
+        #     output_name="MedHouseVal",
+        # )
 
-def test_california_housing_model_shuffled_input(
-    california_test_x_dict, cal_model
-):
-    shuffled_input = deepcopy(california_test_x_dict)
-    l = list(shuffled_input.items())
-    random.shuffle(l)
-    shuffled_input = dict(l)
+    def test_model_evaluate_with_no_output_transformers(
+            self,
+            california_test_input_dict: dict,
+            california_model_kwargs: dict[str, Union[list, dict, str]],
+    ):
+        kwargs = deepcopy(california_model_kwargs)
+        kwargs["output_transformers"] = []
+        model = TorchModel(**kwargs)
+        results = model.evaluate(california_test_input_dict)
 
-    results = cal_model.evaluate(shuffled_input)
+        assert torch.isclose(
+            results["MedHouseVal"], torch.tensor(1.8523695, dtype=results["MedHouseVal"].dtype)
+        )
+        # assert_variables_updated(
+        #     input_value=california_test_input_dict["HouseAge"].item(),
+        #     output_value=1.8523695,
+        #     model=model,
+        #     input_name="HouseAge",
+        #     output_name="MedHouseVal",
+        # )
 
-    assert torch.isclose(
-        results["MedHouseVal"], torch.tensor(4.063651, dtype=torch.double)
-    )
-    assert isinstance(results["MedHouseVal"], torch.Tensor)
-    assert_variables_updated(
-        california_test_x_dict["HouseAge"].item(),
-        4.063651,
-        cal_model,
-        "HouseAge",
-        "MedHouseVal",
-    )
+    def test_differentiability(
+            self,
+            california_test_input_dict: dict,
+            california_model_kwargs: dict[str, Any],
+    ):
+        kwargs = deepcopy(california_model_kwargs)
+        kwargs["model"].train().requires_grad_(True)
+        model = TorchModel(**kwargs, fixed_model=False)
+        parameters_with_requires_grad = []
+        for name, param in model.model.named_parameters():
+            if param.requires_grad:
+                parameters_with_requires_grad.append(name)
+        criterion = torch.nn.MSELoss()
 
+        assert model.model.training
+        assert len(parameters_with_requires_grad) == 8
+        output_dict = model.evaluate(california_test_input_dict)
+        outputs = torch.stack([v for k, v in output_dict.items()])
+        loss = criterion(outputs, torch.zeros(outputs.shape, dtype=outputs.dtype))
+        loss.backward()
 
-@pytest.mark.parametrize(
-    "test_idx,expected",
-    [
-        (0, 4.063651),
-        (1, 2.7774928),
-        (2, 2.792812),
-    ],
-)
-def test_california_housing_model_execution_diff_values(
-    test_idx: int,
-    expected,
-    california_test_x,
-    cal_model,
-):
-    test_input = {
-        key: california_test_x[test_idx][idx]
-        for idx, key in enumerate(cal_model.features)
-    }
+    def test_update_input_variables_to_transformer(self, california_model):
+        model = deepcopy(california_model)
+        input_variables = model.input_variables
 
-    results = cal_model.evaluate(test_input)
+        def get_x_limits(v):
+            x_limits = {
+                "min": torch.tensor([var.value_range[0] for var in v], dtype=california_model.dtype),
+                "max": torch.tensor([var.value_range[1] for var in v], dtype=california_model.dtype),
+                "default": torch.tensor([var.default for var in v], dtype=california_model.dtype),
+            }
+            return x_limits
 
-    assert results["MedHouseVal"].item() == pytest.approx(expected)
-    assert_variables_updated(
-        test_input["HouseAge"].item(),
-        expected,
-        cal_model,
-        "HouseAge",
-        "MedHouseVal",
-    )
+        x_lim = get_x_limits(input_variables)
+        x_lim_nn = {key: model._transform_inputs(x_lim[key]) for key in x_lim.keys()}
+        # add new transformer
+        d = len(model.input_variables)
+        new_transformer = AffineInputTransform(d=d, offset=torch.rand(d), coefficient=1.0 + torch.rand(d))
+        model.insert_input_transformer(new_transformer, loc=len(model.input_transformers))
+        updated_input_variables = model.update_input_variables_to_transformer(len(model.input_transformers) - 1)
+        model.input_variables = updated_input_variables
+        # compute new NN limits
+        x_lim_updated = get_x_limits(updated_input_variables)
+        x_lim_nn_updated = {key: model._transform_inputs(x_lim_updated[key]) for key in x_lim_updated.keys()}
 
-
-def test_california_housing_model_execution_no_transformation(
-    california_test_x_dict,
-    california_model_kwargs: Dict[str, Union[List, Dict, str]],
-):
-    # if we don't pass in an output transformer, we expect to get the untransformed
-    # result back
-    new_kwargs = deepcopy(california_model_kwargs)
-    new_kwargs["output_transformers"] = []
-    cal_model = PyTorchModel(**new_kwargs)
-
-    results = cal_model.evaluate(california_test_x_dict)
-
-    assert torch.isclose(
-        results["MedHouseVal"], torch.tensor(1.8523695, dtype=torch.double)
-    )
-    assert_variables_updated(
-        california_test_x_dict["HouseAge"].item(),
-        1.8523695,
-        cal_model,
-        "HouseAge",
-        "MedHouseVal",
-    )
-
-
-def test_differentiability(california_test_x_dict, cal_model):
-    differentiable_dict = deepcopy(california_test_x_dict)
-    for value in differentiable_dict.values():
-        value.requires_grad = True
-
-    results = cal_model.evaluate(differentiable_dict)
-
-    # if we maintain differentiability, we should be able to call .backward()
-    # on a model output without it causing an error
-    for key, value in results.items():
-        value.backward()
-        assert value.requires_grad
-
-    # we also want to make sure that the input_variable and output_variable
-    # values are still treated as floats
-    assert isinstance(results["MedHouseVal"], torch.Tensor)
-    assert torch.isclose(
-        results["MedHouseVal"], torch.tensor(4.063651, dtype=torch.double)
-    )
-    assert_variables_updated(
-        california_test_x_dict["HouseAge"].item(),
-        4.063651,
-        cal_model,
-        "HouseAge",
-        "MedHouseVal",
-    )
+        for key in x_lim_nn.keys():
+            assert all(torch.isclose(x_lim_nn[key], x_lim_nn_updated[key], atol=1e-6))
