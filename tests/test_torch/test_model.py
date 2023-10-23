@@ -76,8 +76,10 @@ class TestTorchModel:
         assert california_model.output_transformers == [output_transformer]
 
     def test_model_from_yaml(self, rootdir: str, california_model):
-        file = f"{rootdir}/test_files/california_regression/torch_model.yml"
-        yaml_model = TorchModel(file)
+        file = os.path.join(
+            rootdir, "test_files", "california_regression", "torch_model.yml"
+        )
+        yaml_model = TorchModel.from_file(file)
         assert_model_equality(yaml_model, california_model)
 
     def test_model_as_yaml(self, rootdir: str, california_model):

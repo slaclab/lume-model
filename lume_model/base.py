@@ -3,15 +3,15 @@ import json
 import yaml
 import logging
 from abc import ABC, abstractmethod
-from typing import Any, Callable, Union
+from typing import Any, Callable, Union, TextIO
 from types import FunctionType, MethodType
 
 import numpy as np
-from pydantic import BaseModel, validator
+from pydantic import BaseModel, ConfigDict, field_validator, SerializeAsAny
 
 from lume_model.variables import (
     InputVariable,
-    OutputVariable,
+    OutputVariable, ScalarInputVariable, ScalarOutputVariable,
 )
 from lume_model.utils import (
     try_import_module,
@@ -22,7 +22,6 @@ from lume_model.utils import (
 )
 
 logger = logging.getLogger(__name__)
-
 
 JSON_ENCODERS = {
     # function/method type distinguished for class members and not recognized as callables
@@ -96,7 +95,7 @@ def process_keras_model(
 
 
 def recursive_serialize(
-        v,
+        v: dict[str, Any],
         base_key: str = "",
         file_prefix: Union[str, os.PathLike] = "",
         save_models: bool = True,
@@ -121,11 +120,13 @@ def recursive_serialize(
         if isinstance(value, dict):
             v[key] = recursive_serialize(value, key)
         elif torch is not None and isinstance(value, torch.nn.Module):
-            v[key] = process_torch_module(value, base_key, key, file_prefix, save_models)
+            v[key] = process_torch_module(value, base_key, key, file_prefix,
+                                          save_models)
         elif isinstance(value, list) and torch is not None and any(
                 isinstance(ele, torch.nn.Module) for ele in value):
             v[key] = [
-                process_torch_module(value[i], base_key, f"{key}_{i}", file_prefix, save_models)
+                process_torch_module(value[i], base_key, f"{key}_{i}", file_prefix,
+                                     save_models)
                 for i in range(len(value))
             ]
         elif keras is not None and isinstance(value, keras.Model):
@@ -164,7 +165,6 @@ def recursive_deserialize(v):
 def json_dumps(
         v,
         *,
-        default,
         base_key="",
         file_prefix: Union[str, os.PathLike] = "",
         save_models: bool = True,
@@ -181,8 +181,8 @@ def json_dumps(
     Returns:
         JSON formatted string.
     """
-    v = recursive_serialize(v, base_key, file_prefix, save_models)
-    v = json.dumps(v, default=default)
+    v = recursive_serialize(v.model_dump(), base_key, file_prefix, save_models)
+    v = json.dumps(v)
     return v
 
 
@@ -232,7 +232,8 @@ def model_kwargs_from_dict(config: dict) -> dict:
     """
     config = deserialize_variables(config)
     if all(key in config.keys() for key in ["input_variables", "output_variables"]):
-        config["input_variables"], config["output_variables"] = variables_from_dict(config)
+        config["input_variables"], config["output_variables"] = variables_from_dict(
+            config)
     _ = config.pop("model_class", None)
     return config
 
@@ -247,15 +248,44 @@ class LUMEBaseModel(BaseModel, ABC):
         input_variables: List defining the input variables and their order.
         output_variables: List defining the output variables and their order.
     """
-    input_variables: list[InputVariable]
-    output_variables: list[OutputVariable]
+    input_variables: list[SerializeAsAny[InputVariable]]
+    output_variables: list[SerializeAsAny[OutputVariable]]
 
-    class Config:
-        extra = "allow"
-        json_dumps = json_dumps
-        json_loads = json_loads
-        validate_assignment = True
-        arbitrary_types_allowed = True
+    model_config = ConfigDict(arbitrary_types_allowed=True, validate_assignment=True)
+
+    @field_validator("input_variables", mode="before")
+    def validate_input_variables(cls, value):
+        new_value = []
+        if isinstance(value, dict):
+            for name, val in value.items():
+                if isinstance(val, dict):
+                    if val["variable_type"] == "scalar":
+                        new_value.append(ScalarInputVariable(name=name, **val))
+                elif isinstance(val, InputVariable):
+                    new_value.append(val)
+                else:
+                    raise TypeError(f"type {type(val)} not supported")
+        elif isinstance(value, list):
+            new_value = value
+
+        return new_value
+
+    @field_validator("output_variables", mode="before")
+    def validate_output_variables(cls, value):
+        new_value = []
+        if isinstance(value, dict):
+            for name, val in value.items():
+                if isinstance(val, dict):
+                    if val["variable_type"] == "scalar":
+                        new_value.append(ScalarOutputVariable(name=name, **val))
+                elif isinstance(val, OutputVariable):
+                    new_value.append(val)
+                else:
+                    raise TypeError(f"type {type(val)} not supported")
+        elif isinstance(value, list):
+            new_value = value
+
+        return new_value
 
     def __init__(
             self,
@@ -274,7 +304,7 @@ class LUMEBaseModel(BaseModel, ABC):
         else:
             super().__init__(**kwargs)
 
-    @validator("input_variables", "output_variables")
+    @field_validator("input_variables", "output_variables")
     def unique_variable_names(cls, value):
         verify_unique_variable_names(value)
         return value
@@ -291,12 +321,35 @@ class LUMEBaseModel(BaseModel, ABC):
     def evaluate(self, input_dict: dict[str, Any]) -> dict[str, Any]:
         pass
 
-    def yaml(
+    def to_json(self, **kwargs) -> str:
+        return json_dumps(self, **kwargs)
+
+    def dict(self, **kwargs) -> dict[str, Any]:
+        config = super().model_dump(**kwargs)
+        return {"model_class": self.__class__.__name__} | config
+
+    def json(self, **kwargs) -> str:
+        result = self.to_json(**kwargs)
+        config = json.loads(result)
+        config = {"model_class": self.__class__.__name__} | config
+
+        return json.dumps(config)
+
+    def yaml(self, **kwargs):
+        """serialize first then dump to yaml string"""
+        output = json.loads(
+            self.to_json(
+                **kwargs,
+            )
+        )
+        return yaml.dump(output, default_flow_style=None, sort_keys=False)
+
+    def dump(
             self,
-            file: Union[str, os.PathLike] = None,
+            file: Union[str, os.PathLike],
             save_models: bool = True,
             base_key: str = "",
-    ) -> str:
+    ):
         """Returns and optionally saves YAML formatted string defining the model.
 
         Args:
@@ -307,13 +360,25 @@ class LUMEBaseModel(BaseModel, ABC):
         Returns:
             YAML formatted string defining the model.
         """
-        file_prefix = ""
-        if file is not None:
-            file_prefix = os.path.splitext(file)[0]
-        config = json.loads(self.json(base_key=base_key, file_prefix=file_prefix, save_models=save_models))
-        s = yaml.dump({"model_class": self.__class__.__name__} | config,
-                      default_flow_style=None, sort_keys=False)
-        if file is not None:
-            with open(file, "w") as f:
-                f.write(s)
-        return s
+        file_prefix = os.path.splitext(file)[0]
+
+        with open(file, "w") as f:
+            f.write(self.yaml(
+                base_key=base_key,
+                file_prefix=file_prefix,
+                save_models=save_models)
+            )
+
+    @classmethod
+    def from_file(cls, filename: str):
+        if not os.path.exists(filename):
+            raise OSError(f"file {filename} is not found")
+
+        with open(filename, "r") as file:
+            return cls.from_yaml(file)
+
+    @classmethod
+    def from_yaml(cls, yaml_obj: [str, TextIO]):
+        return cls.model_validate(yaml.safe_load(yaml_obj))
+
+

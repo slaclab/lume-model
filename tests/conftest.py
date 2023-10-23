@@ -29,8 +29,8 @@ def rootdir() -> str:
 
 @pytest.fixture(scope="session")
 def simple_variables() -> dict[str, Union[list[ScalarInputVariable], list[ScalarOutputVariable]]]:
-    input_variables = [ScalarInputVariable(name="input1", default=1.0, range=[0.0, 5.0]),
-                       ScalarInputVariable(name="input2", default=2.0, range=[1.0, 3.0])]
+    input_variables = [ScalarInputVariable(name="input1", default=1.0, value_range=[0.0, 5.0]),
+                       ScalarInputVariable(name="input2", default=2.0, value_range=[1.0, 3.0])]
     output_variables = [ScalarOutputVariable(name="output1"),
                         ScalarOutputVariable(name="output2")]
     return {"input_variables": input_variables, "output_variables": output_variables}

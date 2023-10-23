@@ -299,18 +299,18 @@ def test_output_array_variable(variable_name, default, dim_labels):
             {
                 "col1": {
                     "row1": ScalarInputVariable(
-                        name="col1_row1", default=0, value_range=[-1, -1]
+                        name="col1_row1", default=0,value_range=[-1, -1]
                     ),
                     "row2": ScalarInputVariable(
-                        name="col1_row2", default=0, value_range=[-1, 1]
+                        name="col1_row2", default=0,value_range=[-1, 1]
                     ),
                 },
                 "col2": {
                     "row1": ScalarInputVariable(
-                        name="col2_row1", default=0, value_range=[-1, -1]
+                        name="col2_row1", default=0,value_range=[-1, -1]
                     ),
                     "row2": ScalarInputVariable(
-                        name="col2_row2", default=0, value_range=[-1, 1]
+                        name="col2_row2", default=0,value_range=[-1, 1]
                     ),
                 },
             },
@@ -326,10 +326,10 @@ def test_output_array_variable(variable_name, default, dim_labels):
                 },
                 "col2": {
                     "row1": ScalarInputVariable(
-                        name="col2_row1", default=0, value_range=[-1, -1]
+                        name="col2_row1", default=0,value_range=[-1, -1]
                     ),
                     "row2": ScalarInputVariable(
-                        name="col2_row2", default=0, value_range=[-1, 1]
+                        name="col2_row2", default=0,value_range=[-1, 1]
                     ),
                 },
             },
