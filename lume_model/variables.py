@@ -11,7 +11,6 @@ import numpy as np
 import logging
 from typing import Any, List, Union, Optional, Generic, TypeVar, Literal
 from pydantic import BaseModel, Field, validator, ConfigDict
-from pydantic.generics import GenericModel
 
 logger = logging.getLogger(__name__)
 
