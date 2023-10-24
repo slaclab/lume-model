@@ -1,6 +1,6 @@
 import os
 import json
-from typing import Any, TextIO, Union
+from typing import Any, Union
 
 import pytest
 import numpy as np
@@ -11,13 +11,13 @@ from lume_model.variables import InputVariable, OutputVariable, ScalarInputVaria
 try:
     import torch
     from botorch.models.transforms.input import AffineInputTransform
-    from lume_model.torch import TorchModel, TorchModule
+    from lume_model.models import TorchModel, TorchModule
 except ModuleNotFoundError:
     pass
 
 try:
     import keras
-    from lume_model.keras import KerasModel
+    from lume_model.models import KerasModel
 except ModuleNotFoundError:
     pass
 

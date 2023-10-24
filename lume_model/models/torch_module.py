@@ -7,7 +7,7 @@ from typing import Union
 import torch
 
 from lume_model.base import parse_config, recursive_serialize
-from lume_model.torch.model import TorchModel
+from lume_model.models.torch_model import TorchModel
 
 
 class TorchModule(torch.nn.Module):

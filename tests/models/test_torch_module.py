@@ -8,7 +8,7 @@ import pytest
 try:
     import torch
     from botorch.models import SingleTaskGP
-    from lume_model.torch import TorchModel, TorchModule
+    from lume_model.models import TorchModel, TorchModule
 except ImportError:
     pass
 
@@ -93,7 +93,9 @@ class TestTorchModule:
         loss.backward()
 
     def test_module_from_yaml(self, rootdir: str, california_module):
-        file = f"{rootdir}/test_files/california_regression/torch_module.yml"
+        file = os.path.join(
+            rootdir, "test_files", "california_regression", "torch_module.yml"
+        )
         yaml_module = TorchModule(file)
 
         assert_module_equality(yaml_module, california_module)
