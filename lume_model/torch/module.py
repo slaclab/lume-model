@@ -6,7 +6,7 @@ from typing import Union
 
 import torch
 
-from lume_model.base import json_dumps, parse_config
+from lume_model.base import parse_config, recursive_serialize
 from lume_model.torch.model import TorchModel
 
 
@@ -18,8 +18,7 @@ class TorchModule(torch.nn.Module):
     """
     def __init__(
         self,
-        config: Union[dict, str] = None,
-        *,
+        *args,
         model: TorchModel = None,
         input_order: list[str] = None,
         output_order: list[str] = None,
@@ -27,8 +26,8 @@ class TorchModule(torch.nn.Module):
         """Initializes TorchModule.
 
         Args:
-            config: Model configuration as dictionary, YAML or JSON formatted string or file path. This overrides
-              all other arguments.
+            *args: Accepts a single argument which is the model configuration as dictionary, YAML or JSON
+              formatted string or file path.
 
         Keyword Args:
             model: The TorchModel instance to wrap around. If config is None, this has to be defined.
@@ -37,13 +36,19 @@ class TorchModule(torch.nn.Module):
             output_order: Output names in the order they are returned by the model. If None, the output order of
               the TorchModel is used.
         """
-        if all(arg is None for arg in [config, model]):
-            raise ValueError("Either config or model has to be defined.")
+        if all(arg is None for arg in [*args, model]):
+            raise ValueError("Either a YAML string has to be given or model has to be defined.")
         super().__init__()
-        if config is not None:
-            kwargs = parse_config(config)
+        if len(args) == 1:
+            if not all(v is None for v in [model, input_order, output_order]):
+                raise ValueError("Cannot specify YAML string and keyword arguments for TorchModule init.")
+            kwargs = parse_config(args[0])
             kwargs["model"] = TorchModel(kwargs["model"])
             self.__init__(**kwargs)
+        elif len(args) > 1:
+            raise ValueError(
+                "Arguments to TorchModule must be either a single YAML string or keyword arguments."
+            )
         else:
             self._model = model
             self._input_order = input_order
@@ -86,42 +91,62 @@ class TorchModule(torch.nn.Module):
 
     def yaml(
             self,
-            file: Union[str, os.PathLike] = None,
-            save_models: bool = True,
             base_key: str = "",
+            file_prefix: str = "",
+            save_models: bool = False,
     ) -> str:
-        """Returns and optionally saves YAML formatted string defining the TorchModule instance.
+        """Serializes the object and returns a YAML formatted string defining the TorchModule instance.
 
         Args:
-            file: If not None, YAML formatted string is saved to given file path.
-            save_models: Determines whether models are saved to file.
             base_key: Base key for serialization.
+            file_prefix: Prefix for generated filenames.
+            save_models: Determines whether models are saved to file.
 
         Returns:
             YAML formatted string defining the TorchModule instance.
         """
-        file_prefix = ""
-        if file is not None:
-            file_prefix = os.path.splitext(file)[0]
-        # get TorchModel config
         d = {}
         for k, v in inspect.signature(TorchModule.__init__).parameters.items():
-            if k not in ["self", "config", "model"]:
+            if k not in ["self", "args", "model"]:
                 d[k] = getattr(self, k)
-        config = json.loads(
-            json_dumps(d, default=None, base_key=base_key, file_prefix=file_prefix, save_models=save_models)
+        output = json.loads(
+            json.dumps(recursive_serialize(d, base_key, file_prefix, save_models))
         )
-        model_config = json.loads(
-            self._model.json(base_key=base_key, file_prefix=file_prefix, save_models=save_models)
+        model_output = json.loads(
+            self._model.to_json(
+                base_key=base_key,
+                file_prefix=file_prefix,
+                save_models=save_models,
+            )
         )
-        config["model"] = model_config
+        output["model"] = model_output
         # create YAML formatted string
-        s = yaml.dump({"model_class": self.__class__.__name__} | config,
+        s = yaml.dump({"model_class": self.__class__.__name__} | output,
                       default_flow_style=None, sort_keys=False)
-        if file is not None:
-            with open(file, "w") as f:
-                f.write(s)
         return s
+
+    def dump(
+            self,
+            file: Union[str, os.PathLike],
+            save_models: bool = True,
+            base_key: str = "",
+    ):
+        """Returns and optionally saves YAML formatted string defining the model.
+
+        Args:
+            file: File path to which the YAML formatted string and corresponding files are saved.
+            base_key: Base key for serialization.
+            save_models: Determines whether models are saved to file.
+        """
+        file_prefix = os.path.splitext(file)[0]
+        with open(file, "w") as f:
+            f.write(
+                self.yaml(
+                    save_models=save_models,
+                    base_key=base_key,
+                    file_prefix=file_prefix,
+                )
+            )
 
     def evaluate_model(self, x: dict[str, torch.Tensor]):
         """Placeholder method to modify model calls."""

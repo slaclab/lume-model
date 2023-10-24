@@ -101,7 +101,7 @@ class TestTorchModule:
     def test_module_as_yaml(self, rootdir: str, california_module):
         filename = "test_torch_module"
         file = f"{filename}.yml"
-        _ = california_module.yaml(file)
+        california_module.dump(file)
         yaml_module = TorchModule(file)
         assert_module_equality(yaml_module, california_module)
         os.remove(file)

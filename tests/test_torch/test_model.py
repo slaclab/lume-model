@@ -85,7 +85,7 @@ class TestTorchModel:
     def test_model_as_yaml(self, rootdir: str, california_model):
         filename = "test_torch_model"
         file = f"{filename}.yml"
-        _ = california_model.yaml(file)
+        california_model.dump(file)
         yaml_model = TorchModel(file)
         assert_model_equality(yaml_model, california_model)
         os.remove(file)
