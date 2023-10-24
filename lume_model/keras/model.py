@@ -4,15 +4,15 @@ from typing import Union
 
 import keras
 import numpy as np
-from pydantic import validator
+from pydantic import field_validator
 
 from lume_model.base import LUMEBaseModel
 from lume_model.variables import (
     InputVariable,
     OutputVariable,
     ScalarInputVariable,
-    ScalarOutputVariable,
-    ImageOutputVariable,
+    # ScalarOutputVariable,
+    # ImageOutputVariable,
 )
 
 logger = logging.getLogger(__name__)
@@ -33,26 +33,28 @@ class KerasModel(LUMEBaseModel):
 
     def __init__(
             self,
-            config: Union[dict, str] = None,
+            *args,
             **kwargs,
     ):
         """Initializes KerasModel.
 
         Args:
-            config: Model configuration as dictionary, YAML or JSON formatted string or file path. This overrides
-              all other arguments.
+            *args: Accepts a single argument which is the model configuration as dictionary, YAML or JSON
+              formatted string or file path.
             **kwargs: See class attributes.
         """
-        super().__init__(config, **kwargs)
+        super().__init__(*args, **kwargs)
 
-    @validator("model", pre=True)
+    @field_validator("model", mode="before")
     def validate_keras_model(cls, v):
         if isinstance(v, (str, os.PathLike)):
             if os.path.exists(v):
                 v = keras.models.load_model(v)
+            else:
+                raise ValueError(f"Path {v} does not exist!")
         return v
 
-    @validator("output_format")
+    @field_validator("output_format")
     def validate_output_format(cls, v):
         supported_formats = ["array", "variable", "raw"]
         if v not in supported_formats:
