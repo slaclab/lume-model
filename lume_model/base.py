@@ -173,7 +173,6 @@ def json_dumps(
 
     Args:
         v: Object to dump.
-        default: Default for json.dumps().
         base_key: Base key for serialization.
         file_prefix: Prefix for generated filenames.
         save_models: Determines whether models are saved to file.
@@ -287,20 +286,23 @@ class LUMEBaseModel(BaseModel, ABC):
 
         return new_value
 
-    def __init__(
-            self,
-            config: Union[dict, str] = None,
-            **kwargs,
-    ):
+    def __init__(self, *args, **kwargs):
         """Initializes LUMEBaseModel.
 
         Args:
-            config: Model configuration as dictionary, YAML or JSON formatted string or file path. This overrides
-              all other arguments.
+            *args: Accepts a single argument which is the model configuration as dictionary, YAML or JSON
+              formatted string or file path.
             **kwargs: See class attributes.
         """
-        if config is not None:
-            self.__init__(**parse_config(config))
+        if len(args) == 1:
+            if len(kwargs) > 0:
+                raise ValueError("Cannot specify YAML string and keyword arguments for LUMEBaseModel init.")
+            super().__init__(**parse_config(args[0]))
+        elif len(args) > 1:
+            raise ValueError(
+                "Arguments to LUMEBaseModel must be either a single YAML string "
+                "or keyword arguments passed directly to pydantic."
+            )
         else:
             super().__init__(**kwargs)
 
@@ -335,38 +337,54 @@ class LUMEBaseModel(BaseModel, ABC):
 
         return json.dumps(config)
 
-    def yaml(self, **kwargs):
-        """serialize first then dump to yaml string"""
-        output = json.loads(
-            self.to_json(
-                **kwargs,
-            )
-        )
-        return yaml.dump(output, default_flow_style=None, sort_keys=False)
-
-    def dump(
+    def yaml(
             self,
-            file: Union[str, os.PathLike],
-            save_models: bool = True,
             base_key: str = "",
-    ):
-        """Returns and optionally saves YAML formatted string defining the model.
+            file_prefix: str = "",
+            save_models: bool = False,
+    ) -> str:
+        """Serializes the object and returns a YAML formatted string defining the model.
 
         Args:
-            file: If not None, the YAML formatted string is saved to given file path.
-            save_models: Determines whether models are saved to file.
             base_key: Base key for serialization.
+            file_prefix: Prefix for generated filenames.
+            save_models: Determines whether models are saved to file.
 
         Returns:
             YAML formatted string defining the model.
         """
-        file_prefix = os.path.splitext(file)[0]
-
-        with open(file, "w") as f:
-            f.write(self.yaml(
+        output = json.loads(
+            self.to_json(
                 base_key=base_key,
                 file_prefix=file_prefix,
-                save_models=save_models)
+                save_models=save_models,
+            )
+        )
+        s = yaml.dump({"model_class": self.__class__.__name__} | output,
+                      default_flow_style=None, sort_keys=False)
+        return s
+
+    def dump(
+            self,
+            file: Union[str, os.PathLike],
+            base_key: str = "",
+            save_models: bool = True,
+    ):
+        """Returns and optionally saves YAML formatted string defining the model.
+
+        Args:
+            file: File path to which the YAML formatted string and corresponding files are saved.
+            base_key: Base key for serialization.
+            save_models: Determines whether models are saved to file.
+        """
+        file_prefix = os.path.splitext(file)[0]
+        with open(file, "w") as f:
+            f.write(
+                self.yaml(
+                    base_key=base_key,
+                    file_prefix=file_prefix,
+                    save_models=save_models,
+                )
             )
 
     @classmethod
