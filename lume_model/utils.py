@@ -51,7 +51,7 @@ def verify_unique_variable_names(variables: Union[list[InputVariable], list[Outp
         raise ValueError(f"{var_str} names {non_unique_names} are not unique.")
 
 
-def serialize_variables(v):
+def serialize_variables(v: dict):
     """Performs custom serialization for in- and output variables.
 
     Args:

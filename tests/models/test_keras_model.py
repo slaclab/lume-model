@@ -7,7 +7,7 @@ import pytest
 import numpy as np
 
 try:
-    from lume_model.keras import KerasModel
+    from lume_model.models import KerasModel
     from lume_model.variables import InputVariable, OutputVariable, ScalarOutputVariable
 except ImportError:
     pass
@@ -73,7 +73,7 @@ class TestKerasModel:
     def test_model_as_yaml(self, rootdir: str, iris_model):
         filename = "test_keras_model"
         file = f"{filename}.yml"
-        _ = iris_model.yaml(file)
+        iris_model.dump(file)
         yaml_model = KerasModel(file)
         assert_model_equality(yaml_model, iris_model)
         os.remove(file)

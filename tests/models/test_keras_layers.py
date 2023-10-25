@@ -1,5 +1,5 @@
 import pytest
-import sys
+
 
 # test value and failed initialization with characters
 @pytest.mark.parametrize(
@@ -11,7 +11,7 @@ import sys
     ],
 )
 def test_scale_layer(offset, scale, lower, upper):
-    layers = pytest.importorskip("lume_model.keras.layers")
+    layers = pytest.importorskip("lume_model.models.keras_layers")
     scale_layer = layers.ScaleLayer(offset, scale, lower, upper)
 
 
@@ -25,7 +25,7 @@ def test_scale_layer(offset, scale, lower, upper):
     ],
 )
 def test_unscale_layer(offset, scale, lower, upper):
-    layers = pytest.importorskip("lume_model.keras.layers")
+    layers = pytest.importorskip("lume_model.models.keras_layers")
     unscale_layer = layers.UnscaleLayer(offset, scale, lower, upper)
 
 
@@ -34,5 +34,5 @@ def test_unscale_layer(offset, scale, lower, upper):
     "offset,scale", [(1, 2), (5, 4), pytest.param("t", "e", marks=pytest.mark.xfail),],
 )
 def test_unscale_image_layer(offset, scale):
-    layers = pytest.importorskip("lume_model.keras.layers")
+    layers = pytest.importorskip("lume_model.models.keras_layers")
     unscale_layer = layers.UnscaleImgLayer(offset, scale)

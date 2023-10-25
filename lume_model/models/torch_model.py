@@ -4,7 +4,7 @@ from typing import Union
 from copy import deepcopy
 
 import torch
-from pydantic import validator
+from pydantic import field_validator
 from botorch.models.transforms.input import ReversibleInputTransform
 
 from lume_model.base import LUMEBaseModel
@@ -12,8 +12,8 @@ from lume_model.variables import (
     InputVariable,
     OutputVariable,
     ScalarInputVariable,
-    ScalarOutputVariable,
-    ImageOutputVariable,
+    # ScalarOutputVariable,
+    # ImageOutputVariable,
 )
 
 logger = logging.getLogger(__name__)
@@ -43,19 +43,15 @@ class TorchModel(LUMEBaseModel):
     device: Union[torch.device, str] = "cpu"
     fixed_model: bool = True
 
-    def __init__(
-            self,
-            config: Union[dict, str] = None,
-            **kwargs,
-    ):
+    def __init__(self, *args, **kwargs):
         """Initializes TorchModel.
 
         Args:
-            config: Model configuration as dictionary, YAML or JSON formatted string or file path. This overrides
-              all other arguments.
+            *args: Accepts a single argument which is the model configuration as dictionary, YAML or JSON
+              formatted string or file path.
             **kwargs: See class attributes.
         """
-        super().__init__(config, **kwargs)
+        super().__init__(*args, **kwargs)
 
         # set precision
         self.model.to(dtype=self.dtype)
@@ -81,14 +77,16 @@ class TorchModel(LUMEBaseModel):
     def _tkwargs(self):
         return {"device": self.device, "dtype": self.dtype}
 
-    @validator("model", pre=True)
+    @field_validator("model", mode="before")
     def validate_torch_model(cls, v):
         if isinstance(v, (str, os.PathLike)):
             if os.path.exists(v):
                 v = torch.load(v)
+            else:
+                raise ValueError(f"Path {v} does not exist!")
         return v
 
-    @validator("input_transformers", "output_transformers", pre=True)
+    @field_validator("input_transformers", "output_transformers", mode="before")
     def validate_botorch_transformers(cls, v):
         if not isinstance(v, list):
             raise ValueError("Transformers must be passed as list.")
@@ -102,7 +100,7 @@ class TorchModel(LUMEBaseModel):
             v = loaded_transformers
         return v
 
-    @validator("output_format")
+    @field_validator("output_format")
     def validate_output_format(cls, v):
         supported_formats = ["tensor", "variable", "raw"]
         if v not in supported_formats:

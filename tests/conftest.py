@@ -1,6 +1,6 @@
 import os
 import json
-from typing import Any, TextIO, Union
+from typing import Any, Union
 
 import pytest
 import numpy as np
@@ -11,13 +11,13 @@ from lume_model.variables import InputVariable, OutputVariable, ScalarInputVaria
 try:
     import torch
     from botorch.models.transforms.input import AffineInputTransform
-    from lume_model.torch import TorchModel, TorchModule
+    from lume_model.models import TorchModel, TorchModule
 except ModuleNotFoundError:
     pass
 
 try:
     import keras
-    from lume_model.keras import KerasModel
+    from lume_model.models import KerasModel
 except ModuleNotFoundError:
     pass
 
@@ -29,8 +29,8 @@ def rootdir() -> str:
 
 @pytest.fixture(scope="session")
 def simple_variables() -> dict[str, Union[list[ScalarInputVariable], list[ScalarOutputVariable]]]:
-    input_variables = [ScalarInputVariable(name="input1", default=1.0, range=[0.0, 5.0]),
-                       ScalarInputVariable(name="input2", default=2.0, range=[1.0, 3.0])]
+    input_variables = [ScalarInputVariable(name="input1", default=1.0, value_range=[0.0, 5.0]),
+                       ScalarInputVariable(name="input2", default=2.0, value_range=[1.0, 3.0])]
     output_variables = [ScalarOutputVariable(name="output1"),
                         ScalarOutputVariable(name="output2")]
     return {"input_variables": input_variables, "output_variables": output_variables}

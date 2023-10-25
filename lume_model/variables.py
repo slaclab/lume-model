@@ -10,64 +10,9 @@ float type values. Image variables hold numpy array representations of images.
 import numpy as np
 import logging
 from typing import Any, List, Union, Optional, Generic, TypeVar, Literal
-from pydantic import BaseModel, Field, validator
-from pydantic.generics import GenericModel
+from pydantic import BaseModel, Field, validator, ConfigDict
 
 logger = logging.getLogger(__name__)
-
-
-class PropertyBaseModel(GenericModel):
-    """
-    Generic base class used for the Variables. This extends the pydantic GenericModel
-    to serialize properties.
-
-    TODO:
-        Workaround for serializing properties with pydantic until
-        https://github.com/samuelcolvin/pydantic/issues/935
-        is solved. This solution is referenced in the issue.
-    """
-
-    @classmethod
-    def get_properties(cls):
-        return [
-            prop
-            for prop in dir(cls)
-            if isinstance(getattr(cls, prop), property)
-            and prop not in ("__values__", "fields")
-        ]
-
-    def dict(
-        self,
-        *,
-        include: Union["AbstractSetIntStr", "MappingIntStrAny"] = None,
-        exclude: Union["AbstractSetIntStr", "MappingIntStrAny"] = None,
-        by_alias: bool = False,
-        skip_defaults: bool = None,
-        exclude_unset: bool = False,
-        exclude_defaults: bool = False,
-        exclude_none: bool = False,
-    ) -> "DictStrAny":
-        attribs = super().dict(
-            include=include,
-            exclude=exclude,
-            by_alias=by_alias,
-            skip_defaults=skip_defaults,
-            exclude_unset=exclude_unset,
-            exclude_defaults=exclude_defaults,
-            exclude_none=exclude_none,
-        )
-        props = self.get_properties()
-        # Include and exclude properties
-        if include:
-            props = [prop for prop in props if prop in include]
-        if exclude:
-            props = [prop for prop in props if prop not in exclude]
-
-        # Update the attribute dict with the properties
-        if props:
-            attribs.update({prop: getattr(self, prop) for prop in props})
-
-        return attribs
 
 
 class NumpyNDArray(np.ndarray):
@@ -144,7 +89,7 @@ class NDVariableBase:
 Value = TypeVar("Value")
 
 
-class Variable(PropertyBaseModel, Generic[Value]):
+class Variable(BaseModel, Generic[Value]):
     """
     Minimum requirements for a Variable
 
@@ -157,12 +102,9 @@ class Variable(PropertyBaseModel, Generic[Value]):
 
     """
 
-    name: str = Field(...)  # name required
+    name: str
     value: Optional[Value] = None
     precision: Optional[int] = None
-
-    class Config:
-        allow_population_by_field_name = True  # do not use alias only-init
 
 
 class InputVariable(Variable, Generic[Value]):
@@ -183,14 +125,7 @@ class InputVariable(Variable, Generic[Value]):
     """
 
     default: Value  # required default
-    is_constant: bool = False
-
-    class Config:
-        allow_mutation = True
-
-    def __init__(self, **kwargs):
-        super(Variable, self).__init__(**kwargs)
-        self.Config.allow_mutation = not self.is_constant
+    is_constant: bool = Field(False)
 
 
 class OutputVariable(Variable, Generic[Value]):
@@ -210,8 +145,8 @@ class OutputVariable(Variable, Generic[Value]):
 
     """
 
-    default: Optional[Value]
-    value_range: Optional[list] = Field(alias="range")
+    default: Optional[Value] = None
+    value_range: Optional[list] = Field(None, alias="range")
 
 
 class ImageVariable(BaseModel, NDVariableBase):
@@ -283,7 +218,6 @@ class ScalarVariable(BaseModel):
     parent_variable: str = (
         None  # indicates that this variable is an attribute of another
     )
-    value_range: list = Field(..., alias="range")  # range required
 
 
 class ImageInputVariable(InputVariable[Image], ImageVariable):
@@ -399,7 +333,7 @@ class ScalarInputVariable(InputVariable[float], ScalarVariable):
         ```
     """
 
-    pass
+    value_range: list[float]
 
 
 class ScalarOutputVariable(OutputVariable[float], ScalarVariable):
@@ -423,7 +357,6 @@ class ScalarOutputVariable(OutputVariable[float], ScalarVariable):
         ```
 
     """
-
     pass
 
 
