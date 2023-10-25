@@ -1,8 +1,7 @@
 import pytest
 
 try:
-    from lume_model.torch import TorchModel, TorchModule
-    from lume_model.keras import KerasModel
+    from lume_model.models import TorchModel, TorchModule, KerasModel
     from lume_model.models import model_from_yaml
 except ImportError:
     pass

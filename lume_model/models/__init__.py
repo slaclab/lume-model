@@ -6,14 +6,15 @@ registered_models = []
 
 # models requiring torch
 try:
-    from lume_model.torch import TorchModel, TorchModule
+    from lume_model.models.torch_model import TorchModel
+    from lume_model.models.torch_module import TorchModule
     registered_models += [TorchModel, TorchModule]
 except ModuleNotFoundError:
     pass
 
 # models requiring keras
 try:
-    from lume_model.keras import KerasModel
+    from lume_model.models.keras_model import KerasModel
     registered_models += [KerasModel]
 except ModuleNotFoundError:
     pass

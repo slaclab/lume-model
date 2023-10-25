@@ -8,7 +8,7 @@ import pytest
 try:
     import torch
     from botorch.models.transforms.input import AffineInputTransform
-    from lume_model.torch import TorchModel
+    from lume_model.models import TorchModel
     from lume_model.variables import InputVariable, OutputVariable, ScalarOutputVariable
 except ImportError:
     pass
@@ -80,12 +80,13 @@ class TestTorchModel:
             rootdir, "test_files", "california_regression", "torch_model.yml"
         )
         yaml_model = TorchModel.from_file(file)
+
         assert_model_equality(yaml_model, california_model)
 
     def test_model_as_yaml(self, rootdir: str, california_model):
         filename = "test_torch_model"
         file = f"{filename}.yml"
-        _ = california_model.yaml(file)
+        california_model.dump(file)
         yaml_model = TorchModel(file)
         assert_model_equality(yaml_model, california_model)
         os.remove(file)

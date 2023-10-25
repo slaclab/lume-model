@@ -4,8 +4,7 @@ from typing import Union
 from copy import deepcopy
 
 import torch
-import yaml
-from pydantic import validator, field_validator
+from pydantic import field_validator
 from botorch.models.transforms.input import ReversibleInputTransform
 
 from lume_model.base import LUMEBaseModel
@@ -13,8 +12,8 @@ from lume_model.variables import (
     InputVariable,
     OutputVariable,
     ScalarInputVariable,
-    ScalarOutputVariable,
-    ImageOutputVariable,
+    # ScalarOutputVariable,
+    # ImageOutputVariable,
 )
 
 logger = logging.getLogger(__name__)
@@ -45,20 +44,14 @@ class TorchModel(LUMEBaseModel):
     fixed_model: bool = True
 
     def __init__(self, *args, **kwargs):
+        """Initializes TorchModel.
+
+        Args:
+            *args: Accepts a single argument which is the model configuration as dictionary, YAML or JSON
+              formatted string or file path.
+            **kwargs: See class attributes.
         """
-        Initialize Xopt.
-        """
-        if len(args) == 1:
-            if len(kwargs) > 0:
-                raise ValueError("cannot specify yaml string and kwargs for Xopt init")
-            super().__init__(**yaml.safe_load(args[0]))
-        elif len(args) > 1:
-            raise ValueError(
-                "arguments to Xopt must be either a single yaml string "
-                "or a keyword arguments passed directly to pydantic"
-            )
-        else:
-            super().__init__(**kwargs)
+        super().__init__(*args, **kwargs)
 
         # set precision
         self.model.to(dtype=self.dtype)
@@ -90,7 +83,7 @@ class TorchModel(LUMEBaseModel):
             if os.path.exists(v):
                 v = torch.load(v)
             else:
-                raise ValueError(f"path {v} does not exist!!")
+                raise ValueError(f"Path {v} does not exist!")
         return v
 
     @field_validator("input_transformers", "output_transformers", mode="before")
