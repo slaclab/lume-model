@@ -1,6 +1,6 @@
 import os
 import yaml
-from typing import Any, Union
+from typing import Union
 
 registered_models = []
 
@@ -35,19 +35,6 @@ def get_model(name: str):
     return model_lookup[name]
 
 
-def model_from_dict(config: dict[str, Any]):
-    """Creates LUME model from the given configuration dictionary.
-
-    Args:
-        config: Model configuration dictionary.
-
-    Returns:
-        Created LUME model.
-    """
-    model_class = get_model(config["model_class"])
-    return model_class(config)
-
-
 def model_from_yaml(yaml_str: Union[str, os.PathLike]):
     """Creates LUME model from the given YAML formatted string or file path.
 
@@ -59,6 +46,8 @@ def model_from_yaml(yaml_str: Union[str, os.PathLike]):
     """
     if os.path.exists(yaml_str):
         with open(yaml_str) as f:
-            yaml_str = f.read()
-    config = yaml.safe_load(yaml_str)
-    return model_from_dict(config)
+            config = yaml.safe_load(f.read())
+    else:
+        config = yaml.safe_load(yaml_str)
+    model_class = get_model(config["model_class"])
+    return model_class(yaml_str)
