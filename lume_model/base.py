@@ -1,12 +1,12 @@
 import os
 import json
-import yaml
 import logging
 from abc import ABC, abstractmethod
-from typing import Any, Callable, Optional, Union
+from typing import Any, Callable, Union
 from types import FunctionType, MethodType
 from io import TextIOWrapper
 
+import yaml
 import numpy as np
 from pydantic import BaseModel, ConfigDict, field_validator, SerializeAsAny
 
@@ -20,6 +20,7 @@ from lume_model.utils import (
     serialize_variables,
     deserialize_variables,
     variables_from_dict,
+    replace_relative_paths,
 )
 
 logger = logging.getLogger(__name__)
@@ -137,7 +138,6 @@ def recursive_serialize(
             for _type, func in JSON_ENCODERS.items():
                 if isinstance(value, _type):
                     v[key] = func(value)
-
         # check to make sure object has been serialized, if not use a generic serializer
         try:
             json.dumps(v[key])
@@ -183,8 +183,6 @@ def json_dumps(
         JSON formatted string.
     """
     v = recursive_serialize(v.model_dump(), base_key, file_prefix, save_models)
-    # remove config file
-    v.pop("config_file")
     v = json.dumps(v)
     return v
 
@@ -203,11 +201,15 @@ def json_loads(v):
     return v
 
 
-def parse_config(config: Union[dict, str, TextIOWrapper, os.PathLike]) -> dict:
+def parse_config(
+        config: Union[dict, str, TextIOWrapper, os.PathLike],
+        model_fields: dict = None,
+) -> dict:
     """Parses model configuration and returns keyword arguments for model constructor.
 
     Args:
         config: Model configuration as dictionary, YAML or JSON formatted string, file or file path.
+        model_fields: Fields expected by the model (required for replacing relative paths).
 
     Returns:
         Configuration as keyword arguments for model constructor.
@@ -227,7 +229,8 @@ def parse_config(config: Union[dict, str, TextIOWrapper, os.PathLike]) -> dict:
             yaml_str = config
         d = recursive_deserialize(yaml.safe_load(yaml_str))
     if config_file is not None:
-        d.update({"config_file": config_file})
+        config_dir = os.path.dirname(os.path.realpath(config_file))
+        d = replace_relative_paths(d, model_fields, config_dir)
     return model_kwargs_from_dict(d)
 
 
@@ -258,17 +261,10 @@ class LUMEBaseModel(BaseModel, ABC):
         input_variables: List defining the input variables and their order.
         output_variables: List defining the output variables and their order.
     """
-    config_file: Optional[Union[str, os.PathLike]] = None
     input_variables: list[SerializeAsAny[InputVariable]]
     output_variables: list[SerializeAsAny[OutputVariable]]
 
     model_config = ConfigDict(arbitrary_types_allowed=True, validate_assignment=True)
-
-    @field_validator("config_file", mode="before")
-    def validate_config_file(cls, value):
-        if value is not None and not os.path.isfile(value):
-            raise ValueError(f"File {value} is not found.")
-        return value
 
     @field_validator("input_variables", mode="before")
     def validate_input_variables(cls, value):
@@ -315,7 +311,7 @@ class LUMEBaseModel(BaseModel, ABC):
         if len(args) == 1:
             if len(kwargs) > 0:
                 raise ValueError("Cannot specify YAML string and keyword arguments for LUMEBaseModel init.")
-            super().__init__(**parse_config(args[0]))
+            super().__init__(**parse_config(args[0], self.model_fields))
         elif len(args) > 1:
             raise ValueError(
                 "Arguments to LUMEBaseModel must be either a single YAML string "
@@ -414,4 +410,4 @@ class LUMEBaseModel(BaseModel, ABC):
 
     @classmethod
     def from_yaml(cls, yaml_obj: [str, TextIOWrapper]):
-        return cls.model_validate(parse_config(yaml_obj))
+        return cls.model_validate(parse_config(yaml_obj, cls.model_fields))

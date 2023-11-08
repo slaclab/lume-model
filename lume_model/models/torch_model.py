@@ -75,34 +75,26 @@ class TorchModel(LUMEBaseModel):
     def _tkwargs(self):
         return {"device": self.device, "dtype": self.dtype}
 
-    @classmethod
-    def load_torch_file(cls, v: Union[str, os.PathLike], config_file: [str, os.PathLike]):
-        relative_path = None
-        if config_file is not None:
-            config_dir = os.path.dirname(os.path.realpath(config_file))
-            relative_path = os.path.join(config_dir, v)
-        if relative_path is not None and os.path.exists(relative_path):
-            v = torch.load(relative_path)
-        elif os.path.exists(v):
-            v = torch.load(v)
-        else:
-            raise OSError(f"File {v} is not found.")
-        return v
-
     @field_validator("model", mode="before")
-    def validate_torch_model(cls, v, info):
+    def validate_torch_model(cls, v):
         if isinstance(v, (str, os.PathLike)):
-            v = cls.load_torch_file(v, info.data["config_file"])
+            if os.path.exists(v):
+                v = torch.load(v)
+            else:
+                raise OSError(f"File {v} is not found.")
         return v
 
     @field_validator("input_transformers", "output_transformers", mode="before")
-    def validate_botorch_transformers(cls, v, info):
+    def validate_botorch_transformers(cls, v):
         if not isinstance(v, list):
             raise ValueError("Transformers must be passed as list.")
         loaded_transformers = []
         for t in v:
             if isinstance(t, (str, os.PathLike)):
-                t = cls.load_torch_file(t, info.data["config_file"])
+                if os.path.exists(t):
+                    t = torch.load(t)
+                else:
+                    raise OSError(f"File {t} is not found.")
             loaded_transformers.append(t)
         v = loaded_transformers
         return v

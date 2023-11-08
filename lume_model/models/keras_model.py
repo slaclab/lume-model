@@ -46,19 +46,12 @@ class KerasModel(LUMEBaseModel):
         super().__init__(*args, **kwargs)
 
     @field_validator("model", mode="before")
-    def validate_keras_model(cls, v, info):
+    def validate_keras_model(cls, v):
         if isinstance(v, (str, os.PathLike)):
-            relative_path = None
-            config_file = info.data["config_file"]
-            if config_file is not None:
-                config_dir = os.path.dirname(os.path.realpath(config_file))
-                relative_path = os.path.join(config_dir, v)
-            if relative_path is not None and os.path.exists(relative_path):
-                v = keras.models.load_model(relative_path)
-            elif os.path.exists(v):
+            if os.path.exists(v):
                 v = keras.models.load_model(v)
             else:
-                raise OSError(f"Path {v} does not exist!")
+                raise OSError(f"File {v} is not found.")
         return v
 
     @field_validator("output_format")
