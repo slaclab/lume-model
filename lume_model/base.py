@@ -348,7 +348,6 @@ class LUMEBaseModel(BaseModel, ABC):
         result = self.to_json(**kwargs)
         config = json.loads(result)
         config = {"model_class": self.__class__.__name__} | config
-
         return json.dumps(config)
 
     def yaml(

@@ -1,14 +1,11 @@
 # Variables
 
 ::: lume_model.variables
-    selection:
+    options:
         members:
+            - Variable
+            - ScalarVariable
+            - InputVariable
+            - OutputVariable
             - ScalarInputVariable
             - ScalarOutputVariable
-            - ImageInputVariable
-            - ImageOutputVariable
-            - ArrayInputVariable
-            - ArrayOutputVariable
-            - TableVariable
-    rendering:
-        show_source: true
