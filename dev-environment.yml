@@ -7,7 +7,7 @@ dependencies:
   - pydantic>2.3
   - numpy
   - pyyaml
-  - tensorflow
+  - tensorflow=2.11.0
   - botorch
 
   # dev requirements
