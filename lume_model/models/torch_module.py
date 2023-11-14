@@ -42,7 +42,8 @@ class TorchModule(torch.nn.Module):
         if len(args) == 1:
             if not all(v is None for v in [model, input_order, output_order]):
                 raise ValueError("Cannot specify YAML string and keyword arguments for TorchModule init.")
-            kwargs = parse_config(args[0])
+            model_fields = {f"model.{k}": v for k, v in TorchModel.model_fields.items()}
+            kwargs = parse_config(args[0], model_fields)
             kwargs["model"] = TorchModel(kwargs["model"])
             self.__init__(**kwargs)
         elif len(args) > 1:

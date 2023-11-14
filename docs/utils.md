@@ -1,5 +1,8 @@
 # Utilities
 
 ::: lume_model.utils
-    rendering:
-        show_root_heading: false
+    options:
+        members:
+            - variables_as_yaml
+            - variables_from_dict
+            - variables_from_yaml

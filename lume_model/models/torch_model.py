@@ -12,8 +12,6 @@ from lume_model.variables import (
     InputVariable,
     OutputVariable,
     ScalarInputVariable,
-    # ScalarOutputVariable,
-    # ImageOutputVariable,
 )
 
 logger = logging.getLogger(__name__)
@@ -32,9 +30,9 @@ class TorchModel(LUMEBaseModel):
         input_transformers: List of transformer objects to apply to input before passing to model.
         output_transformers: List of transformer objects to apply to output of model.
         output_format: Determines format of outputs: "tensor", "variable" or "raw".
+        device: Device on which the model will be evaluated. Defaults to "cpu".
         fixed_model: If true, the model and transformers are put in evaluation mode and all gradient
           computation is deactivated.
-        device: Device on which the model will be evaluated. Defaults to "cpu".
     """
     model: torch.nn.Module
     input_transformers: list[ReversibleInputTransform] = []
@@ -83,21 +81,22 @@ class TorchModel(LUMEBaseModel):
             if os.path.exists(v):
                 v = torch.load(v)
             else:
-                raise ValueError(f"Path {v} does not exist!")
+                raise OSError(f"File {v} is not found.")
         return v
 
     @field_validator("input_transformers", "output_transformers", mode="before")
     def validate_botorch_transformers(cls, v):
         if not isinstance(v, list):
             raise ValueError("Transformers must be passed as list.")
-        else:
-            loaded_transformers = []
-            for t in v:
-                if isinstance(t, (str, os.PathLike)):
-                    if os.path.exists(t):
-                        t = torch.load(t)
-                loaded_transformers.append(t)
-            v = loaded_transformers
+        loaded_transformers = []
+        for t in v:
+            if isinstance(t, (str, os.PathLike)):
+                if os.path.exists(t):
+                    t = torch.load(t)
+                else:
+                    raise OSError(f"File {t} is not found.")
+            loaded_transformers.append(t)
+        v = loaded_transformers
         return v
 
     @field_validator("output_format")

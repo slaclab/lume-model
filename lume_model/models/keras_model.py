@@ -51,7 +51,7 @@ class KerasModel(LUMEBaseModel):
             if os.path.exists(v):
                 v = keras.models.load_model(v)
             else:
-                raise ValueError(f"Path {v} does not exist!")
+                raise OSError(f"File {v} is not found.")
         return v
 
     @field_validator("output_format")

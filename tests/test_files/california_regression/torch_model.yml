@@ -42,9 +42,9 @@ input_variables:
     is_constant: false
 output_variables:
   MedHouseVal: {variable_type: scalar}
-model: tests/test_files/california_regression/model.pt
-input_transformers: [tests/test_files/california_regression/input_transformers_0.pt]
-output_transformers: [tests/test_files/california_regression/output_transformers_0.pt]
+model: model.pt
+input_transformers: [input_transformers_0.pt]
+output_transformers: [output_transformers_0.pt]
 output_format: tensor
 device: cpu
 fixed_model: true

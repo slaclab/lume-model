@@ -2,7 +2,7 @@ import os
 import sys
 import yaml
 import importlib
-from typing import Union
+from typing import Union, get_origin, get_args
 
 from lume_model.variables import (
     InputVariable,
@@ -154,3 +154,71 @@ def variables_from_yaml(yaml_obj: Union[str, os.PathLike]) -> tuple[list[InputVa
         yaml_str = yaml_obj
     config = deserialize_variables(yaml.safe_load(yaml_str))
     return variables_from_dict(config)
+
+
+def get_valid_path(
+        path: Union[str, os.PathLike],
+        directory: Union[str, os.PathLike] = "",
+) -> Union[str, os.PathLike]:
+    """Validates path exists either as relative or absolute path and returns the first valid option.
+
+    Args:
+        path: Path to validate.
+        directory: Directory against which relative paths are checked.
+
+    Returns:
+        The first valid path option as an absolute path.
+    """
+    relative_path = os.path.join(directory, path)
+    if os.path.exists(relative_path):
+        return os.path.abspath(relative_path)
+    elif os.path.exists(path):
+        return os.path.abspath(path)
+    else:
+        raise OSError(f"File {path} is not found.")
+
+
+def replace_relative_paths(
+        d: dict,
+        model_fields: dict = None,
+        directory: Union[str, os.PathLike] = "",
+) -> dict:
+    """Replaces dictionary entries with absolute paths where the model field annotation is not string or path-like.
+
+    Args:
+        d: Dictionary to process.
+        model_fields: Model fields dictionary used to check expected type.
+        directory: Directory against which relative paths are checked.
+
+    Returns:
+        Dictionary with replaced paths.
+    """
+    if model_fields is None:
+        model_fields = {}
+    for k, v in d.items():
+        if isinstance(v, (str, os.PathLike)):
+            if k in model_fields.keys():
+                field_types = [model_fields[k].annotation]
+                if get_origin(model_fields[k].annotation) is Union:
+                    field_types = list(get_args(model_fields[k].annotation))
+                if all([t not in field_types for t in [str, os.PathLike]]):
+                    d[k] = get_valid_path(v, directory)
+        elif isinstance(v, list):
+            if k in model_fields.keys():
+                field_types = []
+                for i, field_type in enumerate(get_args(model_fields[k].annotation)):
+                    if get_origin(field_type) is Union:
+                        field_types.extend(list(get_args(field_type)))
+                    else:
+                        field_types.append(field_type)
+                for i, ele in enumerate(v):
+                    if (isinstance(ele, (str, os.PathLike)) and
+                            all([t not in field_types for t in [str, os.PathLike]])):
+                        v[i] = get_valid_path(ele, directory)
+        elif isinstance(v, dict):
+            model_subfields = {
+                ".".join(key.split(".")[1:]): value
+                for key, value in model_fields.items() if key.startswith(f"{k}.")
+            }
+            d[k] = replace_relative_paths(v, model_subfields, directory)
+    return d

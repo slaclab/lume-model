@@ -22,6 +22,6 @@ input_variables:
     is_constant: false
 output_variables:
   Species: {variable_type: scalar}
-model: tests/test_files/iris_classification/model.keras
+model: model.keras
 output_format: array
 output_transforms: [softmax]

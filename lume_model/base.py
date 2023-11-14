@@ -1,11 +1,12 @@
 import os
 import json
-import yaml
 import logging
 from abc import ABC, abstractmethod
-from typing import Any, Callable, Union, TextIO
+from typing import Any, Callable, Union
 from types import FunctionType, MethodType
+from io import TextIOWrapper
 
+import yaml
 import numpy as np
 from pydantic import BaseModel, ConfigDict, field_validator, SerializeAsAny
 
@@ -19,6 +20,7 @@ from lume_model.utils import (
     serialize_variables,
     deserialize_variables,
     variables_from_dict,
+    replace_relative_paths,
 )
 
 logger = logging.getLogger(__name__)
@@ -55,14 +57,15 @@ def process_torch_module(
         Filename under which the torch module is (or would be) saved.
     """
     torch = try_import_module("torch")
-    prefixes = [ele for ele in [file_prefix, base_key] if not ele == ""]
-    if not prefixes:
-        module_name = "{}.pt".format(key)
-    else:
-        module_name = "{}.pt".format("_".join((*prefixes, key)))
+    filepath_prefix, filename_prefix = os.path.split(file_prefix)
+    prefixes = [ele for ele in [filename_prefix, base_key] if not ele == ""]
+    filename = "{}.pt".format(key)
+    if prefixes:
+        filename = "_".join((*prefixes, filename))
+    filepath = os.path.join(filepath_prefix, filename)
     if save_modules:
-        torch.save(module, module_name)
-    return module_name
+        torch.save(module, filepath)
+    return filename
 
 
 def process_keras_model(
@@ -135,7 +138,6 @@ def recursive_serialize(
             for _type, func in JSON_ENCODERS.items():
                 if isinstance(value, _type):
                     v[key] = func(value)
-
         # check to make sure object has been serialized, if not use a generic serializer
         try:
             json.dumps(v[key])
@@ -199,24 +201,36 @@ def json_loads(v):
     return v
 
 
-def parse_config(config: Union[dict, str]) -> dict:
+def parse_config(
+        config: Union[dict, str, TextIOWrapper, os.PathLike],
+        model_fields: dict = None,
+) -> dict:
     """Parses model configuration and returns keyword arguments for model constructor.
 
     Args:
-        config: Model configuration as dictionary, YAML or JSON formatted string or file path.
+        config: Model configuration as dictionary, YAML or JSON formatted string, file or file path.
+        model_fields: Fields expected by the model (required for replacing relative paths).
 
     Returns:
         Configuration as keyword arguments for model constructor.
     """
-    if isinstance(config, str):
-        if os.path.exists(config):
+    config_file = None
+    if isinstance(config, dict):
+        d = config
+    else:
+        if isinstance(config, TextIOWrapper):
+            yaml_str = config.read()
+            config_file = os.path.abspath(config.name)
+        elif isinstance(config, (str, os.PathLike)) and os.path.exists(config):
             with open(config) as f:
                 yaml_str = f.read()
+            config_file = os.path.abspath(config)
         else:
             yaml_str = config
         d = recursive_deserialize(yaml.safe_load(yaml_str))
-    else:
-        d = config
+    if config_file is not None:
+        config_dir = os.path.dirname(os.path.realpath(config_file))
+        d = replace_relative_paths(d, model_fields, config_dir)
     return model_kwargs_from_dict(d)
 
 
@@ -233,7 +247,7 @@ def model_kwargs_from_dict(config: dict) -> dict:
     if all(key in config.keys() for key in ["input_variables", "output_variables"]):
         config["input_variables"], config["output_variables"] = variables_from_dict(
             config)
-    _ = config.pop("model_class", None)
+    config.pop("model_class", None)
     return config
 
 
@@ -297,7 +311,7 @@ class LUMEBaseModel(BaseModel, ABC):
         if len(args) == 1:
             if len(kwargs) > 0:
                 raise ValueError("Cannot specify YAML string and keyword arguments for LUMEBaseModel init.")
-            super().__init__(**parse_config(args[0]))
+            super().__init__(**parse_config(args[0], self.model_fields))
         elif len(args) > 1:
             raise ValueError(
                 "Arguments to LUMEBaseModel must be either a single YAML string "
@@ -334,7 +348,6 @@ class LUMEBaseModel(BaseModel, ABC):
         result = self.to_json(**kwargs)
         config = json.loads(result)
         config = {"model_class": self.__class__.__name__} | config
-
         return json.dumps(config)
 
     def yaml(
@@ -377,7 +390,7 @@ class LUMEBaseModel(BaseModel, ABC):
             base_key: Base key for serialization.
             save_models: Determines whether models are saved to file.
         """
-        file_prefix = os.path.splitext(file)[0]
+        file_prefix = os.path.splitext(os.path.abspath(file))[0]
         with open(file, "w") as f:
             f.write(
                 self.yaml(
@@ -390,13 +403,10 @@ class LUMEBaseModel(BaseModel, ABC):
     @classmethod
     def from_file(cls, filename: str):
         if not os.path.exists(filename):
-            raise OSError(f"file {filename} is not found")
-
+            raise OSError(f"File {filename} is not found.")
         with open(filename, "r") as file:
             return cls.from_yaml(file)
 
     @classmethod
-    def from_yaml(cls, yaml_obj: [str, TextIO]):
-        return cls.model_validate(yaml.safe_load(yaml_obj))
-
-
+    def from_yaml(cls, yaml_obj: [str, TextIOWrapper]):
+        return cls.model_validate(parse_config(yaml_obj, cls.model_fields))

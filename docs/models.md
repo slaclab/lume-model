@@ -1,8 +1,21 @@
 # Models
 
-::: lume_model.models
-    selection:
+::: lume_model.base
+    options:
         members:
-            - BaseModel
-    rendering:
-        show_root_heading: false
+            - LUMEBaseModel
+
+::: lume_model.models.torch_model
+    options:
+        members:
+            - TorchModel
+
+::: lume_model.models.torch_module
+    options:
+        members:
+            - TorchModule
+
+::: lume_model.models.keras_model
+    options:
+        members:
+            - KerasModel
