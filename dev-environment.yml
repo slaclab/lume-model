@@ -3,7 +3,7 @@ name: lume-model-dev
 channels:
   - conda-forge
 dependencies:
-  - python=3.9
+  - python=3.10
   - pydantic>2.3
   - numpy
   - pyyaml
