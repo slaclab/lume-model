@@ -4,6 +4,7 @@ channels:
   - conda-forge
 dependencies:
   - python=3.10
+  - keras<3
   - pydantic>2.3
   - numpy
   - pyyaml

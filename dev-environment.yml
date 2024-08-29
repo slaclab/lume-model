@@ -8,6 +8,7 @@ dependencies:
   - numpy
   - pyyaml
   - tensorflow
+  - keras<3
   - botorch
 
   # dev requirements
