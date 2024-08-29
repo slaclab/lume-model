@@ -9,7 +9,7 @@ dependencies:
   - pyyaml
   - tensorflow
   - keras<3
-  - botorch
+  - botorch<0.11
 
   # dev requirements
   - pytest
