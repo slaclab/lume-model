@@ -3,8 +3,12 @@ name: lume-model
 channels:
   - conda-forge
 dependencies:
+<<<<<<< HEAD
   - python=3.10
   - keras<3
+=======
+  - python=3.9
+>>>>>>> parent of 53ac916... Update default Python version to 3.10
   - pydantic>2.3
   - numpy
   - pyyaml
