@@ -38,4 +38,4 @@ jobs:
         shell: bash -l {0}
         run: |
           mamba install conda-build
-          mamba build -q conda-recipe --python=${{ matrix.python-version }} --output-folder bld-dir
+          conda mambabuild -q conda-recipe --python=${{ matrix.python-version }} --output-folder bld-dir
