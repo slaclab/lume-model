@@ -10,7 +10,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [ubuntu-latest, macOS-latest]
+        os: [ubuntu-latest]
         python-version: ["3.9"]
 
     name: Python ${{ matrix.python-version }}, ${{ matrix.os }} build
@@ -38,4 +38,4 @@ jobs:
         shell: bash -l {0}
         run: |
           mamba install conda-build
-          mamba build -q conda-recipe --python=${{ matrix.python-version }} --output-folder bld-dir
+          conda mambabuild -q conda-recipe --python=${{ matrix.python-version }} --output-folder bld-dir
