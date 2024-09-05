@@ -8,12 +8,14 @@ dependencies:
   - numpy
   - pyyaml
   - tensorflow
-  - botorch
+  - keras<3
+  - botorch<0.11
 
   # dev requirements
   - pytest
   - pre-commit
   - black
+  - boa
 
   # docs requirements
   - mkdocs
