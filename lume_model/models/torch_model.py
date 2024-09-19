@@ -34,6 +34,7 @@ class TorchModel(LUMEBaseModel):
         fixed_model: If true, the model and transformers are put in evaluation mode and all gradient
           computation is deactivated.
     """
+
     model: torch.nn.Module
     input_transformers: list[ReversibleInputTransform] = []
     output_transformers: list[ReversibleInputTransform] = []
@@ -107,8 +108,8 @@ class TorchModel(LUMEBaseModel):
         return v
 
     def evaluate(
-            self,
-            input_dict: dict[str, Union[InputVariable, float, torch.Tensor]],
+        self,
+        input_dict: dict[str, Union[InputVariable, float, torch.Tensor]],
     ) -> dict[str, Union[OutputVariable, float, torch.Tensor]]:
         """Evaluates model on the given input dictionary.
 
@@ -140,7 +141,8 @@ class TorchModel(LUMEBaseModel):
         for var in self.input_variables:
             if isinstance(var, ScalarInputVariable):
                 input_dict[var.name] = var.value_range[0] + torch.rand(size=(n_samples,)) * (
-                            var.value_range[1] - var.value_range[0])
+                    var.value_range[1] - var.value_range[0]
+                )
             else:
                 torch.tensor(var.default, **self._tkwargs).repeat((n_samples, 1))
         return input_dict
@@ -176,8 +178,7 @@ class TorchModel(LUMEBaseModel):
             new_transformer: New transformer to add.
             loc: Location where the new transformer shall be added to the transformer list.
         """
-        self.input_transformers = (self.input_transformers[:loc] + [new_transformer] +
-                                   self.input_transformers[loc:])
+        self.input_transformers = self.input_transformers[:loc] + [new_transformer] + self.input_transformers[loc:]
 
     def insert_output_transformer(self, new_transformer: ReversibleInputTransform, loc: int):
         """Inserts an additional output transformer at the given location.
@@ -186,8 +187,7 @@ class TorchModel(LUMEBaseModel):
             new_transformer: New transformer to add.
             loc: Location where the new transformer shall be added to the transformer list.
         """
-        self.output_transformers = (self.output_transformers[:loc] + [new_transformer] +
-                                    self.output_transformers[loc:])
+        self.output_transformers = self.output_transformers[:loc] + [new_transformer] + self.output_transformers[loc:]
 
     def update_input_variables_to_transformer(self, transformer_loc: int) -> list[InputVariable]:
         """Returns input variables updated to the transformer at the given location.
@@ -225,8 +225,8 @@ class TorchModel(LUMEBaseModel):
         return updated_variables
 
     def _format_inputs(
-            self,
-            input_dict: dict[str, Union[InputVariable, float, torch.Tensor]],
+        self,
+        input_dict: dict[str, Union[InputVariable, float, torch.Tensor]],
     ) -> dict[str, torch.Tensor]:
         """Formats values of the input dictionary as tensors.
 
@@ -242,7 +242,7 @@ class TorchModel(LUMEBaseModel):
             if isinstance(var, InputVariable):
                 formatted_inputs[var_name] = torch.tensor(var.value, **self._tkwargs)
                 # self.input_variables[self.input_names.index(var_name)].value = var.value
-            elif isinstance(var, float):
+            elif isinstance(var, (int, float)):
                 formatted_inputs[var_name] = torch.tensor(var, **self._tkwargs)
                 # self.input_variables[self.input_names.index(var_name)].value = var
             elif isinstance(var, torch.Tensor):
@@ -251,7 +251,7 @@ class TorchModel(LUMEBaseModel):
                 # if var.dim() == 0:
                 #     self.input_variables[self.input_names.index(var_name)].value = var.item()
             else:
-                TypeError(
+                raise TypeError(
                     f"Unknown type {type(var)} passed to evaluate."
                     f"Should be one of InputVariable, float or torch.Tensor."
                 )
@@ -269,9 +269,7 @@ class TorchModel(LUMEBaseModel):
         Returns:
             Ordered input tensor to be passed to the transformers.
         """
-        default_tensor = torch.tensor(
-            [var.default for var in self.input_variables], **self._tkwargs
-        )
+        default_tensor = torch.tensor([var.default for var in self.input_variables], **self._tkwargs).unsqueeze(0)
 
         # determine input shape
         input_shapes = [formatted_inputs[k].shape for k in formatted_inputs.keys()]
@@ -337,8 +335,8 @@ class TorchModel(LUMEBaseModel):
         return parsed_outputs
 
     def _prepare_outputs(
-            self,
-            parsed_outputs: dict[str, torch.Tensor],
+        self,
+        parsed_outputs: dict[str, torch.Tensor],
     ) -> dict[str, Union[OutputVariable, torch.Tensor]]:
         """Updates and returns outputs according to output_format.
 
@@ -369,13 +367,13 @@ class TorchModel(LUMEBaseModel):
             return output_dict
             # return {var.name: var for var in self.output_variables}
         else:
-            return {key: value.item() if value.squeeze().dim() == 0 else value
-                    for key, value in parsed_outputs.items()}
+            return {key: value.item() if value.squeeze().dim() == 0 else value for key, value in parsed_outputs.items()}
             # return {var.name: var.value for var in self.output_variables}
 
     def _update_image_limits(
-            self,
-            variable: OutputVariable, predicted_output: dict[str, torch.Tensor],
+        self,
+        variable: OutputVariable,
+        predicted_output: dict[str, torch.Tensor],
     ):
         output_idx = self.output_names.index(variable.name)
         if self.output_variables[output_idx].x_min_variable:
