@@ -12,6 +12,7 @@ try:
 except ImportError:
     pass
 
+random.seed(42)
 
 def assert_california_module_result(result: torch.Tensor, idx=None):
     target = torch.tensor([4.0636503726, 2.7774916915, 2.7928111793], dtype=result.dtype)
