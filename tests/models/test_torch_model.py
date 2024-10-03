@@ -13,6 +13,7 @@ try:
 except ImportError:
     pass
 
+random.seed(42)
 
 # def assert_variables_updated(
 #     input_value: float,
