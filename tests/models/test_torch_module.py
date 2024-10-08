@@ -9,6 +9,8 @@ try:
     import torch
     from botorch.models import SingleTaskGP
     from lume_model.models import TorchModel, TorchModule
+
+    torch.manual_seed(42)
 except ImportError:
     pass
 
