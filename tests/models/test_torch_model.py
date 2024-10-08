@@ -10,10 +10,13 @@ try:
     from botorch.models.transforms.input import AffineInputTransform
     from lume_model.models import TorchModel
     from lume_model.variables import InputVariable, OutputVariable, ScalarOutputVariable
+    
+    torch.manual_seed(42)
 except ImportError:
     pass
 
 random.seed(42)
+
 
 # def assert_variables_updated(
 #     input_value: float,
