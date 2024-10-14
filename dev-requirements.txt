@@ -1,5 +1,0 @@
-black
-pre-commit
-pytest
-tensorflow
-botorch
