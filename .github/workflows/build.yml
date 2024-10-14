@@ -16,13 +16,12 @@ jobs:
     name: Python ${{ matrix.python-version }}, ${{ matrix.os }} build
     steps:
       - uses: actions/checkout@v4
-      - uses: conda-incubator/setup-miniconda@v2
+      - uses: conda-incubator/setup-miniconda@v3
         with:
           python-version: ${{ matrix.python-version }}
           miniforge-variant: Mambaforge
-          channels: conda-forge
           activate-environment: lume-model-dev
-          environment-file: dev-environment.yml
+          #environment-file: dev-environment.yml
 
       - name: Install lume-model
         shell: bash -l {0}
