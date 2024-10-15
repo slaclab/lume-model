@@ -19,7 +19,8 @@ jobs:
       - uses: conda-incubator/setup-miniconda@v3
         with:
           python-version: ${{ matrix.python-version }}
-          miniforge-variant: Mambaforge
+          miniforge-version: latest
+          use-mamba: true
           activate-environment: lume-model-dev
           #environment-file: dev-environment.yml
 
