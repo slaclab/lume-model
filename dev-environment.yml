@@ -14,8 +14,7 @@ dependencies:
   # dev requirements
   - pytest
   - pre-commit
-  - black
-  - boa
+  - ruff
 
   # docs requirements
   - mkdocs

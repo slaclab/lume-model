@@ -32,8 +32,8 @@ version_file = "lume_model/_version.py"
 
 [project.optional-dependencies]
 dev = [
-    "tensorflow<2.16.1",
-    "keras<3",
+    "tensorflow", # has to be >=2.16 to be compatible with python 3.12
+    "keras",
     "botorch<0.11",
     "pre-commit",
     "ruff",
