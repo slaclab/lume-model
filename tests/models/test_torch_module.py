@@ -9,9 +9,12 @@ try:
     import torch
     from botorch.models import SingleTaskGP
     from lume_model.models import TorchModel, TorchModule
+
+    torch.manual_seed(42)
 except ImportError:
     pass
 
+random.seed(42)
 
 def assert_california_module_result(result: torch.Tensor, idx=None):
     target = torch.tensor([4.0636503726, 2.7774916915, 2.7928111793], dtype=result.dtype)
