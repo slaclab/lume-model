@@ -9,7 +9,7 @@ import numpy as np
 try:
     from lume_model.models import KerasModel
     from lume_model.variables import InputVariable, OutputVariable, ScalarOutputVariable
-except ImportError:
+except ImportError: # TODO: add info when this happens
     pass
 
 
