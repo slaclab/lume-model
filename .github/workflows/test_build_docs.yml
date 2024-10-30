@@ -1,9 +1,8 @@
 name: Build docs
 
 on:
-  push:
-    branches:
-      - master
+  pull_request:
+    types: [opened, synchronize, reopened]
 
 jobs:
   build:
@@ -26,4 +25,3 @@ jobs:
         shell: bash -l {0}
         run: |
           mkdocs build
-          mkdocs gh-deploy --force

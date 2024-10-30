@@ -13,7 +13,6 @@ jobs:
         os: [ubuntu-latest]
         python-version: ["3.9", "3.11", "3.12"]
 
-
     name: Python ${{ matrix.python-version }}, ${{ matrix.os }} build
     steps:
       - uses: actions/checkout@v4
@@ -23,7 +22,6 @@ jobs:
           miniforge-version: latest
           use-mamba: true
           activate-environment: lume-model-dev
-          #environment-file: dev-environment.yml
 
       - name: Install lume-model
         shell: bash -l {0}
@@ -39,4 +37,4 @@ jobs:
         shell: bash -l {0}
         run: |
           mamba install conda-build
-          conda mambabuild -q conda-recipe --python=${{ matrix.python-version }} --output-folder bld-dir
+          conda build -q conda-recipe --python=${{ matrix.python-version }} --output-folder bld-dir
