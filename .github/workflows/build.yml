@@ -21,6 +21,7 @@ jobs:
           python-version: ${{ matrix.python-version }}
           miniforge-version: latest
           use-mamba: true
+          channels: conda-forge
           activate-environment: lume-model-dev
 
       - name: Install lume-model
