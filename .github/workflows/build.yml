@@ -33,9 +33,3 @@ jobs:
         shell: bash -l {0}
         run: |
           pytest -ra --pyargs tests -k "not keras"
-
-      - name: Build package
-        shell: bash -l {0}
-        run: |
-          mamba install conda-build
-          conda build -q conda-recipe --python=${{ matrix.python-version }} --output-folder bld-dir
