@@ -67,36 +67,6 @@ def process_torch_module(
         torch.save(module, filepath)
     return filename
 
-
-def process_keras_model(
-        model,
-        base_key: str = "",
-        key: str = "",
-        file_prefix: Union[str, os.PathLike] = "",
-        save_models: bool = True,
-):
-    """Optionally saves the given keras model to file and returns the filename.
-
-    Args:
-        base_key: Base key at this stage of serialization.
-        key: Key corresponding to the torch module.
-        model: The keras model to process.
-        file_prefix: Prefix for generated filenames.
-        save_models: Determines whether keras models are saved to file.
-
-    Returns:
-        Filename under which the keras model is (or would be) saved.
-    """
-    prefixes = [ele for ele in [file_prefix, base_key] if not ele == ""]
-    if not prefixes:
-        model_name = "{}.keras".format(key)
-    else:
-        model_name = "{}.keras".format("_".join((*prefixes, key)))
-    if save_models:
-        model.save(model_name)
-    return model_name
-
-
 def recursive_serialize(
         v: dict[str, Any],
         base_key: str = "",
@@ -116,7 +86,6 @@ def recursive_serialize(
     """
     # try to import modules for LUMEBaseModel child classes
     torch = try_import_module("torch")
-    keras = try_import_module("keras")
     # serialize
     v = serialize_variables(v)
     for key, value in v.items():
@@ -132,8 +101,6 @@ def recursive_serialize(
                                      save_models)
                 for i in range(len(value))
             ]
-        elif keras is not None and isinstance(value, keras.Model):
-            v[key] = process_keras_model(value, base_key, key, file_prefix, save_models)
         else:
             for _type, func in JSON_ENCODERS.items():
                 if isinstance(value, _type):

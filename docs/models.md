@@ -14,8 +14,3 @@
     options:
         members:
             - TorchModule
-
-::: lume_model.models.keras_model
-    options:
-        members:
-            - KerasModel

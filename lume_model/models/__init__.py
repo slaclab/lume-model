@@ -12,13 +12,6 @@ try:
 except ModuleNotFoundError:
     pass
 
-# models requiring keras
-try:
-    from lume_model.models.keras_model import KerasModel
-    registered_models += [KerasModel]
-except ModuleNotFoundError:
-    pass
-
 
 def get_model(name: str):
     """Returns the LUME model class for the given name.

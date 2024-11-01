@@ -32,4 +32,4 @@ jobs:
       - name: Run Tests
         shell: bash -l {0}
         run: |
-          pytest -ra --pyargs tests -k "not keras"
+          pytest -ra --pyargs tests
