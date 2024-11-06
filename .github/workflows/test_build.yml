@@ -35,9 +35,11 @@ jobs:
           pytest -ra --pyargs tests
 
       - name: Install build
+        shell: bash -l {0}
         run: |
           python -m pip install build
 
       - name: Build a source tarball
+        shell: bash -l {0}
         run: |
           sudo python -m build
