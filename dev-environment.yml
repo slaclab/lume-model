@@ -7,14 +7,12 @@ dependencies:
   - pydantic>2.3
   - numpy
   - pyyaml
-  - tensorflow
   - botorch<0.11
 
   # dev requirements
   - pytest
   - pre-commit
-  - black
-  - boa
+  - ruff
 
   # docs requirements
   - mkdocs

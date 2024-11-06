@@ -15,12 +15,6 @@ try:
 except ModuleNotFoundError:
     pass
 
-try:
-    import keras
-    from lume_model.models import KerasModel
-except ModuleNotFoundError:
-    pass
-
 
 @pytest.fixture(scope="session")
 def rootdir() -> str:
@@ -148,21 +142,6 @@ def iris_variables(rootdir) -> tuple[list[InputVariable], list[OutputVariable]]:
 
 
 @pytest.fixture(scope="module")
-def iris_model_kwargs(rootdir, iris_variables) -> dict[str, Any]:
-    keras = pytest.importorskip("keras")
-
-    input_variables, output_variables = iris_variables
-    model_kwargs = {
-        "model": keras.models.load_model(f"{rootdir}/test_files/iris_classification/model.keras"),
-        "input_variables": input_variables,
-        "output_variables": output_variables,
-        "output_format": "array",
-        "output_transforms": ["softmax"],
-    }
-    return model_kwargs
-
-
-@pytest.fixture(scope="module")
 def iris_test_input_array(rootdir: str):
     try:
         test_input_array = np.load(f"{rootdir}/test_files/iris_classification/test_input_array.npy")
@@ -178,10 +157,3 @@ def iris_test_input_dict(iris_test_input_array, iris_variables) -> dict:
         var.name: iris_test_input_array[0, idx] for idx, var in enumerate(input_variables)
     }
     return test_input_dict
-
-
-@pytest.fixture(scope="module")
-def iris_model(iris_model_kwargs):
-    keras = pytest.importorskip("keras")
-
-    return KerasModel(**iris_model_kwargs)

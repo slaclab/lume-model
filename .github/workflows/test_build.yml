@@ -1,4 +1,4 @@
-name: Build lume-model
+name: Test build lume-model
 
 on:
   push:
@@ -11,31 +11,35 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest]
-        python-version: ["3.9", "3.12"]
+        python-version: ["3.9", "3.11", "3.12"]
 
     name: Python ${{ matrix.python-version }}, ${{ matrix.os }} build
     steps:
-      - uses: actions/checkout@v3
-      - uses: conda-incubator/setup-miniconda@v2
+      - uses: actions/checkout@v4
+      - uses: conda-incubator/setup-miniconda@v3
         with:
           python-version: ${{ matrix.python-version }}
-          miniforge-variant: Mambaforge
+          miniforge-version: latest
+          use-mamba: true
           channels: conda-forge
           activate-environment: lume-model-dev
-          environment-file: dev-environment.yml
 
       - name: Install lume-model
         shell: bash -l {0}
         run: |
-          pip install -e .
+          pip install -e ".[dev]"
 
       - name: Run Tests
         shell: bash -l {0}
         run: |
-          pytest -ra --pyargs tests -k "not keras"
+          pytest -ra --pyargs tests
 
-      - name: Build package
+      - name: Install build
         shell: bash -l {0}
         run: |
-          mamba install conda-build
-          conda mambabuild -q conda-recipe --python=${{ matrix.python-version }} --output-folder bld-dir
+          python -m pip install build  --user
+
+      - name: Build a source tarball
+        shell: bash -l {0}
+        run: |
+          python -m build
