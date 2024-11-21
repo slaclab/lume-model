@@ -7,7 +7,8 @@ For now, only scalar variables (floats) are supported.
 """
 import logging
 from typing import Optional, Generic, TypeVar
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
+import torch
 
 logger = logging.getLogger(__name__)
 
@@ -97,6 +98,21 @@ class ScalarOutputVariable(OutputVariable[float], ScalarVariable):
         ```
     """
     pass
+
+
+class TorchTensor(BaseModel):
+    value: torch.Tensor = Field(...)
+
+    @field_validator("value", mode="before")
+    def validate_tensor(cls, value):
+        if not isinstance(value, torch.Tensor):
+            raise ValueError("The field must be a torch.Tensor")
+        if not isinstance(value.item(), float):
+            raise ValueError("The torch.Tensor items must be floats")
+        return value
+
+    class Config:
+        arbitrary_types_allowed = True
 
 
 # class NumpyNDArray(np.ndarray):
