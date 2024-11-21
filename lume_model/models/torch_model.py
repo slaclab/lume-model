@@ -12,6 +12,7 @@ from lume_model.variables import (
     InputVariable,
     OutputVariable,
     ScalarInputVariable,
+    TorchTensor
 )
 
 logger = logging.getLogger(__name__)
@@ -239,17 +240,29 @@ class TorchModel(LUMEBaseModel):
         # NOTE: The input variable is only updated if a singular value is given (ambiguous otherwise)
         formatted_inputs = {}
         for var_name, var in input_dict.items():
+
             if isinstance(var, InputVariable):
+                print("validating")
+                var.__pydantic_validator__.validate_assignment(var, 'value', var.value)
                 formatted_inputs[var_name] = torch.tensor(var.value, **self._tkwargs)
                 # self.input_variables[self.input_names.index(var_name)].value = var.value
             elif isinstance(var, float):
+                print("validating")
+                var.__pydantic_validator__.validate_assignment(var, 'value', var.value)
                 formatted_inputs[var_name] = torch.tensor(var, **self._tkwargs)
                 # self.input_variables[self.input_names.index(var_name)].value = var
             elif isinstance(var, torch.Tensor):
+                # print("validating")
+                # var.__pydantic_validator__.validate_assignment(var, 'value', var.value)
                 var = var.double().squeeze().to(self.device)
                 formatted_inputs[var_name] = var
                 # if var.dim() == 0:
                 #     self.input_variables[self.input_names.index(var_name)].value = var.item()
+            elif isinstance(var, TorchTensor):
+                print("validating")
+                var.__pydantic_validator__.validate_assignment(var, 'value', var.value)
+                var = var.value.double().squeeze().to(self.device)
+                formatted_inputs[var_name] = var
             else:
                 TypeError(
                     f"Unknown type {type(var)} passed to evaluate."
