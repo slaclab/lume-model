@@ -213,12 +213,24 @@ class TorchModel(LUMEBaseModel):
             x = x_old[key]
             # compute previous limits at transformer location
             for i in range(transformer_loc):
-                x = self.input_transformers[i].transform(x)
+                if isinstance(self.input_transformers[i], ReversibleInputTransform):
+                    x = self.input_transformers[i].transform(x)
+                else:
+                    x = self.input_transformers[i](x)
             # untransform of transformer to adjust for
-            x = self.input_transformers[transformer_loc].untransform(x)
+            if isinstance(self.input_transformers[transformer_loc], ReversibleInputTransform):
+                x = self.input_transformers[transformer_loc].untransform(x)
+            else:
+                w = self.input_transformers[transformer_loc].weight
+                b = self.input_transformers[transformer_loc].bias
+                x = torch.matmul((x - b), torch.linalg.inv(w.T))
             # backtrack through transformers
             for transformer in self.input_transformers[:transformer_loc][::-1]:
-                x = transformer.untransform(x)
+                if isinstance(self.input_transformers[transformer_loc], ReversibleInputTransform):
+                    x = transformer.untransform(x)
+                else:
+                    w, b = transformer.weight, transformer.bias
+                    x = torch.matmul((x - b), torch.linalg.inv(w.T))
             x_new[key] = x
         updated_variables = deepcopy(self.input_variables)
         for i, var in enumerate(updated_variables):
@@ -322,7 +334,8 @@ class TorchModel(LUMEBaseModel):
             if isinstance(transformer, ReversibleInputTransform):
                 output_tensor = transformer.untransform(output_tensor)
             else:
-                output_tensor = transformer(output_tensor)
+                w, b = transformer.weight, transformer.bias
+                output_tensor = torch.matmul((output_tensor - b), torch.linalg.inv(w.T))
         return output_tensor
 
     def _parse_outputs(self, output_tensor: torch.Tensor) -> dict[str, torch.Tensor]:
