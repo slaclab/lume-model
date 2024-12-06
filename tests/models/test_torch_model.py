@@ -69,6 +69,13 @@ class TestTorchModel:
         os.remove(f"{filename}_input_transformers_0.pt")
         os.remove(f"{filename}_output_transformers_0.pt")
 
+    def test_input_validation(self, california_test_input_dict: dict, california_model):
+        california_model.input_validation(california_test_input_dict)
+
+    def test_output_validation(self, california_model):
+        output_dict = {"MedHouseVal": torch.tensor([5.0, 3.1])}
+        california_model.output_validation(output_dict)
+
     def test_model_evaluate_single_sample(self, california_test_input_dict: dict, california_model):
         results = california_model.evaluate(california_test_input_dict)
 

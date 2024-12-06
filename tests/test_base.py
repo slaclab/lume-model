@@ -84,3 +84,24 @@ class TestBaseModel:
         example_model = ExampleModel(**simple_variables)
         for i, var in enumerate(simple_variables["output_variables"]):
             assert example_model.output_names.index(var.name) == i
+
+    def test_input_validation(self, simple_variables):
+        example_model = ExampleModel(**simple_variables)
+        input_variables = simple_variables["input_variables"]
+        input_dict = {input_variables[0].name: 2.0, input_variables[1].name: 1.5}
+        example_model.input_validation(input_dict)
+        with pytest.raises(TypeError):
+            input_dict[input_variables[0].name] = True
+            example_model.input_validation(input_dict)
+        with pytest.raises(ValueError):
+            input_dict[input_variables[0].name] = 6.0
+            example_model.input_validation(input_dict)
+
+    def test_output_validation(self, simple_variables):
+        example_model = ExampleModel(**simple_variables)
+        output_variables = simple_variables["output_variables"]
+        output_dict = {output_variables[0].name: 3.0, output_variables[1].name: 1.7}
+        example_model.output_validation(output_dict)
+        with pytest.raises(TypeError):
+            output_dict[output_variables[0].name] = "test"
+            example_model.output_validation(output_dict)
