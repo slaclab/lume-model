@@ -6,7 +6,7 @@ import pytest
 import numpy as np
 
 from lume_model.utils import variables_from_yaml
-from lume_model.variables import InputVariable, OutputVariable, ScalarInputVariable, ScalarOutputVariable
+from lume_model.variables import ScalarVariable
 
 try:
     import torch
@@ -22,11 +22,11 @@ def rootdir() -> str:
 
 
 @pytest.fixture(scope="session")
-def simple_variables() -> dict[str, Union[list[ScalarInputVariable], list[ScalarOutputVariable]]]:
-    input_variables = [ScalarInputVariable(name="input1", default=1.0, value_range=[0.0, 5.0]),
-                       ScalarInputVariable(name="input2", default=2.0, value_range=[1.0, 3.0])]
-    output_variables = [ScalarOutputVariable(name="output1"),
-                        ScalarOutputVariable(name="output2")]
+def simple_variables() -> dict[str, Union[list[ScalarVariable], list[ScalarVariable]]]:
+    input_variables = [ScalarVariable(name="input1", default=1.0, value_range=[0.0, 5.0]),
+                       ScalarVariable(name="input2", default=2.0, value_range=[1.0, 3.0])]
+    output_variables = [ScalarVariable(name="output1"),
+                        ScalarVariable(name="output2")]
     return {"input_variables": input_variables, "output_variables": output_variables}
 
 
@@ -41,7 +41,7 @@ def california_model_info(rootdir) -> dict[str, str]:
 
 
 @pytest.fixture(scope="module")
-def california_variables(rootdir) -> tuple[list[InputVariable], list[OutputVariable]]:
+def california_variables(rootdir) -> tuple[list[ScalarVariable], list[ScalarVariable]]:
     try:
         file = f"{rootdir}/test_files/california_regression/variables.yml"
         input_variables, output_variables = variables_from_yaml(file)
@@ -132,7 +132,7 @@ def california_module(california_model):
 
 
 @pytest.fixture(scope="module")
-def iris_variables(rootdir) -> tuple[list[InputVariable], list[OutputVariable]]:
+def iris_variables(rootdir) -> tuple[list[ScalarVariable], list[ScalarVariable]]:
     try:
         file = f"{rootdir}/test_files/iris_classification/variables.yml"
         input_variables, output_variables = variables_from_yaml(file)

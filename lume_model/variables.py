@@ -9,6 +9,7 @@ import json
 import math
 from abc import ABC, abstractmethod
 from typing import Any, Optional, Type
+
 from pydantic import BaseModel, field_validator, model_validator
 
 
@@ -59,9 +60,10 @@ class ScalarVariable(Variable):
     @field_validator("value_range", mode="before")
     @classmethod
     def validate_value_range(cls, value):
-        value = tuple(value)
-        if not value[0] <= value[1]:
-            raise ValueError(f"Minimum value ({value[0]}) must be lower or equal than maximum ({value[1]}).")
+        if value is not None:
+            value = tuple(value)
+            if not value[0] <= value[1]:
+                raise ValueError(f"Minimum value ({value[0]}) must be lower or equal than maximum ({value[1]}).")
         return value
 
     @model_validator(mode="after")
@@ -93,7 +95,10 @@ class ScalarVariable(Variable):
 
     def _validate_value_is_within_range(self, value: float):
         if not self._value_is_within_range(value):
-            raise ValueError("Value ({}) is out of valid range ([{},{}]).".format(value, *self.value_range))
+            error_message = "Value ({}) is out of valid range.".format(value)
+            if self.value_range is not None:
+                error_message = error_message[:-1] + " ([{},{}]).".format(*self.value_range)
+            raise ValueError(error_message)
 
     def _value_is_within_range(self, value) -> bool:
         tolerances = {"rel_tol": 0, "abs_tol": self.value_range_tolerance}

@@ -8,11 +8,7 @@ from pydantic import field_validator
 from botorch.models.transforms.input import ReversibleInputTransform
 
 from lume_model.base import LUMEBaseModel
-from lume_model.variables import (
-    InputVariable,
-    OutputVariable,
-    ScalarInputVariable,
-)
+from lume_model.variables import ScalarVariable
 
 logger = logging.getLogger(__name__)
 
@@ -108,8 +104,8 @@ class TorchModel(LUMEBaseModel):
 
     def evaluate(
             self,
-            input_dict: dict[str, Union[InputVariable, float, torch.Tensor]],
-    ) -> dict[str, Union[OutputVariable, float, torch.Tensor]]:
+            input_dict: dict[str, Union[ScalarVariable, float, torch.Tensor]],
+    ) -> dict[str, Union[ScalarVariable, float, torch.Tensor]]:
         """Evaluates model on the given input dictionary.
 
         Args:
@@ -138,14 +134,14 @@ class TorchModel(LUMEBaseModel):
         """
         input_dict = {}
         for var in self.input_variables:
-            if isinstance(var, ScalarInputVariable):
+            if isinstance(var, ScalarVariable):
                 input_dict[var.name] = var.value_range[0] + torch.rand(size=(n_samples,)) * (
                             var.value_range[1] - var.value_range[0])
             else:
                 torch.tensor(var.default, **self._tkwargs).repeat((n_samples, 1))
         return input_dict
 
-    def random_evaluate(self, n_samples: int = 1) -> dict[str, Union[OutputVariable, float, torch.Tensor]]:
+    def random_evaluate(self, n_samples: int = 1) -> dict[str, Union[ScalarVariable, float, torch.Tensor]]:
         """Returns random evaluation(s) of the model.
 
         Args:
@@ -189,7 +185,7 @@ class TorchModel(LUMEBaseModel):
         self.output_transformers = (self.output_transformers[:loc] + [new_transformer] +
                                     self.output_transformers[loc:])
 
-    def update_input_variables_to_transformer(self, transformer_loc: int) -> list[InputVariable]:
+    def update_input_variables_to_transformer(self, transformer_loc: int) -> list[ScalarVariable]:
         """Returns input variables updated to the transformer at the given location.
 
         Updated are the value ranges and default of the input variables. This allows, e.g., to add a
@@ -226,7 +222,7 @@ class TorchModel(LUMEBaseModel):
 
     def _format_inputs(
             self,
-            input_dict: dict[str, Union[InputVariable, float, torch.Tensor]],
+            input_dict: dict[str, Union[ScalarVariable, float, torch.Tensor]],
     ) -> dict[str, torch.Tensor]:
         """Formats values of the input dictionary as tensors.
 
@@ -239,7 +235,7 @@ class TorchModel(LUMEBaseModel):
         # NOTE: The input variable is only updated if a singular value is given (ambiguous otherwise)
         formatted_inputs = {}
         for var_name, var in input_dict.items():
-            if isinstance(var, InputVariable):
+            if isinstance(var, ScalarVariable):
                 formatted_inputs[var_name] = torch.tensor(var.value, **self._tkwargs)
                 # self.input_variables[self.input_names.index(var_name)].value = var.value
             elif isinstance(var, float):
@@ -339,7 +335,7 @@ class TorchModel(LUMEBaseModel):
     def _prepare_outputs(
             self,
             parsed_outputs: dict[str, torch.Tensor],
-    ) -> dict[str, Union[OutputVariable, torch.Tensor]]:
+    ) -> dict[str, Union[ScalarVariable, torch.Tensor]]:
         """Updates and returns outputs according to output_format.
 
         Updates the output variables within the model to reflect the new values.
@@ -375,7 +371,7 @@ class TorchModel(LUMEBaseModel):
 
     def _update_image_limits(
             self,
-            variable: OutputVariable, predicted_output: dict[str, torch.Tensor],
+            variable: ScalarVariable, predicted_output: dict[str, torch.Tensor],
     ):
         output_idx = self.output_names.index(variable.name)
         if self.output_variables[output_idx].x_min_variable:
