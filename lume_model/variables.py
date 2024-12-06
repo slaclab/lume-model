@@ -5,7 +5,6 @@ but they can be used to validate encountered values.
 
 For now, only scalar variables (floats) are supported.
 """
-import json
 import math
 from abc import ABC, abstractmethod
 from typing import Any, Optional, Type
@@ -31,15 +30,9 @@ class Variable(BaseModel, ABC):
     def validate_value(self, value: Any, config: dict[str, bool] = None):
         pass
 
-    def dict(self, **kwargs) -> dict[str, Any]:
+    def model_dump(self, **kwargs) -> dict[str, Any]:
         config = super().model_dump(**kwargs)
         return {"variable_class": self.__class__.__name__} | config
-
-    def json(self, **kwargs) -> str:
-        result = self.to_json(**kwargs)
-        config = json.loads(result)
-        config = {"variable_class": self.__class__.__name__} | config
-        return json.dumps(config)
 
 
 class ScalarVariable(Variable):

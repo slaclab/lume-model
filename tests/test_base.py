@@ -3,6 +3,7 @@ import pytest
 import yaml
 
 from lume_model.base import LUMEBaseModel
+from lume_model.variables import ScalarVariable
 
 
 class ExampleModel(LUMEBaseModel):
@@ -39,7 +40,7 @@ class TestBaseModel:
 
     def test_dict(self, simple_variables):
         example_model = ExampleModel(**simple_variables)
-        dict_output = example_model.dict()
+        dict_output = example_model.model_dump()
         assert isinstance(dict_output["input_variables"], list)
         assert isinstance(dict_output["output_variables"], list)
         assert len(dict_output["input_variables"]) == 2
@@ -52,7 +53,7 @@ class TestBaseModel:
         example_model = ExampleModel(**simple_variables)
         yaml_output = example_model.yaml()
         dict_output = yaml.safe_load(yaml_output)
-        dict_output["input_variables"]["input1"]["type"] = "scalar"
+        dict_output["input_variables"]["input1"]["variable_class"] = ScalarVariable.__name__
 
         # test loading from yaml
         loaded_model = ExampleModel(**dict_output)

@@ -286,8 +286,10 @@ class LUMEBaseModel(BaseModel, ABC):
     def to_json(self, **kwargs) -> str:
         return json_dumps(self, **kwargs)
 
-    def dict(self, **kwargs) -> dict[str, Any]:
+    def model_dump(self, **kwargs) -> dict[str, Any]:
         config = super().model_dump(**kwargs)
+        config["input_variables"] = [var.model_dump() for var in self.input_variables]
+        config["output_variables"] = [var.model_dump() for var in self.output_variables]
         return {"model_class": self.__class__.__name__} | config
 
     def json(self, **kwargs) -> str:
