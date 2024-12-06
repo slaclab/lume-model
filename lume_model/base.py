@@ -8,7 +8,7 @@ from io import TextIOWrapper
 
 import yaml
 import numpy as np
-from pydantic import BaseModel, ConfigDict, field_validator, SerializeAsAny
+from pydantic import BaseModel, ConfigDict, field_validator
 
 from lume_model.variables import ScalarVariable, get_variable
 from lume_model.utils import (
@@ -229,8 +229,8 @@ class LUMEBaseModel(BaseModel, ABC):
         output_validation_config: Determines the behavior during output validation by specifying the validation
           config for each output variable: {var_name: var_config}.
     """
-    input_variables: list[SerializeAsAny[ScalarVariable]]
-    output_variables: list[SerializeAsAny[ScalarVariable]]
+    input_variables: list[ScalarVariable]
+    output_variables: list[ScalarVariable]
     input_validation_config: Optional[dict[str, dict[str, bool]]] = None
     output_validation_config: Optional[dict[str, dict[str, bool]]] = None
 
@@ -330,7 +330,6 @@ class LUMEBaseModel(BaseModel, ABC):
     def json(self, **kwargs) -> str:
         result = self.to_json(**kwargs)
         config = json.loads(result)
-        config = {"model_class": self.__class__.__name__} | config
         return json.dumps(config)
 
     def yaml(
@@ -356,8 +355,7 @@ class LUMEBaseModel(BaseModel, ABC):
                 save_models=save_models,
             )
         )
-        s = yaml.dump({"model_class": self.__class__.__name__} | output,
-                      default_flow_style=None, sort_keys=False)
+        s = yaml.dump(output, default_flow_style=None, sort_keys=False)
         return s
 
     def dump(
