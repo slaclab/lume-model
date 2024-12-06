@@ -1,90 +1,64 @@
 import pytest
-import numpy as np
 from pydantic import ValidationError
 
-from lume_model.variables import (
-    ScalarInputVariable,
-    ScalarOutputVariable,
-    # ImageInputVariable,
-    # ImageOutputVariable,
-    # ArrayInputVariable,
-    # ArrayOutputVariable,
-    # TableVariable,
-)
+from lume_model.variables import ScalarVariable, get_variable
 
 
-@pytest.mark.parametrize(
-    "variable_name,default,value_range",
-    [
-        ("test", 0.1, [0.1, 2]),
-        pytest.param("test", np.array([1, 2, 3, 4]), [0, 1], marks=pytest.mark.xfail),
-        ("test", np.nan, [0, 1]),
-    ],
-)
-def test_input_scalar_variable(variable_name, default, value_range):
-    # test correctly typed
-    ScalarInputVariable(name=variable_name, default=default, value_range=value_range)
-
-    # test missing name
-    with pytest.raises(ValidationError):
-        ScalarInputVariable(default=default, value_range=value_range)
-
-    # test missing default
-    with pytest.raises(ValidationError):
-        ScalarInputVariable(name=variable_name, value_range=value_range)
-
-    # test missing range
-    with pytest.raises(ValidationError):
-        ScalarInputVariable(
-            name=variable_name, default=default,
+class TestScalarVariable:
+    def test_init(self):
+        ScalarVariable(
+            name="test",
+            default_value=0.1,
+            value_range=(0, 1),
+            value_range_tolerance=1e-6,
+            unit="m",
+        )
+        # missing name
+        with pytest.raises(ValidationError):
+            ScalarVariable(default_value=0.1, value_range=(0, 1))
+        # constant variable
+        ScalarVariable(
+            name="test",
+            default_value=0.5,
+            value_range=None,
         )
 
+    def test_validate_value(self):
+        var = ScalarVariable(
+            name="test",
+            default_value=0.8,
+            value_range=(0.0, 10.0),
+            value_range_tolerance=1e-8,
+        )
+        var.validate_value(5.0)
+        with pytest.raises(TypeError):
+            var.validate_value(int(5))
+        with pytest.raises(ValueError):
+            var.validate_value(11.0)
+        # constant variable
+        constant_var = ScalarVariable(
+            name="test",
+            default_value=1.3,
+            value_range=None,
+            value_range_tolerance=1e-5,
+        )
+        constant_var.validate_value(1.3)
+        with pytest.raises(ValueError):
+            constant_var.validate_value(1.4)
+        # test tolerance
+        var.validate_value(10.0 + 1e-9)
+        with pytest.raises(ValueError):
+            var.validate_value(10.0 + 1e-7)
+        constant_var.validate_value(1.3 + 1e-6)
+        with pytest.raises(ValueError):
+            constant_var.validate_value(1.3 + 1e-4)
+        # test validation config
+        var.validate_value(11.0, config={"value_range": False})
 
-@pytest.mark.parametrize(
-    "variable_name,default,value_range,is_constant,assign,assignment",
-    [
-        ("test", 0.1, [1, 2], False, True, 2.0),
-        pytest.param("test", 0.1, [1, 2], True, True, 2.0, marks=pytest.mark.xfail),
-    ],
-)
-def test_constant_input_scalar_variable(
-    variable_name, default, value_range, is_constant, assign, assignment
-):
 
-    variable = ScalarInputVariable(
-        name=variable_name,
-        default=default,
-        value_range=value_range,
-        is_constant=is_constant,
-    )
-
-    # test assignment
-    if assign:
-        variable.default = assignment
-
-
-@pytest.mark.parametrize(
-    "variable_name,default,value_range",
-    [
-        ("test", 0.1, [0.1, 2]),
-        pytest.param("test", np.array([1, 2, 3, 4]), [0, 1], marks=pytest.mark.xfail),
-    ],
-)
-def test_output_scalar_variable(variable_name, default, value_range):
-    # test correctly typed
-    ScalarOutputVariable(name=variable_name, default=default, value_range=value_range)
-
-    # test missing name
-    with pytest.raises(ValidationError):
-        ScalarOutputVariable(default=default, value_range=value_range)
-
-    # test missing value
-    ScalarOutputVariable(name=variable_name, value_range=value_range)
-
-    # test missing range
-    ScalarOutputVariable(
-        name=variable_name, default=default,
-    )
+def test_get_variable():
+    var = get_variable(ScalarVariable.__name__)(name="test")
+    assert isinstance(var, ScalarVariable)
 
 
 # @pytest.mark.parametrize(

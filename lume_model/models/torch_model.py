@@ -8,11 +8,7 @@ from pydantic import field_validator
 from botorch.models.transforms.input import ReversibleInputTransform
 
 from lume_model.base import LUMEBaseModel
-from lume_model.variables import (
-    InputVariable,
-    OutputVariable,
-    ScalarInputVariable,
-)
+from lume_model.variables import ScalarVariable
 
 logger = logging.getLogger(__name__)
 
@@ -29,7 +25,7 @@ class TorchModel(LUMEBaseModel):
         output_variables: List defining the output variables and their order.
         input_transformers: List of transformer objects to apply to input before passing to model.
         output_transformers: List of transformer objects to apply to output of model.
-        output_format: Determines format of outputs: "tensor", "variable" or "raw".
+        output_format: Determines format of outputs: "tensor" or "raw".
         device: Device on which the model will be evaluated. Defaults to "cpu".
         fixed_model: If true, the model and transformers are put in evaluation mode and all gradient
           computation is deactivated.
@@ -106,10 +102,10 @@ class TorchModel(LUMEBaseModel):
             raise ValueError(f"Unknown output format {v}, expected one of {supported_formats}.")
         return v
 
-    def evaluate(
+    def _evaluate(
             self,
-            input_dict: dict[str, Union[InputVariable, float, torch.Tensor]],
-    ) -> dict[str, Union[OutputVariable, float, torch.Tensor]]:
+            input_dict: dict[str, Union[float, torch.Tensor]],
+    ) -> dict[str, Union[float, torch.Tensor]]:
         """Evaluates model on the given input dictionary.
 
         Args:
@@ -127,6 +123,19 @@ class TorchModel(LUMEBaseModel):
         output_dict = self._prepare_outputs(parsed_outputs)
         return output_dict
 
+    def input_validation(self, input_dict: dict[str, Union[float, torch.Tensor]]):
+        """Itemizes tensors before performing input validation."""
+        formatted_inputs = self._format_inputs(input_dict)
+        itemized_inputs = self._itemize_dict(formatted_inputs)
+        for ele in itemized_inputs:
+            super().input_validation(ele)
+
+    def output_validation(self, output_dict: dict[str, Union[float, torch.Tensor]]):
+        """Itemizes tensors before performing output validation."""
+        itemized_outputs = self._itemize_dict(output_dict)
+        for ele in itemized_outputs:
+            super().output_validation(ele)
+
     def random_input(self, n_samples: int = 1) -> dict[str, torch.Tensor]:
         """Generates random input(s) for the model.
 
@@ -138,14 +147,14 @@ class TorchModel(LUMEBaseModel):
         """
         input_dict = {}
         for var in self.input_variables:
-            if isinstance(var, ScalarInputVariable):
+            if isinstance(var, ScalarVariable):
                 input_dict[var.name] = var.value_range[0] + torch.rand(size=(n_samples,)) * (
                             var.value_range[1] - var.value_range[0])
             else:
-                torch.tensor(var.default, **self._tkwargs).repeat((n_samples, 1))
+                torch.tensor(var.default_value, **self._tkwargs).repeat((n_samples, 1))
         return input_dict
 
-    def random_evaluate(self, n_samples: int = 1) -> dict[str, Union[OutputVariable, float, torch.Tensor]]:
+    def random_evaluate(self, n_samples: int = 1) -> dict[str, Union[float, torch.Tensor]]:
         """Returns random evaluation(s) of the model.
 
         Args:
@@ -189,7 +198,7 @@ class TorchModel(LUMEBaseModel):
         self.output_transformers = (self.output_transformers[:loc] + [new_transformer] +
                                     self.output_transformers[loc:])
 
-    def update_input_variables_to_transformer(self, transformer_loc: int) -> list[InputVariable]:
+    def update_input_variables_to_transformer(self, transformer_loc: int) -> list[ScalarVariable]:
         """Returns input variables updated to the transformer at the given location.
 
         Updated are the value ranges and default of the input variables. This allows, e.g., to add a
@@ -204,7 +213,7 @@ class TorchModel(LUMEBaseModel):
         x_old = {
             "min": torch.tensor([var.value_range[0] for var in self.input_variables], dtype=self.dtype),
             "max": torch.tensor([var.value_range[1] for var in self.input_variables], dtype=self.dtype),
-            "default": torch.tensor([var.default for var in self.input_variables], dtype=self.dtype),
+            "default": torch.tensor([var.default_value for var in self.input_variables], dtype=self.dtype),
         }
         x_new = {}
         for key in x_old.keys():
@@ -221,12 +230,12 @@ class TorchModel(LUMEBaseModel):
         updated_variables = deepcopy(self.input_variables)
         for i, var in enumerate(updated_variables):
             var.value_range = [x_new["min"][i].item(), x_new["max"][i].item()]
-            var.default = x_new["default"][i].item()
+            var.default_value = x_new["default"][i].item()
         return updated_variables
 
     def _format_inputs(
             self,
-            input_dict: dict[str, Union[InputVariable, float, torch.Tensor]],
+            input_dict: dict[str, Union[float, torch.Tensor]],
     ) -> dict[str, torch.Tensor]:
         """Formats values of the input dictionary as tensors.
 
@@ -236,25 +245,10 @@ class TorchModel(LUMEBaseModel):
         Returns:
             Dictionary of input variable names to tensors.
         """
-        # NOTE: The input variable is only updated if a singular value is given (ambiguous otherwise)
         formatted_inputs = {}
-        for var_name, var in input_dict.items():
-            if isinstance(var, InputVariable):
-                formatted_inputs[var_name] = torch.tensor(var.value, **self._tkwargs)
-                # self.input_variables[self.input_names.index(var_name)].value = var.value
-            elif isinstance(var, float):
-                formatted_inputs[var_name] = torch.tensor(var, **self._tkwargs)
-                # self.input_variables[self.input_names.index(var_name)].value = var
-            elif isinstance(var, torch.Tensor):
-                var = var.double().squeeze().to(self.device)
-                formatted_inputs[var_name] = var
-                # if var.dim() == 0:
-                #     self.input_variables[self.input_names.index(var_name)].value = var.item()
-            else:
-                TypeError(
-                    f"Unknown type {type(var)} passed to evaluate."
-                    f"Should be one of InputVariable, float or torch.Tensor."
-                )
+        for var_name, value in input_dict.items():
+            v = value if isinstance(value, torch.Tensor) else torch.tensor(value)
+            formatted_inputs[var_name] = v.squeeze().to(**self._tkwargs)
         return formatted_inputs
 
     def _arrange_inputs(self, formatted_inputs: dict[str, torch.Tensor]) -> torch.Tensor:
@@ -270,7 +264,7 @@ class TorchModel(LUMEBaseModel):
             Ordered input tensor to be passed to the transformers.
         """
         default_tensor = torch.tensor(
-            [var.default for var in self.input_variables], **self._tkwargs
+            [var.default_value for var in self.input_variables], **self._tkwargs
         )
 
         # determine input shape
@@ -339,7 +333,7 @@ class TorchModel(LUMEBaseModel):
     def _prepare_outputs(
             self,
             parsed_outputs: dict[str, torch.Tensor],
-    ) -> dict[str, Union[OutputVariable, torch.Tensor]]:
+    ) -> dict[str, Union[float, torch.Tensor]]:
         """Updates and returns outputs according to output_format.
 
         Updates the output variables within the model to reflect the new values.
@@ -350,50 +344,56 @@ class TorchModel(LUMEBaseModel):
         Returns:
             Dictionary of output variable names to values depending on output_format.
         """
-        # for var in self.output_variables:
-        #     if parsed_outputs[var.name].dim() == 0:
-        #         idx = self.output_names.index(var.name)
-        #         if isinstance(var, ScalarOutputVariable):
-        #             self.output_variables[idx].value = parsed_outputs[var.name].item()
-        #         elif isinstance(var, ImageOutputVariable):
-        #             # OutputVariables should be numpy arrays
-        #             self.output_variables[idx].value = (parsed_outputs[var.name].reshape(var.shape).numpy())
-        #             self._update_image_limits(var, parsed_outputs)
-
-        if self.output_format == "tensor":
+        if self.output_format.lower() == "tensor":
             return parsed_outputs
-        elif self.output_format == "variable":
-            output_dict = {var.name: var for var in self.output_variables}
-            for var in output_dict.values():
-                var.value = parsed_outputs[var.name].item()
-            return output_dict
-            # return {var.name: var for var in self.output_variables}
         else:
             return {key: value.item() if value.squeeze().dim() == 0 else value
                     for key, value in parsed_outputs.items()}
-            # return {var.name: var.value for var in self.output_variables}
 
-    def _update_image_limits(
-            self,
-            variable: OutputVariable, predicted_output: dict[str, torch.Tensor],
-    ):
-        output_idx = self.output_names.index(variable.name)
-        if self.output_variables[output_idx].x_min_variable:
-            self.output_variables[output_idx].x_min = predicted_output[
-                self.output_variables[output_idx].x_min_variable
-            ].item()
+    @staticmethod
+    def _itemize_dict(d: dict[str, Union[float, torch.Tensor]]) -> list[dict[str, Union[float, torch.Tensor]]]:
+        """Itemizes the given in-/output dictionary.
 
-        if self.output_variables[output_idx].x_max_variable:
-            self.output_variables[output_idx].x_max = predicted_output[
-                self.output_variables[output_idx].x_max_variable
-            ].item()
+        Args:
+            d: Dictionary to itemize.
 
-        if self.output_variables[output_idx].y_min_variable:
-            self.output_variables[output_idx].y_min = predicted_output[
-                self.output_variables[output_idx].y_min_variable
-            ].item()
+        Returns:
+            List of in-/output dictionaries, each containing only a single value per in-/output.
+        """
+        has_tensors = any([isinstance(value, torch.Tensor) for value in d.values()])
+        itemized_dicts = []
+        if has_tensors:
+            for k, v in d.items():
+                for i, ele in enumerate(v.flatten()):
+                    if i >= len(itemized_dicts):
+                        itemized_dicts.append({k: ele.item()})
+                    else:
+                        itemized_dicts[i][k] = ele.item()
+        else:
+            itemized_dicts = [d]
+        return itemized_dicts
 
-        if self.output_variables[output_idx].y_max_variable:
-            self.output_variables[output_idx].y_max = predicted_output[
-                self.output_variables[output_idx].y_max_variable
-            ].item()
+    # def _update_image_limits(
+    #         self,
+    #         variable: ScalarVariable, predicted_output: dict[str, torch.Tensor],
+    # ):
+    #     output_idx = self.output_names.index(variable.name)
+    #     if self.output_variables[output_idx].x_min_variable:
+    #         self.output_variables[output_idx].x_min = predicted_output[
+    #             self.output_variables[output_idx].x_min_variable
+    #         ].item()
+    #
+    #     if self.output_variables[output_idx].x_max_variable:
+    #         self.output_variables[output_idx].x_max = predicted_output[
+    #             self.output_variables[output_idx].x_max_variable
+    #         ].item()
+    #
+    #     if self.output_variables[output_idx].y_min_variable:
+    #         self.output_variables[output_idx].y_min = predicted_output[
+    #             self.output_variables[output_idx].y_min_variable
+    #         ].item()
+    #
+    #     if self.output_variables[output_idx].y_max_variable:
+    #         self.output_variables[output_idx].y_max = predicted_output[
+    #             self.output_variables[output_idx].y_max_variable
+    #         ].item()
