@@ -129,31 +129,3 @@ def california_module(california_model):
     botorch = pytest.importorskip("botorch")
 
     return TorchModule(model=california_model)
-
-
-@pytest.fixture(scope="module")
-def iris_variables(rootdir) -> tuple[list[ScalarVariable], list[ScalarVariable]]:
-    try:
-        file = f"{rootdir}/test_files/iris_classification/variables.yml"
-        input_variables, output_variables = variables_from_yaml(file)
-        return input_variables, output_variables
-    except FileNotFoundError as e:
-        pytest.skip(str(e))
-
-
-@pytest.fixture(scope="module")
-def iris_test_input_array(rootdir: str):
-    try:
-        test_input_array = np.load(f"{rootdir}/test_files/iris_classification/test_input_array.npy")
-    except FileNotFoundError as e:
-        pytest.skip(str(e))
-    return test_input_array
-
-
-@pytest.fixture(scope="module")
-def iris_test_input_dict(iris_test_input_array, iris_variables) -> dict:
-    input_variables, _ = iris_variables
-    test_input_dict = {
-        var.name: iris_test_input_array[0, idx] for idx, var in enumerate(input_variables)
-    }
-    return test_input_dict
