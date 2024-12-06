@@ -9,34 +9,9 @@ try:
     import torch
     from botorch.models.transforms.input import AffineInputTransform
     from lume_model.models import TorchModel
-    from lume_model.variables import InputVariable, OutputVariable, ScalarOutputVariable
+    from lume_model.variables import ScalarVariable
 except ImportError:
     pass
-
-
-# def assert_variables_updated(
-#     input_value: float,
-#     output_value: float,
-#     model,
-#     input_name: str,
-#     output_name: str,
-# ):
-#     """helper function to verify that model input_variables and output_variables
-#     have been updated correctly with float values (NOT tensors)"""
-#     assert isinstance(model.input_variables[model.input_names.index(input_name)].value, float)
-#     assert model.input_variables[model.input_names.index(input_name)].value == pytest.approx(input_value)
-#     assert isinstance(model.output_variables[model.output_names.index(output_name)].value, float)
-#     assert model.output_variables[model.output_names.index(output_name)].value == pytest.approx(output_value)
-
-
-# def assert_california_model_result(california_test_input_dict: dict, model):
-#     assert_variables_updated(
-#         input_value=california_test_input_dict["HouseAge"].item(),
-#         output_value=4.063651,
-#         model=model,
-#         input_name="HouseAge",
-#         output_name="MedHouseVal",
-#     )
 
 
 def assert_model_equality(m1: TorchModel, m2: TorchModel):
@@ -60,7 +35,7 @@ class TestTorchModel:
             self,
             california_model_info: dict[str, str],
             california_model_kwargs: dict[str, Union[list, dict, str]],
-            california_variables: tuple[list[InputVariable], list[OutputVariable]],
+            california_variables: tuple[list[ScalarVariable], list[ScalarVariable]],
             california_transformers: tuple[list, list],
             california_model,
     ):
@@ -94,23 +69,6 @@ class TestTorchModel:
         os.remove(f"{filename}_input_transformers_0.pt")
         os.remove(f"{filename}_output_transformers_0.pt")
 
-    def test_model_evaluate_variable(
-            self,
-            california_test_input_dict: dict,
-            california_model_kwargs: dict[str, Union[list, dict, str]],
-    ):
-        kwargs = deepcopy(california_model_kwargs)
-        kwargs["output_format"] = "variable"
-        california_model = TorchModel(**kwargs)
-        input_variables = deepcopy(california_model.input_variables)
-        for var in input_variables:
-            var.value = california_test_input_dict[var.name].item()
-        results = california_model.evaluate({var.name: var for var in input_variables})
-
-        assert isinstance(results["MedHouseVal"], ScalarOutputVariable)
-        assert results["MedHouseVal"].value == pytest.approx(4.063651)
-        # assert_california_model_result(california_test_input_dict, california_model)
-
     def test_model_evaluate_single_sample(self, california_test_input_dict: dict, california_model):
         results = california_model.evaluate(california_test_input_dict)
 
@@ -118,15 +76,12 @@ class TestTorchModel:
         assert torch.isclose(
             results["MedHouseVal"], torch.tensor(4.063651, dtype=results["MedHouseVal"].dtype)
         )
-        # assert_california_model_result(california_test_input_dict, california_model)
 
     def test_model_evaluate_n_samples(self, california_test_input_tensor, california_model):
         test_dict = {
             key: california_test_input_tensor[:, idx] for idx, key in enumerate(california_model.input_names)
         }
         results = california_model.evaluate(test_dict)
-        # in this case we don't expect the input/output variables to be updated, because we don't know which value
-        # to update them with so we only check for the resulting values
         target_tensor = torch.tensor([4.063651, 2.7774928, 2.792812], dtype=results["MedHouseVal"].dtype)
 
         assert all(torch.isclose(results["MedHouseVal"], target_tensor))
@@ -159,7 +114,6 @@ class TestTorchModel:
 
         assert isinstance(results["MedHouseVal"], float)
         assert results["MedHouseVal"] == pytest.approx(4.063651)
-        # assert_california_model_result(california_test_input_dict, california_model)
 
     def test_model_evaluate_shuffled_input(self, california_test_input_dict: dict, california_model):
         shuffled_input = deepcopy(california_test_input_dict)
@@ -172,7 +126,6 @@ class TestTorchModel:
         assert torch.isclose(
             results["MedHouseVal"], torch.tensor(4.063651, dtype=results["MedHouseVal"].dtype)
         )
-        # assert_california_model_result(california_test_input_dict, california_model)
 
     @pytest.mark.parametrize("test_idx,expected", [(0, 4.063651), (1, 2.7774928), (2, 2.792812)])
     def test_model_evaluate_different_values(
@@ -189,13 +142,6 @@ class TestTorchModel:
         results = california_model.evaluate(input_dict)
 
         assert results["MedHouseVal"].item() == pytest.approx(expected)
-        # assert_variables_updated(
-        #     input_value=input_dict["HouseAge"].item(),
-        #     output_value=expected,
-        #     model=california_model,
-        #     input_name="HouseAge",
-        #     output_name="MedHouseVal",
-        # )
 
     def test_model_evaluate_with_no_output_transformers(
             self,
@@ -210,13 +156,6 @@ class TestTorchModel:
         assert torch.isclose(
             results["MedHouseVal"], torch.tensor(1.8523695, dtype=results["MedHouseVal"].dtype)
         )
-        # assert_variables_updated(
-        #     input_value=california_test_input_dict["HouseAge"].item(),
-        #     output_value=1.8523695,
-        #     model=model,
-        #     input_name="HouseAge",
-        #     output_name="MedHouseVal",
-        # )
 
     def test_differentiability(
             self,
@@ -247,7 +186,7 @@ class TestTorchModel:
             x_limits = {
                 "min": torch.tensor([var.value_range[0] for var in v], dtype=california_model.dtype),
                 "max": torch.tensor([var.value_range[1] for var in v], dtype=california_model.dtype),
-                "default": torch.tensor([var.default for var in v], dtype=california_model.dtype),
+                "default": torch.tensor([var.default_value for var in v], dtype=california_model.dtype),
             }
             return x_limits
 
