@@ -90,7 +90,7 @@ def variables_as_yaml(
         verify_unique_variable_names(variables)
     v = {"input_variables": [var.dict() for var in input_variables],
          "output_variables": [var.dict() for var in output_variables]}
-    s = yaml.dump(serialize_variables(v), default_flow_style=None, sort_keys=False)
+    s = yaml.safe_dump(serialize_variables(v), default_flow_style=None, sort_keys=False)
     if file is not None:
         with open(file, "w") as f:
             f.write(s)
