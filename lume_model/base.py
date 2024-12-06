@@ -10,10 +10,7 @@ import yaml
 import numpy as np
 from pydantic import BaseModel, ConfigDict, field_validator, SerializeAsAny
 
-from lume_model.variables import (
-    InputVariable,
-    OutputVariable, ScalarInputVariable, ScalarOutputVariable,
-)
+from lume_model.variables import ScalarVariable, get_variable
 from lume_model.utils import (
     try_import_module,
     verify_unique_variable_names,
@@ -228,43 +225,25 @@ class LUMEBaseModel(BaseModel, ABC):
         input_variables: List defining the input variables and their order.
         output_variables: List defining the output variables and their order.
     """
-    input_variables: list[SerializeAsAny[InputVariable]]
-    output_variables: list[SerializeAsAny[OutputVariable]]
+    input_variables: list[SerializeAsAny[ScalarVariable]]
+    output_variables: list[SerializeAsAny[ScalarVariable]]
 
     model_config = ConfigDict(arbitrary_types_allowed=True, validate_assignment=True)
 
-    @field_validator("input_variables", mode="before")
+    @field_validator("input_variables", "output_variables", mode="before")
     def validate_input_variables(cls, value):
         new_value = []
         if isinstance(value, dict):
             for name, val in value.items():
                 if isinstance(val, dict):
-                    if val["variable_type"] == "scalar":
-                        new_value.append(ScalarInputVariable(name=name, **val))
-                elif isinstance(val, InputVariable):
+                    variable_class = get_variable(val["variable_class"])
+                    new_value.append(variable_class(name=name, **val))
+                elif isinstance(val, ScalarVariable):
                     new_value.append(val)
                 else:
                     raise TypeError(f"type {type(val)} not supported")
         elif isinstance(value, list):
             new_value = value
-
-        return new_value
-
-    @field_validator("output_variables", mode="before")
-    def validate_output_variables(cls, value):
-        new_value = []
-        if isinstance(value, dict):
-            for name, val in value.items():
-                if isinstance(val, dict):
-                    if val["variable_type"] == "scalar":
-                        new_value.append(ScalarOutputVariable(name=name, **val))
-                elif isinstance(val, OutputVariable):
-                    new_value.append(val)
-                else:
-                    raise TypeError(f"type {type(val)} not supported")
-        elif isinstance(value, list):
-            new_value = value
-
         return new_value
 
     def __init__(self, *args, **kwargs):

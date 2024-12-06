@@ -1,102 +1,130 @@
 """
 This module contains definitions of LUME-model variables for use with lume tools.
-The variables are divided into input and outputs, each with different minimal requirements.
-Initiating any variable without the minimum requirements will result in an error.
+Variables are designed as pure descriptors and thus aren't intended to hold actual values,
+but they can be used to validate encountered values.
 
 For now, only scalar variables (floats) are supported.
 """
-import logging
-from typing import Optional, Generic, TypeVar
-from pydantic import BaseModel, Field
-
-logger = logging.getLogger(__name__)
-
-
-# define generic value type
-Value = TypeVar("Value")
+import json
+import math
+from abc import ABC, abstractmethod
+from typing import Any, Optional, Type
+from pydantic import BaseModel, field_validator, model_validator
 
 
-class Variable(BaseModel, Generic[Value]):
-    """
-    Minimum requirements for a variable.
+class Variable(BaseModel, ABC):
+    """Abstract variable base class.
 
     Attributes:
         name: Name of the variable.
-        value: Value assigned to the variable.
-        precision: Precision to use for the value.
     """
     name: str
-    value: Optional[Value] = None
-    precision: Optional[int] = None
+
+    @property
+    @abstractmethod
+    def default_validation_config(self) -> dict[str, bool]:
+        """Determines default behavior during validation."""
+        return {}
+
+    @abstractmethod
+    def validate_value(self, value: Any, config: dict[str, bool] = None):
+        pass
+
+    def dict(self, **kwargs) -> dict[str, Any]:
+        config = super().model_dump(**kwargs)
+        return {"variable_class": self.__class__.__name__} | config
+
+    def json(self, **kwargs) -> str:
+        result = self.to_json(**kwargs)
+        config = json.loads(result)
+        config = {"variable_class": self.__class__.__name__} | config
+        return json.dumps(config)
 
 
-class ScalarVariable(BaseModel):
-    """
-    Base class used for constructing a scalar variable.
-
-    Attributes:
-        variable_type: Indicates scalar variable.
-        units: Units associated with scalar value.
-        parent_variable: Variable for which this is an attribute.
-    """
-    variable_type: str = "scalar"
-    units: Optional[str] = None  # required for some output displays
-    parent_variable: str = (
-        None  # indicates that this variable is an attribute of another
-    )
-
-
-class InputVariable(Variable, Generic[Value]):
-    """
-    Base class for input variables.
-
-    Attributes:
-        default: Default value assigned to the variable.
-        is_constant: Indicates whether the variable is constant.
-    """
-    default: Value  # required default
-    is_constant: bool = Field(False)
-
-
-class OutputVariable(Variable, Generic[Value]):
-    """
-    Base class for output variables. Value and range assignment are optional.
+class ScalarVariable(Variable):
+    """Variable for float values.
 
     Attributes:
-        default: Default value assigned to the variable.
-        value_range: Acceptable range for value.
+        default_value: Default value for the variable.
+        value_range: Value range that is considered valid for the variable. If the value range is set to None,
+          the variable is interpreted as a constant and values are validated against the default value.
+        value_range_tolerance: Absolute tolerance when checking whether values are within the valid range.
+        unit: Unit associated with the variable.
     """
-    default: Optional[Value] = None
-    value_range: Optional[list] = Field(None, alias="range")
+    default_value: Optional[float] = None
+    value_range: Optional[tuple[float, float]] = (-math.inf, math.inf)
+    value_range_tolerance: Optional[float] = 1e-8
+    unit: Optional[str] = None
+
+    @field_validator("value_range", mode="before")
+    @classmethod
+    def validate_value_range(cls, value):
+        value = tuple(value)
+        if not value[0] <= value[1]:
+            raise ValueError(f"Minimum value ({value[0]}) must be lower or equal than maximum ({value[1]}).")
+        return value
+
+    @model_validator(mode="after")
+    def validate_default_value(self):
+        if self.default_value is not None and self.value_range is not None:
+            if not self._value_is_within_range(self.default_value):
+                raise ValueError(
+                    "Default value ({}) is out of valid range "
+                    "([{},{}]).".format(self.default_value, *self.value_range)
+                )
+        return self
+
+    @property
+    def default_validation_config(self) -> dict[str, bool]:
+        return {"value_range": True}
+
+    def validate_value(self, value: float, config: dict[str, bool] = None):
+        _config = self.default_validation_config if config is None else config
+        # mandatory validation
+        self._validate_value_type(value)
+        # optional validation
+        if _config["value_range"]:
+            self._validate_value_is_within_range(value)
+
+    @staticmethod
+    def _validate_value_type(value: float):
+        if not isinstance(value, float):
+            raise TypeError(f"Expected value to be of type {float}, but received {type(value)}.")
+
+    def _validate_value_is_within_range(self, value: float):
+        if not self._value_is_within_range(value):
+            raise ValueError("Value ({}) is out of valid range ([{},{}]).".format(value, *self.value_range))
+
+    def _value_is_within_range(self, value) -> bool:
+        tolerances = {"rel_tol": 0, "abs_tol": self.value_range_tolerance}
+        is_within_range, is_within_tolerance = False, False
+        # constant variables
+        if self.value_range is None:
+            if self.default_value is None:
+                is_within_tolerance = True
+            else:
+                is_within_tolerance = math.isclose(value, self.default_value, **tolerances)
+        # non-constant variables
+        else:
+            is_within_range = self.value_range[0] <= value <= self.value_range[1]
+            is_within_tolerance = any([math.isclose(value, ele, **tolerances) for ele in self.value_range])
+        return is_within_range or is_within_tolerance
 
 
-class ScalarInputVariable(InputVariable[float], ScalarVariable):
+def get_variable(name: str) -> Type[Variable]:
+    """Returns the Variable subclass with the given name.
+
+    Args:
+        name: Name of the Variable subclass.
+
+    Returns:
+        Variable subclass with the given name.
     """
-    Variable used for representing a scalar input. Scalar variables hold float values.
-    Initialization requires name, default, and value_range.
-
-    Attributes:
-        value_range: Acceptable range for value.
-
-    Example:
-        ```
-        variable = ScalarInputVariable(name="example_input", default=0.1, value_range=[0.0, 1.0])
-        ```
-    """
-    value_range: list[float]
-
-
-class ScalarOutputVariable(OutputVariable[float], ScalarVariable):
-    """
-    Variable used for representing a scalar output. Scalar variables hold float values.
-    Initialization requires name.
-
-    Example:
-        ```
-        variable = ScalarOutputVariable(name="example_output")
-        ```
-    """
-    pass
+    classes = [ScalarVariable]
+    class_lookup = {c.__name__: c for c in classes}
+    if name not in class_lookup.keys():
+        raise KeyError(f"No variable named {name}, valid names are {list(class_lookup.keys())}")
+    return class_lookup[name]
 
 
 # class NumpyNDArray(np.ndarray):
