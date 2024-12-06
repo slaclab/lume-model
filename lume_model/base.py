@@ -2,7 +2,7 @@ import os
 import json
 import logging
 from abc import ABC, abstractmethod
-from typing import Any, Callable, Union
+from typing import Any, Callable, Optional, Union
 from types import FunctionType, MethodType
 from io import TextIOWrapper
 
@@ -224,9 +224,15 @@ class LUMEBaseModel(BaseModel, ABC):
     Attributes:
         input_variables: List defining the input variables and their order.
         output_variables: List defining the output variables and their order.
+        input_validation_config: Determines the behavior during input validation by specifying the validation
+          config for each input variable: {var_name: var_config}.
+        output_validation_config: Determines the behavior during output validation by specifying the validation
+          config for each output variable: {var_name: var_config}.
     """
     input_variables: list[SerializeAsAny[ScalarVariable]]
     output_variables: list[SerializeAsAny[ScalarVariable]]
+    input_validation_config: Optional[dict[str, dict[str, bool]]] = None
+    output_validation_config: Optional[dict[str, dict[str, bool]]] = None
 
     model_config = ConfigDict(arbitrary_types_allowed=True, validate_assignment=True)
 
@@ -279,9 +285,38 @@ class LUMEBaseModel(BaseModel, ABC):
     def output_names(self) -> list[str]:
         return [var.name for var in self.output_variables]
 
-    @abstractmethod
+    @property
+    def default_input_validation_config(self) -> dict[str, dict[str, bool]]:
+        """Determines default behavior during input validation (if input_validation_config is None)."""
+        return {var.name: var.default_validation_config for var in self.input_variables}
+
+    @property
+    def default_output_validation_config(self) -> dict[str, dict[str, bool]]:
+        """Determines default behavior during output validation (if output_validation_config is None)."""
+        return {var.name: var.default_validation_config for var in self.output_variables}
+
     def evaluate(self, input_dict: dict[str, Any]) -> dict[str, Any]:
+        """Main evaluation function, child classes must implement the _evaluate method."""
+        self.input_validation(input_dict)
+        output_dict = self._evaluate(input_dict)
+        self.output_validation(output_dict)
+        return output_dict
+
+    @abstractmethod
+    def _evaluate(self, input_dict: dict[str, Any]) -> dict[str, Any]:
         pass
+
+    def input_validation(self, input_dict: dict[str, Any]):
+        for name, value in input_dict.items():
+            _config = None if self.input_validation_config is None else self.input_validation_config.get(name)
+            var = self.input_variables[self.input_names.index(name)]
+            var.validate_value(value, config=_config)
+
+    def output_validation(self, output_dict: dict[str, Any]):
+        for name, value in output_dict.items():
+            _config = None if self.output_validation_config is None else self.output_validation_config.get(name)
+            var = self.output_variables[self.output_names.index(name)]
+            var.validate_value(value, config=_config)
 
     def to_json(self, **kwargs) -> str:
         return json_dumps(self, **kwargs)

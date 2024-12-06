@@ -7,7 +7,7 @@ from lume_model.variables import ScalarVariable
 
 
 class ExampleModel(LUMEBaseModel):
-    def evaluate(self, input_dict):
+    def _evaluate(self, input_dict):
         pass
 
 
@@ -17,7 +17,7 @@ class TestBaseModel:
         with pytest.raises(TypeError):
             _ = LUMEBaseModel()
 
-        # init child class with no evaluate function
+        # init child class with no _evaluate function
         class NoEvaluateModel(LUMEBaseModel):
             def predict(self, input_dict):
                 pass

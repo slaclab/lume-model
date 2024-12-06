@@ -102,7 +102,7 @@ class TorchModel(LUMEBaseModel):
             raise ValueError(f"Unknown output format {v}, expected one of {supported_formats}.")
         return v
 
-    def evaluate(
+    def _evaluate(
             self,
             input_dict: dict[str, Union[float, torch.Tensor]],
     ) -> dict[str, Union[float, torch.Tensor]]:
@@ -122,6 +122,19 @@ class TorchModel(LUMEBaseModel):
         parsed_outputs = self._parse_outputs(output_tensor)
         output_dict = self._prepare_outputs(parsed_outputs)
         return output_dict
+
+    def input_validation(self, input_dict: dict[str, Union[float, torch.Tensor]]):
+        """Itemizes tensors before performing input validation."""
+        formatted_inputs = self._format_inputs(input_dict)
+        itemized_inputs = self._itemize_dict(formatted_inputs)
+        for ele in itemized_inputs:
+            super().input_validation(ele)
+
+    def output_validation(self, output_dict: dict[str, Union[float, torch.Tensor]]):
+        """Itemizes tensors before performing output validation."""
+        itemized_outputs = self._itemize_dict(output_dict)
+        for ele in itemized_outputs:
+            super().output_validation(ele)
 
     def random_input(self, n_samples: int = 1) -> dict[str, torch.Tensor]:
         """Generates random input(s) for the model.
@@ -232,25 +245,10 @@ class TorchModel(LUMEBaseModel):
         Returns:
             Dictionary of input variable names to tensors.
         """
-        # NOTE: The input variable is only updated if a singular value is given (ambiguous otherwise)
         formatted_inputs = {}
-        for var_name, var in input_dict.items():
-            if isinstance(var, ScalarVariable):
-                formatted_inputs[var_name] = torch.tensor(var.value, **self._tkwargs)
-                # self.input_variables[self.input_names.index(var_name)].value = var.value
-            elif isinstance(var, float):
-                formatted_inputs[var_name] = torch.tensor(var, **self._tkwargs)
-                # self.input_variables[self.input_names.index(var_name)].value = var
-            elif isinstance(var, torch.Tensor):
-                var = var.double().squeeze().to(self.device)
-                formatted_inputs[var_name] = var
-                # if var.dim() == 0:
-                #     self.input_variables[self.input_names.index(var_name)].value = var.item()
-            else:
-                TypeError(
-                    f"Unknown type {type(var)} passed to evaluate."
-                    f"Should be one of InputVariable, float or torch.Tensor."
-                )
+        for var_name, value in input_dict.items():
+            v = value if isinstance(value, torch.Tensor) else torch.tensor(value)
+            formatted_inputs[var_name] = v.squeeze().to(**self._tkwargs)
         return formatted_inputs
 
     def _arrange_inputs(self, formatted_inputs: dict[str, torch.Tensor]) -> torch.Tensor:
@@ -351,6 +349,29 @@ class TorchModel(LUMEBaseModel):
         else:
             return {key: value.item() if value.squeeze().dim() == 0 else value
                     for key, value in parsed_outputs.items()}
+
+    @staticmethod
+    def _itemize_dict(d: dict[str, Union[float, torch.Tensor]]) -> list[dict[str, Union[float, torch.Tensor]]]:
+        """Itemizes the given in-/output dictionary.
+
+        Args:
+            d: Dictionary to itemize.
+
+        Returns:
+            List of in-/output dictionaries, each containing only a single value per in-/output.
+        """
+        has_tensors = any([isinstance(value, torch.Tensor) for value in d.values()])
+        itemized_dicts = []
+        if has_tensors:
+            for k, v in d.items():
+                for i, ele in enumerate(v.flatten()):
+                    if i >= len(itemized_dicts):
+                        itemized_dicts.append({k: ele.item()})
+                    else:
+                        itemized_dicts[i][k] = ele.item()
+        else:
+            itemized_dicts = [d]
+        return itemized_dicts
 
     # def _update_image_limits(
     #         self,
