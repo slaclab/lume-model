@@ -45,7 +45,7 @@ class ScalarVariable(Variable):
         value_range_tolerance: Absolute tolerance when checking whether values are within the valid range.
         unit: Unit associated with the variable.
     """
-    default_value: Optional[float] = None
+    default_value: float
     value_range: Optional[tuple[float, float]] = (-math.inf, math.inf)
     value_range_tolerance: Optional[float] = 1e-8
     unit: Optional[str] = None
