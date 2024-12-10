@@ -9,7 +9,7 @@ from abc import ABC, abstractmethod
 from typing import Any, Optional, Type, Union
 
 import numpy as np
-from pydantic import BaseModel, field_validator, model_validator
+from pydantic import BaseModel, field_validator, model_validator, ConfigDict
 
 # Define float type that supports single and double precision
 Float = Union[float, np.float32]
@@ -47,6 +47,8 @@ class ScalarVariable(Variable):
         value_range_tolerance: Absolute tolerance when checking whether values are within the valid range.
         unit: Unit associated with the variable.
     """
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+
     default_value: Float
     value_range: Optional[tuple[Float, Float]] = (-np.inf, np.inf)
     value_range_tolerance: Optional[Float] = 1e-8
@@ -98,18 +100,19 @@ class ScalarVariable(Variable):
             raise ValueError(error_message)
 
     def _value_is_within_range(self, value) -> bool:
-        tolerances = {"rel_tol": 0, "abs_tol": self.value_range_tolerance}
+        tolerances = {"rtol": 0, "atol": self.value_range_tolerance}
+
         is_within_range, is_within_tolerance = False, False
         # constant variables
         if self.value_range is None:
             if self.default_value is None:
                 is_within_tolerance = True
             else:
-                is_within_tolerance = math.isclose(value, self.default_value, **tolerances)
+                is_within_tolerance = np.isclose(value, self.default_value, **tolerances)
         # non-constant variables
         else:
             is_within_range = self.value_range[0] <= value <= self.value_range[1]
-            is_within_tolerance = any([math.isclose(value, ele, **tolerances) for ele in self.value_range])
+            is_within_tolerance = any([np.isclose(value, ele, **tolerances) for ele in self.value_range])
         return is_within_range or is_within_tolerance
 
 
