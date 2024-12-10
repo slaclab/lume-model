@@ -3,14 +3,16 @@ This module contains definitions of LUME-model variables for use with lume tools
 Variables are designed as pure descriptors and thus aren't intended to hold actual values,
 but they can be used to validate encountered values.
 
-For now, only scalar variables (floats) are supported.
+For now, only scalar floating-point variables are supported.
 """
-import math
 from abc import ABC, abstractmethod
-from typing import Any, Optional, Type
+from typing import Any, Optional, Type, Union
 
+import numpy as np
 from pydantic import BaseModel, field_validator, model_validator
 
+# Define float type that supports single and double precision
+Float = Union[float, np.float32]
 
 class Variable(BaseModel, ABC):
     """Abstract variable base class.
@@ -45,9 +47,9 @@ class ScalarVariable(Variable):
         value_range_tolerance: Absolute tolerance when checking whether values are within the valid range.
         unit: Unit associated with the variable.
     """
-    default_value: float
-    value_range: Optional[tuple[float, float]] = (-math.inf, math.inf)
-    value_range_tolerance: Optional[float] = 1e-8
+    default_value: Float
+    value_range: Optional[tuple[Float, Float]] = (-np.inf, np.inf)
+    value_range_tolerance: Optional[Float] = 1e-8
     unit: Optional[str] = None
 
     @field_validator("value_range", mode="before")
@@ -73,7 +75,7 @@ class ScalarVariable(Variable):
     def default_validation_config(self) -> dict[str, bool]:
         return {"value_range": True}
 
-    def validate_value(self, value: float, config: dict[str, bool] = None):
+    def validate_value(self, value: Float, config: dict[str, bool] = None):
         _config = self.default_validation_config if config is None else config
         # mandatory validation
         self._validate_value_type(value)
@@ -82,11 +84,13 @@ class ScalarVariable(Variable):
             self._validate_value_is_within_range(value)
 
     @staticmethod
-    def _validate_value_type(value: float):
-        if not isinstance(value, float):
-            raise TypeError(f"Expected value to be of type {float}, but received {type(value)}.")
+    def _validate_value_type(value: Float):
+        if not isinstance(value, float) and not isinstance(value, np.float32):
+            raise TypeError(f"Expected value to be of type {float}, {np.float64}, "
+                            f"or {np.float32}, but received {type(value)}."
+                            )
 
-    def _validate_value_is_within_range(self, value: float):
+    def _validate_value_is_within_range(self, value: Float):
         if not self._value_is_within_range(value):
             error_message = "Value ({}) is out of valid range.".format(value)
             if self.value_range is not None:
