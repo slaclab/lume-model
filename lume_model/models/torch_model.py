@@ -4,7 +4,7 @@ from typing import Union, Dict
 from copy import deepcopy
 
 import torch
-from pydantic import field_validator, BaseModel, validator, ConfigDict
+from pydantic import field_validator, BaseModel, ConfigDict
 from botorch.models.transforms.input import ReversibleInputTransform
 
 from lume_model.base import LUMEBaseModel
@@ -383,6 +383,8 @@ class TorchModel(LUMEBaseModel):
         itemized_dicts = []
         if has_tensors:
             for k, v in d.items():
+                # note: tensor.item() method returns the default double float in python for floats
+                #       or int if it's an integer
                 for i, ele in enumerate(v.flatten()):
                     if i >= len(itemized_dicts):
                         itemized_dicts.append({k: ele.item()})
@@ -419,13 +421,12 @@ class TorchModel(LUMEBaseModel):
     #         ].item()
 
 class InputDictModel(BaseModel):
-    model_config = ConfigDict(arbitrary_types_allowed=True)
+    """Pydantic model for input dictionary validation.
 
-    input_dict: Dict[str, Union[float, torch.Tensor]]
+    Attributes:
+        input_dict: Input dictionary to validate.
+    """
+    input_dict: Dict[str, Union[torch.Tensor, float]]
 
-    @validator('input_dict', each_item=True)
-    def check_input_types(cls, v):
-        if not isinstance(v, (float, torch.Tensor)):
-            raise TypeError("Values in input_dict must be either float or torch.Tensor.")
+    model_config = ConfigDict(arbitrary_types_allowed=True, strict=True)
 
-        return v
