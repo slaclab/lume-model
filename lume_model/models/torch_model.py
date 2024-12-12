@@ -1,10 +1,10 @@
 import os
 import logging
-from typing import Union
+from typing import Union, Dict
 from copy import deepcopy
 
 import torch
-from pydantic import field_validator
+from pydantic import field_validator, BaseModel, validator, ConfigDict
 from botorch.models.transforms.input import ReversibleInputTransform
 
 from lume_model.base import LUMEBaseModel
@@ -36,6 +36,7 @@ class TorchModel(LUMEBaseModel):
     output_format: str = "tensor"
     device: Union[torch.device, str] = "cpu"
     fixed_model: bool = True
+    precision: str = "double"
 
     def __init__(self, *args, **kwargs):
         """Initializes TorchModel.
@@ -47,11 +48,8 @@ class TorchModel(LUMEBaseModel):
         """
         super().__init__(*args, **kwargs)
 
-        # set precision
-        self.model.to(dtype=self.dtype)
-        for t in self.input_transformers + self.output_transformers:
-            if isinstance(t, torch.nn.Module):
-                t.to(dtype=self.dtype)
+        # dtype property sets precision across model and transformers
+        self.dtype;
 
         # fixed model: set full model in eval mode and deactivate all gradients
         if self.fixed_model:
@@ -65,7 +63,17 @@ class TorchModel(LUMEBaseModel):
 
     @property
     def dtype(self):
-        return torch.double
+        if self.precision == "double":
+            self._dtype = torch.double
+        elif self.precision == "single":
+            self._dtype = torch.float
+        else:
+            raise ValueError(
+                f"Unknown precision {self.precision}, "
+                f"expected one of ['double', 'single']."
+            )
+        self._set_precision(self._dtype)
+        return self._dtype
 
     @property
     def _tkwargs(self):
@@ -102,6 +110,14 @@ class TorchModel(LUMEBaseModel):
             raise ValueError(f"Unknown output format {v}, expected one of {supported_formats}.")
         return v
 
+    def _set_precision(self, value: torch.dtype):
+        """Sets the precision of the model."""
+        torch.set_default_dtype(value)
+        self.model.to(dtype=value)
+        for t in self.input_transformers + self.output_transformers:
+            if isinstance(t, torch.nn.Module):
+                t.to(dtype=value)
+
     def _evaluate(
             self,
             input_dict: dict[str, Union[float, torch.Tensor]],
@@ -125,8 +141,11 @@ class TorchModel(LUMEBaseModel):
 
     def input_validation(self, input_dict: dict[str, Union[float, torch.Tensor]]):
         """Itemizes tensors before performing input validation."""
-        formatted_inputs = self._format_inputs(input_dict)
-        itemized_inputs = self._itemize_dict(formatted_inputs)
+        # Validate input type
+        validated_input = InputDictModel(input_dict=input_dict).input_dict
+
+        # formatted_inputs = self._format_inputs(input_dict)
+        itemized_inputs = self._itemize_dict(validated_input)
         for ele in itemized_inputs:
             super().input_validation(ele)
 
@@ -296,7 +315,7 @@ class TorchModel(LUMEBaseModel):
         """
         for transformer in self.input_transformers:
             input_tensor = transformer.transform(input_tensor)
-        return input_tensor
+        return input_tensor#.to(**self._tkwargs)
 
     def _transform_outputs(self, output_tensor: torch.Tensor) -> torch.Tensor:
         """(Un-)Transforms the model output tensor.
@@ -373,6 +392,7 @@ class TorchModel(LUMEBaseModel):
             itemized_dicts = [d]
         return itemized_dicts
 
+
     # def _update_image_limits(
     #         self,
     #         variable: ScalarVariable, predicted_output: dict[str, torch.Tensor],
@@ -397,3 +417,15 @@ class TorchModel(LUMEBaseModel):
     #         self.output_variables[output_idx].y_max = predicted_output[
     #             self.output_variables[output_idx].y_max_variable
     #         ].item()
+
+class InputDictModel(BaseModel):
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+
+    input_dict: Dict[str, Union[float, torch.Tensor]]
+
+    @validator('input_dict', each_item=True)
+    def check_input_types(cls, v):
+        if not isinstance(v, (float, torch.Tensor)):
+            raise TypeError("Values in input_dict must be either float or torch.Tensor.")
+
+        return v

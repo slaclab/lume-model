@@ -80,7 +80,8 @@ class ScalarVariable(Variable):
     def validate_value(self, value: Float, config: dict[str, bool] = None):
         _config = self.default_validation_config if config is None else config
         # mandatory validation
-        self._validate_value_type(value)
+        # TODO: remove since this is now done before passing it here
+        # self._validate_value_type(value)
         # optional validation
         if _config["value_range"]:
             self._validate_value_is_within_range(value)
