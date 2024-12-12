@@ -145,7 +145,8 @@ class TorchModel(LUMEBaseModel):
         validated_input = InputDictModel(input_dict=input_dict).input_dict
 
         formatted_inputs = self._format_inputs(validated_input)
-        itemized_inputs = self._itemize_dict(formatted_inputs)
+        filled_inputs = self._fill_default_inputs(formatted_inputs) # to check default values
+        itemized_inputs = self._itemize_dict(filled_inputs)
 
         for ele in itemized_inputs:
             # validate values that were in the torch tensor
@@ -273,6 +274,20 @@ class TorchModel(LUMEBaseModel):
             v = value if isinstance(value, torch.Tensor) else torch.tensor(value)
             formatted_inputs[var_name] = v.squeeze()
         return formatted_inputs
+
+    def _fill_default_inputs(self, input_dict: dict[str, torch.Tensor]) -> dict[str, torch.Tensor]:
+        """Fills missing input variables with default values.
+
+        Args:
+            input_dict: Dictionary of input variable names to tensors.
+
+        Returns:
+            Dictionary of input variable names to tensors with default values for missing inputs.
+        """
+        for var in self.input_variables:
+            if var.name not in input_dict.keys():
+                input_dict[var.name] = torch.tensor(var.default_value, **self._tkwargs)
+        return input_dict
 
     def _arrange_inputs(self, formatted_inputs: dict[str, torch.Tensor]) -> torch.Tensor:
         """Enforces order of input variables.

@@ -48,7 +48,7 @@ class ScalarVariable(Variable):
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
     default_value: float
-    value_range: Optional[tuple[float, float]] = (-np.inf, np.inf)
+    value_range: Optional[tuple[float, float]] = None
     value_range_tolerance: Optional[float] = 1e-8
     unit: Optional[str] = None
 
@@ -73,40 +73,54 @@ class ScalarVariable(Variable):
 
     @property
     def default_validation_config(self) -> dict[str, bool]:
-        return {"value_range": True}
+        return {"value_range": True, "strict": False}
 
     def validate_value(self, value: float, config: dict[str, bool] = None):
         _config = self.default_validation_config if config is None else config
         # mandatory validation
-        # TODO: remove since this is now done before passing it here
-        # self._validate_value_type(value)
+        self._validate_value_type(value)
         # optional validation
         if _config["value_range"]:
-            self._validate_value_is_within_range(value)
+            self._validate_value_is_within_range(value, config=_config)
 
     @staticmethod
     def _validate_value_type(value: float):
         if not isinstance(value, float):
-            raise TypeError(f"Expected value to be of type {float} or {np.float64}, "
-                            f"but received {type(value)}."
-                            )
+            if isinstance(value, int):
+                # integers will be cast to floats
+                print(
+                    f"Warning: Value is of type int, but expected float."
+                    f" It will be cast to float."
+                    )
+            else:
+                raise TypeError(
+                    f"Expected value to be of type {float} or {np.float64}, "
+                    f"but received {type(value)}."
+                )
 
-    def _validate_value_is_within_range(self, value: float):
+    def _validate_value_is_within_range(self, value: float, config: dict[str, bool] = None):
         if not self._value_is_within_range(value):
-            error_message = "Value ({}) is out of valid range.".format(value)
+            error_message = "Value ({}) of '{}' is out of valid range.".format(value, self.name)
             if self.value_range is not None:
                 error_message = error_message[:-1] + " ([{},{}]).".format(*self.value_range)
-            raise ValueError(error_message)
+            if config["strict"]:
+                raise ValueError(error_message)
+            else:
+                print("Warning: " + error_message)
 
     def _value_is_within_range(self, value) -> bool:
         tolerances = {"rtol": 0, "atol": self.value_range_tolerance}
 
         is_within_range, is_within_tolerance = False, False
-        # constant variables
         if self.value_range is None:
             if self.default_value is None:
+                # constant variables
+                is_within_tolerance = True
+            elif str(self.default_value) == "nan":
+                # outputs
                 is_within_tolerance = True
             else:
+                # input variables with no specified range
                 is_within_tolerance = np.isclose(value, self.default_value, **tolerances)
         # non-constant variables
         else:

@@ -32,6 +32,10 @@ input_variables:
     variable_class: ScalarVariable
     value_range: [-124.3499984741211, -114.30999755859375]
     default_value: -119.11573028564453
+input_validation_config:
+  MedInc:
+    value_range: True
+    strict: True
 output_variables:
   MedHouseVal: {variable_class: ScalarVariable}
 model: model.pt
@@ -40,3 +44,4 @@ output_transformers: [output_transformers_0.pt]
 output_format: tensor
 device: cpu
 fixed_model: true
+precision: "double"

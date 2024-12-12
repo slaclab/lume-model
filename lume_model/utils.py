@@ -114,6 +114,8 @@ def variables_from_dict(config: dict) -> tuple[list[ScalarVariable], list[Scalar
                 if key == "input_variables":
                     input_variables.append(variable_class(**var))
                 elif key == "output_variables":
+                    # this is a required attr, output vars will always default to nan
+                    var |= {"default_value": float('nan')}
                     output_variables.append(variable_class(**var))
     for variables in [input_variables, output_variables]:
         verify_unique_variable_names(variables)
