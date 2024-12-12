@@ -141,12 +141,16 @@ class TorchModel(LUMEBaseModel):
 
     def input_validation(self, input_dict: dict[str, Union[float, torch.Tensor]]):
         """Itemizes tensors before performing input validation."""
-        # Validate input type
+        # validate input type
         validated_input = InputDictModel(input_dict=input_dict).input_dict
 
-        # formatted_inputs = self._format_inputs(input_dict)
-        itemized_inputs = self._itemize_dict(validated_input)
+        formatted_inputs = self._format_inputs(validated_input)
+        itemized_inputs = self._itemize_dict(formatted_inputs)
+
         for ele in itemized_inputs:
+            # validate values that were in the torch tensor
+            InputDictModel(input_dict=ele)
+            # validate each value based on its var class and config
             super().input_validation(ele)
 
     def output_validation(self, output_dict: dict[str, Union[float, torch.Tensor]]):
@@ -267,7 +271,7 @@ class TorchModel(LUMEBaseModel):
         formatted_inputs = {}
         for var_name, value in input_dict.items():
             v = value if isinstance(value, torch.Tensor) else torch.tensor(value)
-            formatted_inputs[var_name] = v.squeeze().to(**self._tkwargs)
+            formatted_inputs[var_name] = v.squeeze()
         return formatted_inputs
 
     def _arrange_inputs(self, formatted_inputs: dict[str, torch.Tensor]) -> torch.Tensor:
@@ -315,7 +319,7 @@ class TorchModel(LUMEBaseModel):
         """
         for transformer in self.input_transformers:
             input_tensor = transformer.transform(input_tensor)
-        return input_tensor#.to(**self._tkwargs)
+        return input_tensor
 
     def _transform_outputs(self, output_tensor: torch.Tensor) -> torch.Tensor:
         """(Un-)Transforms the model output tensor.
@@ -383,8 +387,6 @@ class TorchModel(LUMEBaseModel):
         itemized_dicts = []
         if has_tensors:
             for k, v in d.items():
-                # note: tensor.item() method returns the default double float in python for floats
-                #       or int if it's an integer
                 for i, ele in enumerate(v.flatten()):
                     if i >= len(itemized_dicts):
                         itemized_dicts.append({k: ele.item()})
