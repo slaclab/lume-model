@@ -95,6 +95,7 @@ class TorchModule(torch.nn.Module):
             base_key: str = "",
             file_prefix: str = "",
             save_models: bool = False,
+            save_jit: bool=False,
     ) -> str:
         """Serializes the object and returns a YAML formatted string defining the TorchModule instance.
 
@@ -102,6 +103,7 @@ class TorchModule(torch.nn.Module):
             base_key: Base key for serialization.
             file_prefix: Prefix for generated filenames.
             save_models: Determines whether models are saved to file.
+            save_jit: Determines whether the structure of the model is saved as TorchScript
 
         Returns:
             YAML formatted string defining the TorchModule instance.
@@ -111,13 +113,14 @@ class TorchModule(torch.nn.Module):
             if k not in ["self", "args", "model"]:
                 d[k] = getattr(self, k)
         output = json.loads(
-            json.dumps(recursive_serialize(d, base_key, file_prefix, save_models))
+            json.dumps(recursive_serialize(d, base_key, file_prefix, save_models, save_jit))
         )
         model_output = json.loads(
             self._model.to_json(
                 base_key=base_key,
                 file_prefix=file_prefix,
                 save_models=save_models,
+                save_jit=save_jit,
             )
         )
         output["model"] = model_output
@@ -131,6 +134,7 @@ class TorchModule(torch.nn.Module):
             file: Union[str, os.PathLike],
             save_models: bool = True,
             base_key: str = "",
+            save_jit: bool = True,
     ):
         """Returns and optionally saves YAML formatted string defining the model.
 
@@ -138,6 +142,7 @@ class TorchModule(torch.nn.Module):
             file: File path to which the YAML formatted string and corresponding files are saved.
             base_key: Base key for serialization.
             save_models: Determines whether models are saved to file.
+            save_jit : Whether the model is saved using just in time pytorch method
         """
         file_prefix = os.path.splitext(file)[0]
         with open(file, "w") as f:
@@ -146,6 +151,7 @@ class TorchModule(torch.nn.Module):
                     save_models=save_models,
                     base_key=base_key,
                     file_prefix=file_prefix,
+                    save_jit=save_jit,
                 )
             )
 
