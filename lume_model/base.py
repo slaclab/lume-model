@@ -297,8 +297,8 @@ class LUMEBaseModel(BaseModel, ABC):
 
     def evaluate(self, input_dict: dict[str, Any]) -> dict[str, Any]:
         """Main evaluation function, child classes must implement the _evaluate method."""
-        self.input_validation(input_dict)
-        output_dict = self._evaluate(input_dict)
+        validated_input_dict = self.input_validation(input_dict)
+        output_dict = self._evaluate(validated_input_dict)
         self.output_validation(output_dict)
         return output_dict
 
@@ -306,17 +306,19 @@ class LUMEBaseModel(BaseModel, ABC):
     def _evaluate(self, input_dict: dict[str, Any]) -> dict[str, Any]:
         pass
 
-    def input_validation(self, input_dict: dict[str, Any]):
+    def input_validation(self, input_dict: dict[str, Any]) -> dict[str, Any]:
         for name, value in input_dict.items():
             _config = None if self.input_validation_config is None else self.input_validation_config.get(name)
             var = self.input_variables[self.input_names.index(name)]
             var.validate_value(value, config=_config)
+        return input_dict
 
-    def output_validation(self, output_dict: dict[str, Any]):
+    def output_validation(self, output_dict: dict[str, Any]) -> dict[str, Any]:
         for name, value in output_dict.items():
             _config = None if self.output_validation_config is None else self.output_validation_config.get(name)
             var = self.output_variables[self.output_names.index(name)]
             var.validate_value(value, config=_config)
+        return output_dict
 
     def to_json(self, **kwargs) -> str:
         return json_dumps(self, **kwargs)

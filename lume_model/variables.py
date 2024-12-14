@@ -86,17 +86,10 @@ class ScalarVariable(Variable):
     @staticmethod
     def _validate_value_type(value: float):
         if not isinstance(value, float):
-            if isinstance(value, int):
-                # integers will be cast to floats
-                print(
-                    f"Warning: Value is of type int, but expected float."
-                    f" It will be cast to float."
-                    )
-            else:
-                raise TypeError(
-                    f"Expected value to be of type {float} or {np.float64}, "
-                    f"but received {type(value)}."
-                )
+            raise TypeError(
+                f"Expected value to be of type {float} or {np.float64}, "
+                f"but received {type(value)}."
+            )
 
     def _validate_value_is_within_range(self, value: float, config: dict[str, bool] = None):
         if not self._value_is_within_range(value):

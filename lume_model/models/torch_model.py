@@ -140,19 +140,36 @@ class TorchModel(LUMEBaseModel):
         return output_dict
 
     def input_validation(self, input_dict: dict[str, Union[float, torch.Tensor]]):
-        """Itemizes tensors before performing input validation."""
-        # validate input type
-        validated_input = InputDictModel(input_dict=input_dict).input_dict
+        """Validates input dictionary before evaluation.
 
+        Args:
+            input_dict: Input dictionary to validate.
+
+        Returns:
+            Validated input dictionary.
+        """
+        # validate input type (ints only are cast to floats for scalars)
+        validated_input = InputDictModel(input_dict=input_dict).input_dict
+        # format inputs as tensors w/o changing the dtype
         formatted_inputs = self._format_inputs(validated_input)
-        filled_inputs = self._fill_default_inputs(formatted_inputs) # to check default values
+        # check default values for missing inputs
+        filled_inputs = self._fill_default_inputs(formatted_inputs)
+        # itemize inputs for validation
         itemized_inputs = self._itemize_dict(filled_inputs)
 
         for ele in itemized_inputs:
             # validate values that were in the torch tensor
-            InputDictModel(input_dict=ele)
+            # any ints in the torch tensor will be cast to floats by Pydantic
+            # but others will be caught, e.g. booleans
+            ele = InputDictModel(input_dict=ele).input_dict
             # validate each value based on its var class and config
             super().input_validation(ele)
+
+        # return the validated input dict for consistency w/ casting ints to floats
+        if any([isinstance(value, torch.Tensor) for value in validated_input.values()]):
+            validated_input = {k: v.to(**self._tkwargs) for k, v in validated_input.items()}
+
+        return validated_input
 
     def output_validation(self, output_dict: dict[str, Union[float, torch.Tensor]]):
         """Itemizes tensors before performing output validation."""
