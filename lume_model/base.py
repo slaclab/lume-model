@@ -277,6 +277,14 @@ class LUMEBaseModel(BaseModel, ABC):
         verify_unique_variable_names(value)
         return value
 
+    @field_validator("input_variables")
+    def verify_input_default_value(cls, value):
+        """Verifies that input variables have the required default values."""
+        for var in value:
+            if var.default_value is None or not var.default_value:
+                raise ValueError(f"Input variable {var.name} must have a default value.")
+        return value
+
     @property
     def input_names(self) -> list[str]:
         return [var.name for var in self.input_variables]

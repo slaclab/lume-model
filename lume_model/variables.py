@@ -39,7 +39,8 @@ class ScalarVariable(Variable):
     """Variable for float values.
 
     Attributes:
-        default_value: Default value for the variable.
+        default_value: Default value for the variable. This is required for input variables but
+          optional for output variables.
         value_range: Value range that is considered valid for the variable. If the value range is set to None,
           the variable is interpreted as a constant and values are validated against the default value.
         value_range_tolerance: Absolute tolerance when checking whether values are within the valid range.
@@ -47,7 +48,7 @@ class ScalarVariable(Variable):
     """
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
-    default_value: float
+    default_value: Optional[float] = None
     value_range: Optional[tuple[float, float]] = None
     value_range_tolerance: Optional[float] = 1e-8
     unit: Optional[str] = None
