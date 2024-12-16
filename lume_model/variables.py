@@ -103,24 +103,15 @@ class ScalarVariable(Variable):
                 print("Warning: " + error_message)
 
     def _value_is_within_range(self, value) -> bool:
-        tolerances = {"rtol": 0, "atol": self.value_range_tolerance}
-
-        is_within_range, is_within_tolerance = False, False
+        is_within_range = False
         if self.value_range is None:
             if self.default_value is None:
-                # constant variables
-                is_within_tolerance = True
-            elif str(self.default_value) == "nan":
-                # outputs
-                is_within_tolerance = True
+                is_within_range = True
             else:
-                # input variables with no specified range
-                is_within_tolerance = np.isclose(value, self.default_value, **tolerances)
-        # non-constant variables
+                is_within_range = self.default_value == value
         else:
             is_within_range = self.value_range[0] <= value <= self.value_range[1]
-            is_within_tolerance = any([np.isclose(value, ele, **tolerances) for ele in self.value_range])
-        return is_within_range or is_within_tolerance
+        return is_within_range
 
 
 def get_variable(name: str) -> Type[Variable]:
