@@ -49,8 +49,8 @@ class ScalarVariable(Variable):
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
     default_value: Optional[float] = None
-    value_range: Optional[tuple[float, float]] = None
-    value_range_tolerance: Optional[float] = 1e-8
+    value_range: Optional[tuple[float, float]] = (-np.inf, np.inf)
+    is_constant: Optional[bool] = False
     unit: Optional[str] = None
 
     @field_validator("value_range", mode="before")
@@ -80,6 +80,9 @@ class ScalarVariable(Variable):
         _config = self.default_validation_config if config is None else config
         # mandatory validation
         self._validate_value_type(value)
+        # validate defaults for constant inputs
+        if self.is_constant:
+            self._validate_constant_value(value)
         # optional validation
         if _config["value_range"]:
             self._validate_value_is_within_range(value, config=_config)
@@ -103,15 +106,15 @@ class ScalarVariable(Variable):
                 print("Warning: " + error_message)
 
     def _value_is_within_range(self, value) -> bool:
-        is_within_range = False
-        if self.value_range is None:
-            if self.default_value is None:
-                is_within_range = True
-            else:
-                is_within_range = self.default_value == value
-        else:
-            is_within_range = self.value_range[0] <= value <= self.value_range[1]
-        return is_within_range
+        self.value_range = self.value_range or (-np.inf, np.inf)
+        return self.value_range[0] <= value <= self.value_range[1]
+
+    def _validate_constant_value(self, value: float):
+        if not self.default_value == value:
+            raise ValueError(
+                f"Expected value to be {self.default_value} for constant variable '{self.name}', "
+                f"but received {value}."
+            )
 
 
 def get_variable(name: str) -> Type[Variable]:

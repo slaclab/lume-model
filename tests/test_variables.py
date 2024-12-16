@@ -27,8 +27,7 @@ class TestScalarVariable:
         var = ScalarVariable(
             name="test",
             default_value=0.8,
-            value_range=(0.0, 10.0),
-            value_range_tolerance=1e-8,
+            value_range=(0.0, 10.0)
         )
         var.validate_value(5.0)
         with pytest.raises(TypeError):
@@ -43,8 +42,7 @@ class TestScalarVariable:
         constant_var = ScalarVariable(
             name="test",
             default_value=1.3,
-            value_range=None,
-            value_range_tolerance=1e-5,
+            is_constant=True,
         )
         constant_var.validate_value(1.3, config=validation_config)
         with pytest.raises(ValueError):
