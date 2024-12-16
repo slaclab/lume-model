@@ -47,13 +47,7 @@ class TestScalarVariable:
         constant_var.validate_value(1.3, config=validation_config)
         with pytest.raises(ValueError):
             constant_var.validate_value(1.4, config=validation_config)
-        # test tolerance
-        # var.validate_value(10.0 + 1e-9, config=validation_config)
-        # with pytest.raises(ValueError):
-        #     var.validate_value(10.0 + 1e-7, config=validation_config)
-        # constant_var.validate_value(1.3 + 1e-6, config=validation_config)
-        # with pytest.raises(ValueError):
-        #     constant_var.validate_value(1.3 + 1e-4, config=validation_config)
+
 
 def test_get_variable():
     var = get_variable(ScalarVariable.__name__)(name="test")
