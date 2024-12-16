@@ -33,8 +33,12 @@ class TestScalarVariable:
         var.validate_value(5.0)
         with pytest.raises(TypeError):
             var.validate_value(int(5))
+        # test validation config
+        var.validate_value(11.0, config={"value_range": False})
+        # range check with strictness flag
+        validation_config = {"value_range": True, "strict": True}
         with pytest.raises(ValueError):
-            var.validate_value(11.0)
+            var.validate_value(11.0, config=validation_config)
         # constant variable
         constant_var = ScalarVariable(
             name="test",
@@ -42,19 +46,16 @@ class TestScalarVariable:
             value_range=None,
             value_range_tolerance=1e-5,
         )
-        constant_var.validate_value(1.3)
+        constant_var.validate_value(1.3, config=validation_config)
         with pytest.raises(ValueError):
-            constant_var.validate_value(1.4)
+            constant_var.validate_value(1.4, config=validation_config)
         # test tolerance
         var.validate_value(10.0 + 1e-9)
         with pytest.raises(ValueError):
-            var.validate_value(10.0 + 1e-7)
-        constant_var.validate_value(1.3 + 1e-6)
+            var.validate_value(10.0 + 1e-7, config=validation_config)
+        constant_var.validate_value(1.3 + 1e-6, config=validation_config)
         with pytest.raises(ValueError):
-            constant_var.validate_value(1.3 + 1e-4)
-        # test validation config
-        var.validate_value(11.0, config={"value_range": False})
-
+            constant_var.validate_value(1.3 + 1e-4, config=validation_config)
 
 def test_get_variable():
     var = get_variable(ScalarVariable.__name__)(name="test")
