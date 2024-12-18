@@ -35,8 +35,8 @@ class TorchModel(LUMEBaseModel):
           computation is deactivated.
     """
     model: torch.nn.Module
-    input_transformers: list[ReversibleInputTransform] = []
-    output_transformers: list[ReversibleInputTransform] = []
+    input_transformers: list[Union[ReversibleInputTransform, torch.nn.Linear]] = None
+    output_transformers: list[Union[ReversibleInputTransform, torch.nn.Linear]] = None
     output_format: str = "tensor"
     device: Union[torch.device, str] = "cpu"
     fixed_model: bool = True
@@ -50,6 +50,8 @@ class TorchModel(LUMEBaseModel):
             **kwargs: See class attributes.
         """
         super().__init__(*args, **kwargs)
+        self.input_transformers = [] if self.input_transformers is None else self.input_transformers
+        self.output_transformers = [] if self.output_transformers is None else self.output_transformers
 
         # set precision
         self.model.to(dtype=self.dtype)
@@ -85,7 +87,7 @@ class TorchModel(LUMEBaseModel):
         return v
 
     @field_validator("input_transformers", "output_transformers", mode="before")
-    def validate_botorch_transformers(cls, v):
+    def validate_transformers(cls, v):
         if not isinstance(v, list):
             raise ValueError("Transformers must be passed as list.")
         loaded_transformers = []
@@ -211,12 +213,24 @@ class TorchModel(LUMEBaseModel):
             x = x_old[key]
             # compute previous limits at transformer location
             for i in range(transformer_loc):
-                x = self.input_transformers[i].transform(x)
+                if isinstance(self.input_transformers[i], ReversibleInputTransform):
+                    x = self.input_transformers[i].transform(x)
+                else:
+                    x = self.input_transformers[i](x)
             # untransform of transformer to adjust for
-            x = self.input_transformers[transformer_loc].untransform(x)
+            if isinstance(self.input_transformers[transformer_loc], ReversibleInputTransform):
+                x = self.input_transformers[transformer_loc].untransform(x)
+            else:
+                w = self.input_transformers[transformer_loc].weight
+                b = self.input_transformers[transformer_loc].bias
+                x = torch.matmul((x - b), torch.linalg.inv(w.T))
             # backtrack through transformers
             for transformer in self.input_transformers[:transformer_loc][::-1]:
-                x = transformer.untransform(x)
+                if isinstance(self.input_transformers[transformer_loc], ReversibleInputTransform):
+                    x = transformer.untransform(x)
+                else:
+                    w, b = transformer.weight, transformer.bias
+                    x = torch.matmul((x - b), torch.linalg.inv(w.T))
             x_new[key] = x
         updated_variables = deepcopy(self.input_variables)
         for i, var in enumerate(updated_variables):
@@ -301,7 +315,10 @@ class TorchModel(LUMEBaseModel):
             Tensor of transformed inputs to be passed to the model.
         """
         for transformer in self.input_transformers:
-            input_tensor = transformer.transform(input_tensor)
+            if isinstance(transformer, ReversibleInputTransform):
+                input_tensor = transformer.transform(input_tensor)
+            else:
+                input_tensor = transformer(input_tensor)
         return input_tensor
 
     def _transform_outputs(self, output_tensor: torch.Tensor) -> torch.Tensor:
@@ -314,7 +331,11 @@ class TorchModel(LUMEBaseModel):
             (Un-)Transformed output tensor.
         """
         for transformer in self.output_transformers:
-            output_tensor = transformer.untransform(output_tensor)
+            if isinstance(transformer, ReversibleInputTransform):
+                output_tensor = transformer.untransform(output_tensor)
+            else:
+                w, b = transformer.weight, transformer.bias
+                output_tensor = torch.matmul((output_tensor - b), torch.linalg.inv(w.T))
         return output_tensor
 
     def _parse_outputs(self, output_tensor: torch.Tensor) -> dict[str, torch.Tensor]:
