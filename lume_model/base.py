@@ -10,14 +10,14 @@ import yaml
 import numpy as np
 from pydantic import BaseModel, ConfigDict, field_validator
 
-from lume_model.variables import ScalarVariable, get_variable
+from lume_model.variables import ScalarVariable, get_variable, ConfigEnum
 from lume_model.utils import (
     try_import_module,
     verify_unique_variable_names,
     serialize_variables,
     deserialize_variables,
     variables_from_dict,
-    replace_relative_paths,
+    replace_relative_paths
 )
 
 logger = logging.getLogger(__name__)
@@ -225,14 +225,14 @@ class LUMEBaseModel(BaseModel, ABC):
         input_variables: List defining the input variables and their order.
         output_variables: List defining the output variables and their order.
         input_validation_config: Determines the behavior during input validation by specifying the validation
-          config for each input variable: {var_name: var_config}.
+          config for each input variable: {var_name: value}. Value can be "warn", "error", or None.
         output_validation_config: Determines the behavior during output validation by specifying the validation
-          config for each output variable: {var_name: var_config}.
+          config for each output variable: {var_name: value}. Value can be "warn", "error", or None.
     """
     input_variables: list[ScalarVariable]
     output_variables: list[ScalarVariable]
-    input_validation_config: Optional[dict[str, dict[str, bool]]] = None
-    output_validation_config: Optional[dict[str, dict[str, bool]]] = None
+    input_validation_config: Optional[dict[str, ConfigEnum]] = None
+    output_validation_config: Optional[dict[str, ConfigEnum]] = None
 
     model_config = ConfigDict(arbitrary_types_allowed=True, validate_assignment=True)
 
@@ -294,12 +294,12 @@ class LUMEBaseModel(BaseModel, ABC):
         return [var.name for var in self.output_variables]
 
     @property
-    def default_input_validation_config(self) -> dict[str, dict[str, bool]]:
+    def default_input_validation_config(self) -> dict[str, ConfigEnum]:
         """Determines default behavior during input validation (if input_validation_config is None)."""
         return {var.name: var.default_validation_config for var in self.input_variables}
 
     @property
-    def default_output_validation_config(self) -> dict[str, dict[str, bool]]:
+    def default_output_validation_config(self) -> dict[str, ConfigEnum]:
         """Determines default behavior during output validation (if output_validation_config is None)."""
         return {var.name: var.default_validation_config for var in self.output_variables}
 

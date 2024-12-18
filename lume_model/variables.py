@@ -7,9 +7,17 @@ For now, only scalar floating-point variables are supported.
 """
 from abc import ABC, abstractmethod
 from typing import Any, Optional, Type
+from enum import Enum
 
 import numpy as np
 from pydantic import BaseModel, field_validator, model_validator, ConfigDict
+
+
+class ConfigEnum(str, Enum):
+    """Enum for configuration options during validation."""
+    NULL = "none"
+    WARN = "warn"
+    ERROR = "error"
 
 
 class Variable(BaseModel, ABC):
@@ -22,9 +30,9 @@ class Variable(BaseModel, ABC):
 
     @property
     @abstractmethod
-    def default_validation_config(self) -> dict[str, bool]:
+    def default_validation_config(self) -> ConfigEnum:
         """Determines default behavior during validation."""
-        return {}
+        return None
 
     @abstractmethod
     def validate_value(self, value: Any, config: dict[str, bool] = None):
@@ -73,10 +81,10 @@ class ScalarVariable(Variable):
         return self
 
     @property
-    def default_validation_config(self) -> dict[str, bool]:
-        return {"value_range": True, "strict": False}
+    def default_validation_config(self) -> ConfigEnum:
+        return "warn"
 
-    def validate_value(self, value: float, config: dict[str, bool] = None):
+    def validate_value(self, value: float, config: ConfigEnum = None):
         _config = self.default_validation_config if config is None else config
         # mandatory validation
         self._validate_value_type(value)
@@ -84,7 +92,7 @@ class ScalarVariable(Variable):
         if self.is_constant:
             self._validate_constant_value(value)
         # optional validation
-        if _config["value_range"]:
+        if config != "none":
             self._validate_value_is_within_range(value, config=_config)
 
     @staticmethod
@@ -95,15 +103,15 @@ class ScalarVariable(Variable):
                 f"but received {type(value)}."
             )
 
-    def _validate_value_is_within_range(self, value: float, config: dict[str, bool] = None):
+    def _validate_value_is_within_range(self, value: float, config: ConfigEnum = None):
         if not self._value_is_within_range(value):
             error_message = "Value ({}) of '{}' is out of valid range.".format(value, self.name)
             if self.value_range is not None:
                 error_message = error_message[:-1] + " ([{},{}]).".format(*self.value_range)
-            if config["strict"]:
-                raise ValueError(error_message)
-            else:
+            if config == "warn":
                 print("Warning: " + error_message)
+            else:
+                raise ValueError(error_message)
 
     def _value_is_within_range(self, value) -> bool:
         self.value_range = self.value_range or (-np.inf, np.inf)
