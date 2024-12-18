@@ -2,25 +2,22 @@ import os
 import json
 import logging
 from abc import ABC, abstractmethod
-from typing import Any, Callable, Union
+from typing import Any, Callable, Optional, Union
 from types import FunctionType, MethodType
 from io import TextIOWrapper
 
 import yaml
 import numpy as np
-from pydantic import BaseModel, ConfigDict, field_validator, SerializeAsAny
+from pydantic import BaseModel, ConfigDict, field_validator
 
-from lume_model.variables import (
-    InputVariable,
-    OutputVariable, ScalarInputVariable, ScalarOutputVariable,
-)
+from lume_model.variables import ScalarVariable, get_variable, ConfigEnum
 from lume_model.utils import (
     try_import_module,
     verify_unique_variable_names,
     serialize_variables,
     deserialize_variables,
     variables_from_dict,
-    replace_relative_paths,
+    replace_relative_paths
 )
 
 logger = logging.getLogger(__name__)
@@ -227,44 +224,32 @@ class LUMEBaseModel(BaseModel, ABC):
     Attributes:
         input_variables: List defining the input variables and their order.
         output_variables: List defining the output variables and their order.
+        input_validation_config: Determines the behavior during input validation by specifying the validation
+          config for each input variable: {var_name: value}. Value can be "warn", "error", or None.
+        output_validation_config: Determines the behavior during output validation by specifying the validation
+          config for each output variable: {var_name: value}. Value can be "warn", "error", or None.
     """
-    input_variables: list[SerializeAsAny[InputVariable]]
-    output_variables: list[SerializeAsAny[OutputVariable]]
+    input_variables: list[ScalarVariable]
+    output_variables: list[ScalarVariable]
+    input_validation_config: Optional[dict[str, ConfigEnum]] = None
+    output_validation_config: Optional[dict[str, ConfigEnum]] = None
 
     model_config = ConfigDict(arbitrary_types_allowed=True, validate_assignment=True)
 
-    @field_validator("input_variables", mode="before")
+    @field_validator("input_variables", "output_variables", mode="before")
     def validate_input_variables(cls, value):
         new_value = []
         if isinstance(value, dict):
             for name, val in value.items():
                 if isinstance(val, dict):
-                    if val["variable_type"] == "scalar":
-                        new_value.append(ScalarInputVariable(name=name, **val))
-                elif isinstance(val, InputVariable):
+                    variable_class = get_variable(val["variable_class"])
+                    new_value.append(variable_class(name=name, **val))
+                elif isinstance(val, ScalarVariable):
                     new_value.append(val)
                 else:
                     raise TypeError(f"type {type(val)} not supported")
         elif isinstance(value, list):
             new_value = value
-
-        return new_value
-
-    @field_validator("output_variables", mode="before")
-    def validate_output_variables(cls, value):
-        new_value = []
-        if isinstance(value, dict):
-            for name, val in value.items():
-                if isinstance(val, dict):
-                    if val["variable_type"] == "scalar":
-                        new_value.append(ScalarOutputVariable(name=name, **val))
-                elif isinstance(val, OutputVariable):
-                    new_value.append(val)
-                else:
-                    raise TypeError(f"type {type(val)} not supported")
-        elif isinstance(value, list):
-            new_value = value
-
         return new_value
 
     def __init__(self, *args, **kwargs):
@@ -292,6 +277,14 @@ class LUMEBaseModel(BaseModel, ABC):
         verify_unique_variable_names(value)
         return value
 
+    @field_validator("input_variables")
+    def verify_input_default_value(cls, value):
+        """Verifies that input variables have the required default values."""
+        for var in value:
+            if var.default_value is None or not var.default_value:
+                raise ValueError(f"Input variable {var.name} must have a default value.")
+        return value
+
     @property
     def input_names(self) -> list[str]:
         return [var.name for var in self.input_variables]
@@ -300,21 +293,53 @@ class LUMEBaseModel(BaseModel, ABC):
     def output_names(self) -> list[str]:
         return [var.name for var in self.output_variables]
 
-    @abstractmethod
+    @property
+    def default_input_validation_config(self) -> dict[str, ConfigEnum]:
+        """Determines default behavior during input validation (if input_validation_config is None)."""
+        return {var.name: var.default_validation_config for var in self.input_variables}
+
+    @property
+    def default_output_validation_config(self) -> dict[str, ConfigEnum]:
+        """Determines default behavior during output validation (if output_validation_config is None)."""
+        return {var.name: var.default_validation_config for var in self.output_variables}
+
     def evaluate(self, input_dict: dict[str, Any]) -> dict[str, Any]:
+        """Main evaluation function, child classes must implement the _evaluate method."""
+        validated_input_dict = self.input_validation(input_dict)
+        output_dict = self._evaluate(validated_input_dict)
+        self.output_validation(output_dict)
+        return output_dict
+
+    @abstractmethod
+    def _evaluate(self, input_dict: dict[str, Any]) -> dict[str, Any]:
         pass
+
+    def input_validation(self, input_dict: dict[str, Any]) -> dict[str, Any]:
+        for name, value in input_dict.items():
+            _config = None if self.input_validation_config is None else self.input_validation_config.get(name)
+            var = self.input_variables[self.input_names.index(name)]
+            var.validate_value(value, config=_config)
+        return input_dict
+
+    def output_validation(self, output_dict: dict[str, Any]) -> dict[str, Any]:
+        for name, value in output_dict.items():
+            _config = None if self.output_validation_config is None else self.output_validation_config.get(name)
+            var = self.output_variables[self.output_names.index(name)]
+            var.validate_value(value, config=_config)
+        return output_dict
 
     def to_json(self, **kwargs) -> str:
         return json_dumps(self, **kwargs)
 
-    def dict(self, **kwargs) -> dict[str, Any]:
+    def model_dump(self, **kwargs) -> dict[str, Any]:
         config = super().model_dump(**kwargs)
+        config["input_variables"] = [var.model_dump() for var in self.input_variables]
+        config["output_variables"] = [var.model_dump() for var in self.output_variables]
         return {"model_class": self.__class__.__name__} | config
 
     def json(self, **kwargs) -> str:
         result = self.to_json(**kwargs)
         config = json.loads(result)
-        config = {"model_class": self.__class__.__name__} | config
         return json.dumps(config)
 
     def yaml(
@@ -340,8 +365,7 @@ class LUMEBaseModel(BaseModel, ABC):
                 save_models=save_models,
             )
         )
-        s = yaml.dump({"model_class": self.__class__.__name__} | output,
-                      default_flow_style=None, sort_keys=False)
+        s = yaml.dump(output, default_flow_style=None, sort_keys=False)
         return s
 
     def dump(
