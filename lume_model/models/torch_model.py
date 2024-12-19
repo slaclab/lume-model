@@ -114,7 +114,6 @@ class TorchModel(LUMEBaseModel):
 
     def _set_precision(self, value: torch.dtype):
         """Sets the precision of the model."""
-        torch.set_default_dtype(value)
         self.model.to(dtype=value)
         for t in self.input_transformers + self.output_transformers:
             if isinstance(t, torch.nn.Module):
