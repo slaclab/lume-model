@@ -33,9 +33,9 @@ class TestScalarVariable:
         with pytest.raises(TypeError):
             var.validate_value(int(5))
         # test validation config
-        var.validate_value(11.0, config={"value_range": False})
+        var.validate_value(11.0, config="none")
         # range check with strictness flag
-        validation_config = {"value_range": True, "strict": True}
+        validation_config = "error"
         with pytest.raises(ValueError):
             var.validate_value(11.0, config=validation_config)
         # constant variable

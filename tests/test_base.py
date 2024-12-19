@@ -94,13 +94,8 @@ class TestBaseModel:
             input_dict[input_variables[0].name] = True
             example_model.input_validation(input_dict)
         # range check with strictness flag
-        assert input_variables[0].default_validation_config["strict"] == False
-        example_model.input_validation_config = {
-            input_variables[0].name: {
-                "value_range": True,
-                "strict": True
-            }
-        }
+        assert input_variables[0].default_validation_config == "warn"
+        example_model.input_validation_config = { input_variables[0].name: "error" }
         with pytest.raises(ValueError):
             input_dict[input_variables[0].name] = 6.0
             example_model.input_validation(input_dict)
