@@ -29,6 +29,7 @@ class TorchModel(LUMEBaseModel):
         device: Device on which the model will be evaluated. Defaults to "cpu".
         fixed_model: If true, the model and transformers are put in evaluation mode and all gradient
           computation is deactivated.
+        precision: Precision of the model, either "double" or "single".
     """
     model: torch.nn.Module
     input_transformers: list[Union[ReversibleInputTransform, torch.nn.Linear]] = None

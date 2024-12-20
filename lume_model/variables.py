@@ -47,11 +47,11 @@ class ScalarVariable(Variable):
     """Variable for float values.
 
     Attributes:
-        default_value: Default value for the variable. This is required for input variables but
-          optional for output variables.
+        default_value: Default value for the variable. Note that the LUMEBaseModel requires this
+          for input variables, but it is optional for output variables.
         value_range: Value range that is considered valid for the variable. If the value range is set to None,
           the variable is interpreted as a constant and values are validated against the default value.
-        value_range_tolerance: Absolute tolerance when checking whether values are within the valid range.
+        is_constant: Flag indicating whether the variable is constant.
         unit: Unit associated with the variable.
     """
     model_config = ConfigDict(arbitrary_types_allowed=True)
@@ -85,6 +85,19 @@ class ScalarVariable(Variable):
         return "warn"
 
     def validate_value(self, value: float, config: ConfigEnum = None):
+        """
+        Validates the given value.
+
+        Args:
+            value (float): The value to be validated.
+            config (ConfigEnum, optional): The configuration for validation. Defaults to None.
+              Allowed values are "none", "warn", and "error".
+
+        Raises:
+            TypeError: If the value is not of type float.
+            ValueError: If the value is out of the valid range or does not match the default value
+              for constant variables.
+        """
         _config = self.default_validation_config if config is None else config
         # mandatory validation
         self._validate_value_type(value)
