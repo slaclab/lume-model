@@ -35,18 +35,17 @@ class TestScalarVariable:
         # test validation config
         var.validate_value(11.0, config="none")
         # range check with strictness flag
-        validation_config = "error"
         with pytest.raises(ValueError):
-            var.validate_value(11.0, config=validation_config)
+            var.validate_value(11.0, config="error")
         # constant variable
         constant_var = ScalarVariable(
             name="test",
             default_value=1.3,
             is_constant=True,
         )
-        constant_var.validate_value(1.3, config=validation_config)
+        constant_var.validate_value(1.3, config="error")
         with pytest.raises(ValueError):
-            constant_var.validate_value(1.4, config=validation_config)
+            constant_var.validate_value(1.4, config="error")
 
 
 def test_get_variable():

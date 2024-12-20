@@ -76,6 +76,12 @@ class TestTorchModel:
         output_dict = {"MedHouseVal": torch.tensor([5.0, 3.1])}
         california_model.output_validation(output_dict)
 
+    def test_precision(self, california_model):
+        assert california_model.precision == "double"
+        assert california_model.dtype == torch.double
+        california_model.precision = "single"
+        assert california_model.dtype == torch.float
+
     def test_model_evaluate_single_sample(self, california_test_input_dict: dict, california_model):
         results = california_model.evaluate(california_test_input_dict)
 

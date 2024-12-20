@@ -1,6 +1,9 @@
 import os
+import io
+import sys
 import pytest
 import yaml
+import copy
 
 from lume_model.base import LUMEBaseModel
 from lume_model.variables import ScalarVariable
@@ -24,6 +27,12 @@ class TestBaseModel:
 
         with pytest.raises(TypeError):
             _ = NoEvaluateModel(**simple_variables)
+
+        # init child class with input variables missing default value
+        simple_variables_no_default = copy.deepcopy(simple_variables)
+        simple_variables_no_default["input_variables"][0].default_value = None
+        with pytest.raises(ValueError):
+            _ = ExampleModel(**simple_variables_no_default)
 
         # init child class with evaluate function
         example_model = ExampleModel(**simple_variables)
@@ -85,7 +94,7 @@ class TestBaseModel:
         for i, var in enumerate(simple_variables["output_variables"]):
             assert example_model.output_names.index(var.name) == i
 
-    def test_input_validation(self, simple_variables):
+    def test_input_validation(self, simple_variables, monkeypatch):
         example_model = ExampleModel(**simple_variables)
         input_variables = simple_variables["input_variables"]
         input_dict = {input_variables[0].name: 2.0, input_variables[1].name: 1.5}
@@ -93,12 +102,31 @@ class TestBaseModel:
         with pytest.raises(TypeError):
             input_dict[input_variables[0].name] = True
             example_model.input_validation(input_dict)
-        # range check with strictness flag
+
+        # setting strictness flag
         assert input_variables[0].default_validation_config == "warn"
-        example_model.input_validation_config = { input_variables[0].name: "error" }
+        with pytest.raises(ValueError):
+            # has to be a ConfigEnum type
+            example_model.input_validation_config = {input_variables[0].name: "test"}
+
+        # range check with strictness flag
+        example_model.input_validation_config = {input_variables[0].name: "error"}
         with pytest.raises(ValueError):
             input_dict[input_variables[0].name] = 6.0
             example_model.input_validation(input_dict)
+
+        # a warning is printed
+        example_model.input_validation_config = {input_variables[0].name: "warn"}
+        input_dict[input_variables[0].name] = 6.0
+        fake_out = io.StringIO()
+        monkeypatch.setattr(sys, 'stdout', fake_out)
+        example_model.input_validation(input_dict)
+        assert "Warning" in fake_out.getvalue()
+
+        # nothing is printed/raised
+        example_model.input_validation_config = {input_variables[0].name: "none"}
+        input_dict[input_variables[0].name] = 6.0
+        example_model.input_validation(input_dict)
 
     def test_output_validation(self, simple_variables):
         example_model = ExampleModel(**simple_variables)
