@@ -81,6 +81,8 @@ class TestTorchModel:
         assert california_model.dtype == torch.double
         california_model.precision = "single"
         assert california_model.dtype == torch.float
+        # set back to double
+        california_model.precision = "double"
 
     def test_model_evaluate_single_sample(self, california_test_input_dict: dict, california_model):
         results = california_model.evaluate(california_test_input_dict)
