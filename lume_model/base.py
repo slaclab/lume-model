@@ -40,7 +40,7 @@ def process_torch_module(
         key: str = "",
         file_prefix: Union[str, os.PathLike] = "",
         save_modules: bool = True,
-        save_jit: bool = True,
+        save_jit: bool = False,
 ):
     """Optionally saves the given torch module to file and returns the filename.
 
@@ -73,7 +73,7 @@ def recursive_serialize(
         base_key: str = "",
         file_prefix: Union[str, os.PathLike] = "",
         save_models: bool = True,
-        save_jit: bool = True,
+        save_jit: bool = False,
 ):
     """Recursively performs custom serialization for the given object.
 
@@ -139,7 +139,7 @@ def json_dumps(
         base_key="",
         file_prefix: Union[str, os.PathLike] = "",
         save_models: bool = True,
-        save_jit: bool = True,
+        save_jit: bool = False,
 ):
     """Serializes variables before dumping with json.
 
@@ -380,7 +380,7 @@ class LUMEBaseModel(BaseModel, ABC):
             file: Union[str, os.PathLike],
             base_key: str = "",
             save_models: bool = True,
-            save_jit: bool=True,
+            save_jit: bool=False,
     ):
         """Returns and optionally saves YAML formatted string defining the model.
 
