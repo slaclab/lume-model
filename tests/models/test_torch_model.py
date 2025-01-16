@@ -10,9 +10,12 @@ try:
     from botorch.models.transforms.input import AffineInputTransform
     from lume_model.models import TorchModel
     from lume_model.variables import ScalarVariable
+
+    torch.manual_seed(42)
 except ImportError:
     pass
 
+random.seed(42)
 
 def assert_model_equality(m1: TorchModel, m2: TorchModel):
     assert m1.input_variables == m2.input_variables
