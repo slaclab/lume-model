@@ -29,17 +29,20 @@ The lume-model variables are intended to enforce requirements for input and outp
 Minimal example of scalar input and output variables:
 
 ```python
-from lume_model.variables import ScalarInputVariable, ScalarOutputVariable
+from lume_model.variables import ScalarVariable
 
-input_variable = ScalarInputVariable(
+input_variable = ScalarVariable(
     name="example_input",
-    default=0.1,
+    default_value=0.1,
     value_range=[0.0, 1.0],
 )
-output_variable = ScalarOutputVariable(name="example_output")
+output_variable = ScalarVariable(name="example_output")
 ```
 
-All input variables may be made into constants by passing the `is_constant=True` keyword argument. Value assingments on these constant variables will raise an error message.
+All input variables may be made into constants by passing the 
+`is_constant=True` keyword argument. These constant variables are always 
+set to their default value and any other value assignments on 
+them will raise an error message.
 
 ## Models
 
@@ -49,7 +52,8 @@ Requirements for model classes:
 
 * input_variables: A list defining the input variables for the model. Variable names must be unique. Required for use with lume-epics tools.
 * output_variables: A list defining the output variables for the model. Variable names must be unique. Required for use with lume-epics tools.
-* evaluate: The evaluate method is called by the serving model. Subclasses must implement this method, accepting and returning a dictionary.
+* _evaluate: The evaluate method is called by the serving model. 
+  Subclasses must implement this method, accepting and returning a dictionary.
 
 Example model implementation and instantiation:
 
@@ -59,7 +63,7 @@ from lume_model.variables import ScalarInputVariable, ScalarOutputVariable
 
 
 class ExampleModel(LUMEBaseModel):
-    def evaluate(self, input_dict):
+    def _evaluate(self, input_dict):
         output_dict = {
             "output1": input_dict[self.input_variables[0].name] ** 2,
             "output2": input_dict[self.input_variables[1].name] ** 2,
@@ -95,18 +99,18 @@ For example, `m.dump("example_model.yml")` writes the following to file
 model_class: ExampleModel
 input_variables:
   input1:
-    variable_type: scalar
-    default: 0.1
+    variable_class: ScalarVariable
+    default_value: 0.1
     is_constant: false
     value_range: [0.0, 1.0]
   input2:
-    variable_type: scalar
-    default: 0.2
+    variable_class: ScalarVariable
+    default_value: 0.2
     is_constant: false
     value_range: [0.0, 1.0]
 output_variables:
-  output1: {variable_type: scalar}
-  output2: {variable_type: scalar}
+  output1: {variable_class: ScalarVariable}
+  output2: {variable_class: ScalarVariable}
 ```
 
 and can be loaded by simply passing the file to the model constructor:
@@ -116,7 +120,7 @@ from lume_model.base import LUMEBaseModel
 
 
 class ExampleModel(LUMEBaseModel):
-    def evaluate(self, input_dict):
+    def _evaluate(self, input_dict):
         output_dict = {
             "output1": input_dict[self.input_variables[0].name] ** 2,
             "output2": input_dict[self.input_variables[1].name] ** 2,
@@ -129,115 +133,138 @@ m = ExampleModel("example_model.yml")
 
 ## PyTorch Toolkit
 
-In the same way as the KerasModel, a PyTorchModel can also be loaded using the `lume_model.utils.model_from_yaml` method, specifying `PyTorchModel` in the `model_class` of the configuration file.
+A TorchModel can also be loaded from a YAML, specifying `TorchModel` in 
+the `model_class` of the configuration file.
 
 ```yaml
+model_class: TorchModel
+model: model.pt
+output_format: tensor
+device: cpu
+fixed_model: true
+```
+
+In addition to the model_class, we also specify the path to the 
+PyTorch model and the transformers (saved using `torch.save()`).
+
+The `output_format` specification indicates which form the outputs 
+of the model's `evaluate()` function should take, which may vary 
+depending on the application. PyTorchModels working with the 
+[LUME-EPICS](https://github.com/slaclab/lume-epics) service will 
+require an `OutputVariable` type, while [Xopt](https://github.
+com/xopt-org/Xopt) requires either a dictionary of float 
+values or tensors as output.
+
+The variables and any transformers can also be added to the YAML 
+configuration file:
+
+```yaml
+model_class: TorchModel
+input_variables:
+  input1:
+    variable_class: ScalarVariable
+    default_value: 0.1
+    value_range: [0.0, 1.0]
+    is_constant: false
+  input2:
+    variable_class: ScalarVariable
+    default_value: 0.2
+    value_range: [0.0, 1.0]
+    is_constant: false
+output_variables:
+  output:
+    variable_class: ScalarVariable
+    value_range: [-.inf, .inf]
+    is_constant: false
+input_validation_config: null
+output_validation_config: null
+model: model.pt
+input_transformers: [input_transformers_0.pt]
+output_transformers: [output_transformers_0.pt]
+output_format: tensor
+device: cpu
+fixed_model: true
+precision: double
+```
+
+The TorchModel can then be loaded:
+
+```python
+from lume_model.torch_model import TorchModel
+
+# Load the model from a YAML file
+torch_model = TorchModel("path/to/model_config.yml")
+```
+
+
+## TorchModule Usage
+
+The `TorchModule` wrapper around the `TorchModel` is used to provide 
+a consistent API with PyTorch, making it easier to integrate with 
+other PyTorch-based tools and workflows.
+
+### Initialization
+
+To initialize a `TorchModule`, you need to provide the TorchModel object
+or a YAML file containing the TorchModule model configuration.
+
+```python
+#  Wrap in TorchModule
+torch_module = TorchModule(model=torch_model)
+
+# Or load the model configuration from a YAML file
+torch_module = TorchModule("path/to/module_config.yml")
+```
+
+### Model Configuration
+
+The YAML configuration file should specify the `TorchModule` class 
+as well as the `TorchModel` configuration:
+
+```yaml
+model_class: TorchModule
+input_order: [input1, input2]
+output_order: [output]
 model:
-  kwargs:
-    model_file: /path/to/california_regression.pt
-  model_class: lume_model.torch.PyTorchModel
-  model_info: path/to/model_info.json
-  output_format:
-    type: tensor
-  requirements:
-    torch: 1.12
+  model_class: TorchModel
+  input_variables:
+    input1:
+      variable_class: ScalarVariable
+      default_value: 0.1
+      value_range: [0.0, 1.0]
+      is_constant: false
+    input2:
+      variable_class: ScalarVariable
+      default_value: 0.2
+      value_range: [0.0, 1.0]
+      is_constant: false
+  output_variables:
+    output:
+      variable_class: ScalarVariable
+  model: model.pt
+  output_format: tensor
+  device: cpu
+  fixed_model: true
+  precision: double
 ```
 
-In addition to the model_class, we also specify the path to the pytorch model (saved using `torch.save()`) and additional information about the model through the `model_info.json` file such as the order of the feature names and outputs of the model:
+### Using the Model
 
-```json
-{
-    "train_input_mins": [
-        0.4999000132083893,
-        ...
-        -124.3499984741211
-    ],
-    "train_input_maxs": [
-        15.000100135803223,
-        ...
-        -114.30999755859375
-    ],
-    "model_in_list": [
-        "MedInc",
-        ...
-        "Longitude"
-    ],
-    "model_out_list": [
-        "MedHouseVal"
-    ],
-    "loc_in": {
-        "MedInc": 0,
-        ...
-        "Longitude": 7
-    },
-    "loc_out": {
-        "MedHouseVal": 0
-    }
-}
-```
-
-The `output_format` specification indicates which form the outputs of the model's `evaluate()` function should take, which may vary depending on the application. PyTorchModels working with the [LUME-EPICS](https://github.com/slaclab/lume-epics) service will require an `OutputVariable` type, while [Xopt](https://github.com/ChristopherMayes/Xopt) requires either a dictionary of float values or tensors as output.
-
-It is important to note that currently the **transformers are not loaded** into the model when using the `model_from_yaml` method. These need to be created separately and added either:
-
-* to the model's `kwargs` before instantiating
+Once the `TorchModule` is initialized, you can use it just like a 
+regular PyTorch model. You can pass tensor-type inputs to the model and 
+get tensor-type outputs.
 
 ```python
-import torch
-import json
-from lume_model.torch import PyTorchModel
+from torch import tensor
+from lume_model.torch_module import TorchModule
 
-# load the model class and kwargs
-with open(f"california_variables.yml","r") as f:
-  yaml_model, yaml_kwargs = model_from_yaml(f, load_model=False)
 
-# construct the transformers
-with open("normalization.json", "r") as f:
-  normalizations = json.load(f)
+# Example input tensor
+input_data = tensor([[0.1, 0.2]])
 
-input_transformer = AffineInputTransform(
-    len(normalizations["x_mean"]),
-    coefficient=torch.tensor(normalizations["x_scale"]),
-    offset=torch.tensor(normalizations["x_mean"]),
-)
-output_transformer = AffineInputTransform(
-    len(normalizations["y_mean"]),
-    coefficient=torch.tensor(normalizations["y_scale"]),
-    offset=torch.tensor(normalizations["y_mean"]),
-)
+# Evaluate the model
+output = torch_module(input_data)
 
-model_kwargs["input_transformers"] = [input_transformer]
-model_kwargs["output_transformers"] = [output_transformer]
-
-model = PyTorchModel(**model_kwargs)
-```
-
-* using the setters for the transformer attributes in the model.
-
-```python
-# load the model
-with open("california_variables.yml", "r") as f:
-  model = model_from_yaml(f, load_model=True)
-
-# construct the transformers
-with open("normalization.json", "r") as f:
-  normalizations = json.load(f)
-
-input_transformer = AffineInputTransform(
-    len(normalizations["x_mean"]),
-    coefficient=torch.tensor(normalizations["x_scale"]),
-    offset=torch.tensor(normalizations["x_mean"]),
-)
-output_transformer = AffineInputTransform(
-    len(normalizations["y_mean"]),
-    coefficient=torch.tensor(normalizations["y_scale"]),
-    offset=torch.tensor(normalizations["y_mean"]),
-)
-
-# use the model's setter to add the transformers. Here we use a tuple
-# to tell the setter where in the list the transformer should be inserted.
-# In this case because we only have one, we add them at the beginning
-# of the lists.
-model.input_transformers = (input_transformer, 0)
-model.output_transformers = (output_transformer, 0)
+# Output will be a tensor
+print(output)
 ```
