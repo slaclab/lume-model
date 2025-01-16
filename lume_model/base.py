@@ -40,7 +40,7 @@ def process_torch_module(
         key: str = "",
         file_prefix: Union[str, os.PathLike] = "",
         save_modules: bool = True,
-        save_jit: bool = False,
+        save_jit: bool = True,
 ):
     """Optionally saves the given torch module to file and returns the filename.
 
@@ -65,7 +65,8 @@ def process_torch_module(
     if save_modules:
         torch.save(module, filepath)
     if save_jit:
-        torch.jit.script(module)
+        scripted_model = torch.jit.script(module)
+        torch.jit.save(scripted_model, jit_filename)
     return filename
 
 def recursive_serialize(
@@ -73,7 +74,7 @@ def recursive_serialize(
         base_key: str = "",
         file_prefix: Union[str, os.PathLike] = "",
         save_models: bool = True,
-        save_jit: bool = False,
+        save_jit: bool = True,
 ):
     """Recursively performs custom serialization for the given object.
 
@@ -139,7 +140,7 @@ def json_dumps(
         base_key="",
         file_prefix: Union[str, os.PathLike] = "",
         save_models: bool = True,
-        save_jit: bool = False,
+        save_jit: bool = True,
 ):
     """Serializes variables before dumping with json.
 
@@ -353,7 +354,7 @@ class LUMEBaseModel(BaseModel, ABC):
             base_key: str = "",
             file_prefix: str = "",
             save_models: bool = False,
-            save_jit: bool = False,
+            save_jit: bool = True,
     ) -> str:
         """Serializes the object and returns a YAML formatted string defining the model.
 
@@ -370,6 +371,7 @@ class LUMEBaseModel(BaseModel, ABC):
                 base_key=base_key,
                 file_prefix=file_prefix,
                 save_models=save_models,
+                save_jit=save_jit,
             )
         )
         s = yaml.dump(output, default_flow_style=None, sort_keys=False)
@@ -380,7 +382,7 @@ class LUMEBaseModel(BaseModel, ABC):
             file: Union[str, os.PathLike],
             base_key: str = "",
             save_models: bool = True,
-            save_jit: bool=False,
+            save_jit: bool=True,
     ):
         """Returns and optionally saves YAML formatted string defining the model.
 
