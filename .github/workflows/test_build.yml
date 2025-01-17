@@ -19,9 +19,7 @@ jobs:
       - uses: conda-incubator/setup-miniconda@v3
         with:
           python-version: ${{ matrix.python-version }}
-          miniforge-version: latest
-          use-mamba: true
-          channels: conda-forge
+          channels: conda-forge,defaults
           activate-environment: lume-model-dev
 
       - name: Install lume-model
