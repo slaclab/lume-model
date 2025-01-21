@@ -101,7 +101,7 @@ def recursive_serialize(
                 isinstance(ele, torch.nn.Module) for ele in value):
             v[key] = [
                 process_torch_module(value[i], base_key, f"{key}_{i}", file_prefix,
-                                     save_models, save_jit)
+                                     save_models, False)
                 for i in range(len(value))
             ]
         else:
