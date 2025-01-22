@@ -40,7 +40,7 @@ def process_torch_module(
         key: str = "",
         file_prefix: Union[str, os.PathLike] = "",
         save_modules: bool = True,
-        save_jit: bool = True,
+        save_jit: bool = False,
 ):
     """Optionally saves the given torch module to file and returns the filename.
 
@@ -50,6 +50,7 @@ def process_torch_module(
         module: The torch module to process.
         file_prefix: Prefix for generated filenames.
         save_modules: Determines whether torch modules are saved to file.
+        save_jit: Determines whether the model gets saved as TorchScript.
 
     Returns:
         Filename under which the torch module is (or would be) saved.
@@ -61,20 +62,22 @@ def process_torch_module(
     jit_filename = "{}.jit".format(key)
     if prefixes:
         filename = "_".join((*prefixes, filename))
-    filepath = os.path.join(filepath_prefix, filename)
+        jit_filename = "_".join((*prefixes, jit_filename))
     if save_modules:
+        filepath = os.path.join(filepath_prefix, filename)
         torch.save(module, filepath)
     if save_jit:
+        filepath = os.path.join(filepath_prefix, jit_filename)
         scripted_model = torch.jit.script(module)
-        torch.jit.save(scripted_model, jit_filename)
-    return filename
+        torch.jit.save(scripted_model, filepath)
+    return jit_filename if not save_modules and save_jit else filename
 
 def recursive_serialize(
         v: dict[str, Any],
         base_key: str = "",
         file_prefix: Union[str, os.PathLike] = "",
         save_models: bool = True,
-        save_jit: bool = True,
+        save_jit: bool = False,
 ):
     """Recursively performs custom serialization for the given object.
 
@@ -83,6 +86,7 @@ def recursive_serialize(
         base_key: Base key at this stage of serialization.
         file_prefix: Prefix for generated filenames.
         save_models: Determines whether models are saved to file.
+        save_jit: Determines whether the model is saved as TorchScript.
 
     Returns:
         Serialized object.
@@ -140,7 +144,7 @@ def json_dumps(
         base_key="",
         file_prefix: Union[str, os.PathLike] = "",
         save_models: bool = True,
-        save_jit: bool = True,
+        save_jit: bool = False,
 ):
     """Serializes variables before dumping with json.
 
@@ -149,6 +153,7 @@ def json_dumps(
         base_key: Base key for serialization.
         file_prefix: Prefix for generated filenames.
         save_models: Determines whether models are saved to file.
+        save_jit: Determines whether the model is saved as TorchScript.
 
     Returns:
         JSON formatted string.
@@ -354,7 +359,7 @@ class LUMEBaseModel(BaseModel, ABC):
             base_key: str = "",
             file_prefix: str = "",
             save_models: bool = False,
-            save_jit: bool = True,
+            save_jit: bool = False,
     ) -> str:
         """Serializes the object and returns a YAML formatted string defining the model.
 
@@ -362,7 +367,7 @@ class LUMEBaseModel(BaseModel, ABC):
             base_key: Base key for serialization.
             file_prefix: Prefix for generated filenames.
             save_models: Determines whether models are saved to file.
-            save_jit: Determines whether the structure of the model is saved as TorchScript
+            save_jit: Determines whether the model is saved as TorchScript
         Returns:
             YAML formatted string defining the model.
         """
@@ -382,7 +387,7 @@ class LUMEBaseModel(BaseModel, ABC):
             file: Union[str, os.PathLike],
             base_key: str = "",
             save_models: bool = True,
-            save_jit: bool=True,
+            save_jit: bool = False,
     ):
         """Returns and optionally saves YAML formatted string defining the model.
 
@@ -390,6 +395,7 @@ class LUMEBaseModel(BaseModel, ABC):
             file: File path to which the YAML formatted string and corresponding files are saved.
             base_key: Base key for serialization.
             save_models: Determines whether models are saved to file.
+            save_jit: Determines whether the model is saved as TorchScript.
         """
         file_prefix = os.path.splitext(os.path.abspath(file))[0]
         with open(file, "w") as f:
