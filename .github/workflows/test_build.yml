@@ -11,7 +11,7 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest]
-        python-version: ["3.9", "3.11", "3.12"]
+        python-version: ["3.10", "3.11", "3.12"]
 
     name: Python ${{ matrix.python-version }}, ${{ matrix.os }} build
     steps:
@@ -19,9 +19,7 @@ jobs:
       - uses: conda-incubator/setup-miniconda@v3
         with:
           python-version: ${{ matrix.python-version }}
-          miniforge-version: latest
-          use-mamba: true
-          channels: conda-forge
+          channels: conda-forge,defaults
           activate-environment: lume-model-dev
 
       - name: Install lume-model

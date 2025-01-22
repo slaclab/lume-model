@@ -4,12 +4,7 @@ import yaml
 import importlib
 from typing import Union, get_origin, get_args
 
-from lume_model.variables import (
-    InputVariable,
-    OutputVariable,
-    ScalarInputVariable,
-    ScalarOutputVariable,
-)
+from lume_model.variables import ScalarVariable, get_variable
 
 
 def try_import_module(name: str):
@@ -31,24 +26,18 @@ def try_import_module(name: str):
     return module
 
 
-def verify_unique_variable_names(variables: Union[list[InputVariable], list[OutputVariable]]):
+def verify_unique_variable_names(variables: list[ScalarVariable]):
     """Verifies that variable names are unique.
 
     Raises a ValueError if any reoccurring variable names are found.
 
     Args:
-        variables: List of in- or output variables.
+        variables: List of scalar variables.
     """
     names = [var.name for var in variables]
     non_unique_names = [name for name in set(names) if names.count(name) > 1]
     if non_unique_names:
-        if all(isinstance(var, InputVariable) for var in variables):
-            var_str = "Input variable"
-        elif all(isinstance(var, OutputVariable) for var in variables):
-            var_str = "Output variable"
-        else:
-            var_str = "Variable"
-        raise ValueError(f"{var_str} names {non_unique_names} are not unique.")
+        raise ValueError(f"Variable names {non_unique_names} are not unique.")
 
 
 def serialize_variables(v: dict):
@@ -61,10 +50,9 @@ def serialize_variables(v: dict):
         Dictionary with serialized in- and output variables.
     """
     for key, value in v.items():
-        if key in ["input_variables", "output_variables"]:
-            if isinstance(value, list):
-                v[key] = {var_dict["name"]: {var_k: var_v for var_k, var_v in var_dict.items() if
-                                             not (var_k == "name" or var_v is None)} for var_dict in value}
+        if key in ["input_variables", "output_variables"] and isinstance(value, list):
+            v[key] = {var_dict["name"]: {var_k: var_v for var_k, var_v in var_dict.items() if
+                                         not (var_k == "name" or var_v is None)} for var_dict in value}
     return v
 
 
@@ -78,15 +66,14 @@ def deserialize_variables(v):
         Dictionary with deserialized in- and output variables.
     """
     for key, value in v.items():
-        if key in ["input_variables", "output_variables"]:
-            if isinstance(value, dict):
-                v[key] = [var_dict | {"name": var_name} for var_name, var_dict in value.items()]
+        if key in ["input_variables", "output_variables"] and isinstance(value, dict):
+            v[key] = [var_dict | {"name": var_name} for var_name, var_dict in value.items()]
     return v
 
 
 def variables_as_yaml(
-        input_variables: list[InputVariable],
-        output_variables: list[OutputVariable],
+        input_variables: list[ScalarVariable],
+        output_variables: list[ScalarVariable],
         file: Union[str, os.PathLike] = None,
 ) -> str:
     """Returns and optionally saves YAML formatted string defining the in- and output variables.
@@ -101,16 +88,16 @@ def variables_as_yaml(
     """
     for variables in [input_variables, output_variables]:
         verify_unique_variable_names(variables)
-    v = {"input_variables": [var.dict() for var in input_variables],
-         "output_variables": [var.dict() for var in output_variables]}
-    s = yaml.dump(serialize_variables(v), default_flow_style=None, sort_keys=False)
+    v = {"input_variables": [var.model_dump() for var in input_variables],
+         "output_variables": [var.model_dump() for var in output_variables]}
+    s = yaml.safe_dump(serialize_variables(v), default_flow_style=None, sort_keys=False)
     if file is not None:
         with open(file, "w") as f:
             f.write(s)
     return s
 
 
-def variables_from_dict(config: dict) -> tuple[list[InputVariable], list[OutputVariable]]:
+def variables_from_dict(config: dict) -> tuple[list[ScalarVariable], list[ScalarVariable]]:
     """Parses given config and returns in- and output variable lists.
 
     Args:
@@ -123,22 +110,17 @@ def variables_from_dict(config: dict) -> tuple[list[InputVariable], list[OutputV
     for key, value in {**config}.items():
         if key in ["input_variables", "output_variables"]:
             for var in value:
-                variable_type = var.get("variable_type", var.get("type"))
-                if variable_type == "scalar":
-                    if key == "input_variables":
-                        input_variables.append(ScalarInputVariable(**var))
-                    elif key == "output_variables":
-                        output_variables.append(ScalarOutputVariable(**var))
-                elif variable_type in ["array", "image"]:
-                    raise ValueError(f"Parsing of variable type {variable_type} is not yet implemented.")
-                else:
-                    raise ValueError(f"Unknown variable type {variable_type}.")
+                variable_class = get_variable(var["variable_class"])
+                if key == "input_variables":
+                    input_variables.append(variable_class(**var))
+                elif key == "output_variables":
+                    output_variables.append(variable_class(**var))
     for variables in [input_variables, output_variables]:
         verify_unique_variable_names(variables)
     return input_variables, output_variables
 
 
-def variables_from_yaml(yaml_obj: Union[str, os.PathLike]) -> tuple[list[InputVariable], list[OutputVariable]]:
+def variables_from_yaml(yaml_obj: Union[str, os.PathLike]) -> tuple[list[ScalarVariable], list[ScalarVariable]]:
     """Parses YAML object and returns in- and output variable lists.
 
     Args:
