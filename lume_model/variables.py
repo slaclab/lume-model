@@ -117,11 +117,6 @@ class ScalarVariable(Variable):
         _config = self.default_validation_config if config is None else config
         # mandatory validation
         self._validate_value_type(value)
-        # validate defaults for constant inputs
-        if self.is_constant:
-            self._validate_constant_value(value, config=_config)
-            # if it's a constant value, no further validation is needed
-            return
         # optional validation
         if config != "none":
             self._validate_value_is_within_range(value, config=_config)
@@ -139,6 +134,9 @@ class ScalarVariable(Variable):
             error_message = "Value ({}) of '{}' is out of valid range.".format(value, self.name)
             if self.value_range is not None:
                 error_message = error_message[:-1] + " ([{},{}]).".format(*self.value_range)
+            error_message = error_message + \
+                " Executing the model outside of the training data range may result in" \
+                " unpredictable and invalid predictions."
             if config == "warn":
                 print("Warning: " + error_message)
             else:
@@ -149,7 +147,7 @@ class ScalarVariable(Variable):
         tolerances = {"rel_tol": 0, "abs_tol": self.value_range_tolerance}
         is_within_range, is_within_tolerance = False, False
         # constant variables
-        if self.value_range is None:
+        if self.value_range is None or self.is_constant:
             if self.default_value is None:
                 is_within_tolerance = True
             else:
@@ -159,25 +157,6 @@ class ScalarVariable(Variable):
             is_within_range = self.value_range[0] <= value <= self.value_range[1]
             is_within_tolerance = any([math.isclose(value, ele, **tolerances) for ele in self.value_range])
         return is_within_range or is_within_tolerance
-
-    def _validate_constant_value(self, value: float, config: ConfigEnum = None):
-        # if the value is not the default value, raise an error or warning based on config
-        # check value within tolerance to avoid floating point errors
-        tolerances = {"rel_tol": 0, "abs_tol": self.value_range_tolerance}
-        if not math.isclose(self.default_value, value, **tolerances):
-            error_message = (
-                f"Expected value to be {self.default_value} for constant variable '{self.name}', "
-                f"but received {value}. Executing the model outside of the "
-                f"training data range may result in unpredictable and invalid predictions."
-            )
-            if config == "warn":
-                print("Warning: " + error_message)
-            elif config == "error":
-                raise ValueError(error_message)
-            else:
-                # if no config is provided, does not alert user
-                pass
-
 
 def get_variable(name: str) -> Type[Variable]:
     """Returns the Variable subclass with the given name.
