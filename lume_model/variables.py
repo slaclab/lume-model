@@ -8,6 +8,7 @@ For now, only scalar floating-point variables are supported.
 from abc import ABC, abstractmethod
 from typing import Any, Optional, Type
 from enum import Enum
+import math
 
 import numpy as np
 from pydantic import BaseModel, field_validator, model_validator, ConfigDict
@@ -59,6 +60,8 @@ class ScalarVariable(Variable):
     default_value: Optional[float] = None
     value_range: Optional[tuple[float, float]] = (-np.inf, np.inf)
     is_constant: Optional[bool] = False
+    # tolerance for floating point errors, currently only used for constant variables
+    value_range_tolerance: Optional[float] = 1e-8
     unit: Optional[str] = None
 
     @field_validator("value_range", mode="before")
@@ -103,7 +106,9 @@ class ScalarVariable(Variable):
         self._validate_value_type(value)
         # validate defaults for constant inputs
         if self.is_constant:
-            self._validate_constant_value(value)
+            self._validate_constant_value(value, config=_config)
+            # if it's a constant value, no further validation is needed
+            return
         # optional validation
         if config != "none":
             self._validate_value_is_within_range(value, config=_config)
@@ -130,12 +135,40 @@ class ScalarVariable(Variable):
         self.value_range = self.value_range or (-np.inf, np.inf)
         return self.value_range[0] <= value <= self.value_range[1]
 
-    def _validate_constant_value(self, value: float):
-        if not self.default_value == value:
-            raise ValueError(
+    def _validate_constant_value(self, value: float, config: ConfigEnum = None):
+        # if a non-constant range is provided, raise an error or warning based on config
+        if self.value_range is not None:
+            # if the upper limit is not equal to the lower limit, raise an error
+            if not self.value_range[0] == self.value_range[1]:
+                error_message = (
+                    f"Expected range to be constant for constant variable '{self.name}', "
+                    f"but received a range of values. Executing the model outside of the "
+                    f"training data range may result in unpredictable and invalid predictions."
+                )
+                if config == "warn":
+                    print("Warning: " + error_message)
+                elif config == "error":
+                    raise ValueError(error_message)
+                else:
+                    # if no config is provided, does not alert user
+                    pass
+
+        # if the value is not the default value, raise an error or warning based on config
+        # check value within tolerance to avoid floating point errors
+        tolerances = {"rel_tol": 0, "abs_tol": self.value_range_tolerance}
+        if not math.isclose(self.default_value, value, **tolerances):
+            error_message = (
                 f"Expected value to be {self.default_value} for constant variable '{self.name}', "
-                f"but received {value}."
+                f"but received {value}. Executing the model outside of the "
+                f"training data range may result in unpredictable and invalid predictions."
             )
+            if config == "warn":
+                print("Warning: " + error_message)
+            elif config == "error":
+                raise ValueError(error_message)
+            else:
+                # if no config is provided, does not alert user
+                pass
 
 
 def get_variable(name: str) -> Type[Variable]:
