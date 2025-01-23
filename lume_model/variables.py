@@ -58,8 +58,8 @@ class ScalarVariable(Variable):
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
     default_value: Optional[float] = None
-    value_range: Optional[tuple[float, float]] = (-np.inf, np.inf)
     is_constant: Optional[bool] = False
+    value_range: Optional[tuple[float, float]] = None
     # tolerance for floating point errors, currently only used for constant variables
     value_range_tolerance: Optional[float] = 1e-8
     unit: Optional[str] = None
@@ -81,6 +81,19 @@ class ScalarVariable(Variable):
                     "Default value ({}) is out of valid range "
                     "([{},{}]).".format(self.default_value, *self.value_range)
                 )
+        return self
+
+    @model_validator(mode="after")
+    def validate_constant_value_range(self):
+        if self.is_constant and self.value_range is not None:
+            #if the upper limit is not equal to the lower limit, raise an error
+            if not self.value_range[0] == self.value_range[1]:
+                error_message = (
+                    f"Expected range to be constant for constant variable '{self.name}', "
+                    f"but received a range of values. Set range to None or set the "
+                    f"upper limit equal to the lower limit."
+                )
+                raise ValueError(error_message)
         return self
 
     @property
@@ -133,26 +146,21 @@ class ScalarVariable(Variable):
 
     def _value_is_within_range(self, value) -> bool:
         self.value_range = self.value_range or (-np.inf, np.inf)
-        return self.value_range[0] <= value <= self.value_range[1]
+        tolerances = {"rel_tol": 0, "abs_tol": self.value_range_tolerance}
+        is_within_range, is_within_tolerance = False, False
+        # constant variables
+        if self.value_range is None:
+            if self.default_value is None:
+                is_within_tolerance = True
+            else:
+                is_within_tolerance = math.isclose(value, self.default_value, **tolerances)
+        # non-constant variables
+        else:
+            is_within_range = self.value_range[0] <= value <= self.value_range[1]
+            is_within_tolerance = any([math.isclose(value, ele, **tolerances) for ele in self.value_range])
+        return is_within_range or is_within_tolerance
 
     def _validate_constant_value(self, value: float, config: ConfigEnum = None):
-        # if a non-constant range is provided, raise an error or warning based on config
-        if self.value_range is not None:
-            # if the upper limit is not equal to the lower limit, raise an error
-            if not self.value_range[0] == self.value_range[1]:
-                error_message = (
-                    f"Expected range to be constant for constant variable '{self.name}', "
-                    f"but received a range of values. Executing the model outside of the "
-                    f"training data range may result in unpredictable and invalid predictions."
-                )
-                if config == "warn":
-                    print("Warning: " + error_message)
-                elif config == "error":
-                    raise ValueError(error_message)
-                else:
-                    # if no config is provided, does not alert user
-                    pass
-
         # if the value is not the default value, raise an error or warning based on config
         # check value within tolerance to avoid floating point errors
         tolerances = {"rel_tol": 0, "abs_tol": self.value_range_tolerance}
