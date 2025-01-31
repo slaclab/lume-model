@@ -8,6 +8,7 @@ For now, only scalar floating-point variables are supported.
 from abc import ABC, abstractmethod
 from typing import Any, Optional, Type
 from enum import Enum
+import math
 
 import numpy as np
 from pydantic import BaseModel, field_validator, model_validator, ConfigDict
@@ -57,8 +58,10 @@ class ScalarVariable(Variable):
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
     default_value: Optional[float] = None
-    value_range: Optional[tuple[float, float]] = (-np.inf, np.inf)
     is_constant: Optional[bool] = False
+    value_range: Optional[tuple[float, float]] = None
+    # tolerance for floating point errors, currently only used for constant variables
+    value_range_tolerance: Optional[float] = 1e-8
     unit: Optional[str] = None
 
     @field_validator("value_range", mode="before")
@@ -78,6 +81,19 @@ class ScalarVariable(Variable):
                     "Default value ({}) is out of valid range "
                     "([{},{}]).".format(self.default_value, *self.value_range)
                 )
+        return self
+
+    @model_validator(mode="after")
+    def validate_constant_value_range(self):
+        if self.is_constant and self.value_range is not None:
+            #if the upper limit is not equal to the lower limit, raise an error
+            if not self.value_range[0] == self.value_range[1]:
+                error_message = (
+                    f"Expected range to be constant for constant variable '{self.name}', "
+                    f"but received a range of values. Set range to None or set the "
+                    f"upper limit equal to the lower limit."
+                )
+                raise ValueError(error_message)
         return self
 
     @property
@@ -101,9 +117,6 @@ class ScalarVariable(Variable):
         _config = self.default_validation_config if config is None else config
         # mandatory validation
         self._validate_value_type(value)
-        # validate defaults for constant inputs
-        if self.is_constant:
-            self._validate_constant_value(value)
         # optional validation
         if config != "none":
             self._validate_value_is_within_range(value, config=_config)
@@ -121,6 +134,9 @@ class ScalarVariable(Variable):
             error_message = "Value ({}) of '{}' is out of valid range.".format(value, self.name)
             if self.value_range is not None:
                 error_message = error_message[:-1] + " ([{},{}]).".format(*self.value_range)
+            error_message = error_message + \
+                " Executing the model outside of the training data range may result in" \
+                " unpredictable and invalid predictions."
             if config == "warn":
                 print("Warning: " + error_message)
             else:
@@ -128,15 +144,19 @@ class ScalarVariable(Variable):
 
     def _value_is_within_range(self, value) -> bool:
         self.value_range = self.value_range or (-np.inf, np.inf)
-        return self.value_range[0] <= value <= self.value_range[1]
-
-    def _validate_constant_value(self, value: float):
-        if not self.default_value == value:
-            raise ValueError(
-                f"Expected value to be {self.default_value} for constant variable '{self.name}', "
-                f"but received {value}."
-            )
-
+        tolerances = {"rel_tol": 0, "abs_tol": self.value_range_tolerance}
+        is_within_range, is_within_tolerance = False, False
+        # constant variables
+        if self.value_range is None or self.is_constant:
+            if self.default_value is None:
+                is_within_tolerance = True
+            else:
+                is_within_tolerance = math.isclose(value, self.default_value, **tolerances)
+        # non-constant variables
+        else:
+            is_within_range = self.value_range[0] <= value <= self.value_range[1]
+            is_within_tolerance = any([math.isclose(value, ele, **tolerances) for ele in self.value_range])
+        return is_within_range or is_within_tolerance
 
 def get_variable(name: str) -> Type[Variable]:
     """Returns the Variable subclass with the given name.
