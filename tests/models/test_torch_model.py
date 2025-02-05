@@ -222,3 +222,31 @@ class TestTorchModel:
 
         for key in x_lim_nn.keys():
             assert all(torch.isclose(x_lim_nn[key], x_lim_nn_updated[key], atol=1e-6))
+
+    def test_jit_serialization(self, california_model):
+        file = "test_jit.yml"
+        jit_file = "test_jit_model.jit"
+        model_file = "test_jit_model.pt"
+        t_in_file = "test_jit_input_transformers_0.pt"
+        t_out_file = "test_jit_output_transformers_0.pt"
+
+        # Test saving with save_jit=True
+        california_model.dump(file, save_jit=True)
+        assert os.path.exists(file)
+        assert os.path.exists(jit_file)
+        assert os.path.exists(model_file)
+        assert os.path.exists(t_in_file)
+        assert os.path.exists(t_out_file)
+
+        # Test loading the JIT model
+        try:
+            loaded_model = torch.jit.load(jit_file)
+            assert loaded_model is not None
+        except Exception as e:
+            pytest.fail(f"Failed to load JIT model: {e}")
+
+        os.remove(file)
+        os.remove(jit_file)
+        os.remove(model_file)
+        os.remove(t_in_file)
+        os.remove(t_out_file)

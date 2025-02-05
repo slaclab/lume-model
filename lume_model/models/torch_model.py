@@ -56,7 +56,8 @@ class TorchModel(LUMEBaseModel):
 
         # fixed model: set full model in eval mode and deactivate all gradients
         if self.fixed_model:
-            self.model.eval().requires_grad_(False)
+            is_scripted = isinstance(self.model, torch.jit.ScriptModule)
+            self.model.eval().requires_grad_(False) if not is_scripted else None
             for t in self.input_transformers + self.output_transformers:
                 if isinstance(t, torch.nn.Module):
                     t.eval().requires_grad_(False)
