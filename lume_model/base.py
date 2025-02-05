@@ -68,8 +68,15 @@ def process_torch_module(
         torch.save(module, filepath)
     if save_jit:
         filepath = os.path.join(filepath_prefix, jit_filename)
-        scripted_model = torch.jit.script(module)
-        torch.jit.save(scripted_model, filepath)
+        try:
+            scripted_model = torch.jit.script(module)
+            torch.jit.save(scripted_model, filepath)
+        except Exception as e:
+            logger.warning(
+                "Saving as JIT through scripting has only been evaluated "
+                "for NN models that don't depend on BoTorch modules.")
+            logger.error(f"Failed to script the model: {e}")
+            raise e
     return jit_filename if not save_modules and save_jit else filename
 
 def recursive_serialize(
