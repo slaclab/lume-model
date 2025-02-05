@@ -114,6 +114,27 @@ class TestTorchModule:
         os.remove(f"{filename}_input_transformers_0.pt")
         os.remove(f"{filename}_output_transformers_0.pt")
 
+    def test_module_as_jit(self, rootdir: str, california_module):
+        filename = "test_torch_module"
+        file = f"{filename}.yml"
+
+        # Test saving with save_jit=True
+        california_module.dump(file, save_jit=True)
+        assert os.path.exists(f"{filename}_model.jit")
+
+        # Test loading the JIT model
+        try:
+            loaded_model = torch.jit.load(f"{filename}_model.jit")
+            assert loaded_model is not None
+        except Exception as e:
+            pytest.fail(f"Failed to load JIT model: {e}")
+
+        os.remove(file)
+        os.remove(f"{filename}_model.pt")
+        os.remove(f"{filename}_model.jit")
+        os.remove(f"{filename}_input_transformers_0.pt")
+        os.remove(f"{filename}_output_transformers_0.pt")
+
     def test_module_call_single_input(self, california_test_input_tensor, california_model):
         lume_module = TorchModule(
             model=california_model,
