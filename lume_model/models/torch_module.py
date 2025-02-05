@@ -95,7 +95,7 @@ class TorchModule(torch.nn.Module):
             base_key: str = "",
             file_prefix: str = "",
             save_models: bool = False,
-            save_jit: bool=False,
+            save_jit: bool = False,
     ) -> str:
         """Serializes the object and returns a YAML formatted string defining the TorchModule instance.
 
@@ -134,7 +134,7 @@ class TorchModule(torch.nn.Module):
             file: Union[str, os.PathLike],
             save_models: bool = True,
             base_key: str = "",
-            save_jit: bool = True,
+            save_jit: bool = False,
     ):
         """Returns and optionally saves YAML formatted string defining the model.
 

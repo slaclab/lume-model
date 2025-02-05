@@ -10,7 +10,6 @@ class TestScalarVariable:
             name="test",
             default_value=0.1,
             value_range=(0, 1),
-            value_range_tolerance=1e-6,
             unit="m",
         )
         # missing name
@@ -27,7 +26,8 @@ class TestScalarVariable:
         var = ScalarVariable(
             name="test",
             default_value=0.8,
-            value_range=(0.0, 10.0)
+            value_range=(0.0, 10.0),
+            value_range_tolerance=1e-8,
         )
         var.validate_value(5.0)
         with pytest.raises(TypeError):
@@ -42,10 +42,27 @@ class TestScalarVariable:
             name="test",
             default_value=1.3,
             is_constant=True,
+            value_range_tolerance=1e-5,
         )
         constant_var.validate_value(1.3, config="error")
         with pytest.raises(ValueError):
             constant_var.validate_value(1.4, config="error")
+        # test tolerance
+        var.validate_value(10.0 + 1e-9, config="error")
+        with pytest.raises(ValueError):
+            var.validate_value(10.0 + 1e-7, config="error")
+        constant_var.validate_value(1.3 + 1e-6, config="error")
+        with pytest.raises(ValueError):
+            constant_var.validate_value(1.3 + 1e-4, config="error")
+        # test constant range validation
+        with pytest.raises(ValueError):
+            constant_var = ScalarVariable(
+                name="test",
+                default_value=1.3,
+                is_constant=True,
+                value_range_tolerance=1e-5,
+                value_range=(1.3, 1.5),
+            )
 
 
 def test_get_variable():
