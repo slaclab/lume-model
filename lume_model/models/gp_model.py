@@ -1,7 +1,6 @@
 import logging
 from typing import Union
 
-import numpy as np
 import torch
 from torch.distributions import Distribution as  TDistribution
 from gpytorch.models import ExactGP
@@ -17,12 +16,18 @@ logger = logging.getLogger(__name__)
 
 class GPModel(LUMEBaseModel):
     model: Union[BatchedMultiOutputGPyTorchModel, ExactGP]
+    device: Union[torch.device, str] = "cpu"
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
+        self.dtype = torch.double
 
     # TODO: add properties
     # TODO: add validation
+
+    @property
+    def _tkwargs(self):
+        return {"device": self.device, "dtype": self.dtype}
 
     def likelihood(self):
         return self.model.likelihood
@@ -69,56 +74,65 @@ class TorchDistributionWrapper(TDistribution):
         """
         super().__init__()
         self.custom_dist = custom_dist
+        self.device = torch.device("cpu")
+        self.dtype = torch.double
 
     @property
-    def mean(self):
+    def _tkwargs(self):
+        return {"device": self.device, "dtype": self.dtype}
+
+    @property
+    def mean(self) -> torch.Tensor:
         """Return the mean of the custom distribution."""
-        if hasattr(self.custom_dist, 'mean'):
-            return self.custom_dist.mean()
-        raise NotImplementedError("Mean method is not implemented for this distribution.")
+        attribute_names = ["mean"]
+        result, _ = self._get_attr(attribute_names)
+        return result
 
     @property
-    def variance(self):
+    def variance(self) -> torch.Tensor:
         """Return the variance of the custom distribution."""
-        if hasattr(self.custom_dist, 'variance'):
-            return self.custom_dist.variance()
-        elif hasattr(self.custom_dist, 'var'):
-            return self.custom_dist.var(value)
-        elif hasattr(self.custom_dist, 'cov'):
-            # Scipy distributions have cov method
-            return np.diagonal(self.custom_dist.cov())
-        elif hasattr(self.custom_dist, 'covariance_matrix'):
-            return np.diagonal(self.custom_dist.covariance_matrix())
-        raise NotImplementedError("Variance method is not implemented for this distribution.")
+        attribute_names = ['variance', 'var', 'cov', 'covariance', 'covariance_matrix']
+        result, attr_name = self._get_attr(attribute_names)
 
-    def log_prob(self, value):
+        if attr_name in ['cov', 'covariance', 'covariance_matrix']:
+            return torch.diagonal(torch.tensor(result))
+
+        return result
+
+    def log_prob(self,  value: torch.Tensor) -> torch.Tensor:
         """Compute the log probability for a given value."""
-        if hasattr(self.custom_dist, 'log_prob'):
-            return self.custom_dist.log_prob(value)
-        elif hasattr(self.custom_dist, 'log_likelihood'):
-            return self.custom_dist.log_likelihood(value)
-        elif hasattr(self.custom_dist, 'logpdf'):
-            # Scipy distributions have logpdf method
-            return self.custom_dist.logpdf(value)
-        raise NotImplementedError("Log probability method is not implemented for this distribution.")
+        attribute_names = ["log_prob", "log_likelihood", "logpdf"]
+        result, _ = self._get_attr(attribute_names, value)
+        return result
 
-    def rsample(self, sample_shape=torch.Size()):
+    def rsample(self, sample_shape: torch.Size()) -> torch.Tensor:
         """Generate reparameterized samples from the custom distribution."""
-        if hasattr(self.custom_dist, 'rsample'):
-            return self.custom_dist.rsample(sample_shape)
-        elif hasattr(self.custom_dist, 'sample'):
-            # Fallback to sample if rsample is not implemented
-            return self.custom_dist.sample(sample_shape)
-        raise NotImplementedError("Sampling method is not implemented for this distribution.")
+        # Fallback to sample if rsample is not implemented
+        attribute_names = ["rsample", "sample", "rvs"]
+        result, _ = self._get_attr(attribute_names, sample_shape)
+        return result
 
-    def sample(self, sample_shape=torch.Size()):
+    def sample(self, sample_shape: torch.Size()) -> torch.Tensor:
         """Generate samples from the custom distribution (non-differentiable if using sample)."""
-        if hasattr(self.custom_dist, 'sample'):
-            return self.custom_dist.sample(sample_shape)
-        elif hasattr(self.custom_dist, 'rvs'):
-            # Scipy distributions have rvs method
-            return self.custom_dist.rvs(size=sample_shape.numel())
-        raise NotImplementedError("Sample method is not implemented for this distribution.")
+        attribute_names = ["sample", "rvs"]
+        # Assume non-torch.Distribution takes an integer sample_shape
+        sample_shape = sample_shape.numel()
+        result, _ = self._get_attr(attribute_names, sample_shape)
+        return result
 
     def __repr__(self):
         return f"TorchDistributionWrapper({self.custom_dist})"
+
+    def _get_attr(self, attribute_names, value=None):
+        """Get the first attribute that is found in the distribution."""
+        for attr_name in attribute_names:
+            attr_value = getattr(self.custom_dist, attr_name, None)
+            if attr_value is not None:
+                if callable(attr_value):
+                    result = attr_value(value) if value is not None else attr_value()
+                else:
+                    result = attr_value
+
+                return torch.tensor(result, **self._tkwargs), attr_name
+
+        raise AttributeError(f"None of the attributes {attribute_names} found in the distribution.")
