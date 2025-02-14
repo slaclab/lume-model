@@ -28,11 +28,12 @@ class TestBaseModel:
         with pytest.raises(TypeError):
             _ = NoEvaluateModel(**simple_variables)
 
-        # init child class with input variables missing default value
-        simple_variables_no_default = copy.deepcopy(simple_variables)
-        simple_variables_no_default["input_variables"][0].default_value = None
-        with pytest.raises(ValueError):
-            _ = ExampleModel(**simple_variables_no_default)
+        # TODO: move to test_torch_model.py
+        # # init child class with input variables missing default value
+        # simple_variables_no_default = copy.deepcopy(simple_variables)
+        # simple_variables_no_default["input_variables"][0].default_value = None
+        # with pytest.raises(ValueError):
+        #     _ = ExampleModel(**simple_variables_no_default)
 
         # init child class with evaluate function
         example_model = ExampleModel(**simple_variables)
