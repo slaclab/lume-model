@@ -1,67 +1,209 @@
 import logging
-from typing import Union
+from typing import Union, Any
 
+from pydantic import field_validator, model_validator
 import torch
 from torch.distributions import Distribution as  TDistribution
-from gpytorch.models import ExactGP
-from botorch.models.gpytorch import BatchedMultiOutputGPyTorchModel
+from botorch.models import SingleTaskGP
 from botorch.fit import fit_gpytorch_mll
 from gpytorch.mlls import ExactMarginalLogLikelihood
+from botorch.models.transforms.input import InputTransform
+from botorch.models.transforms.outcome import OutcomeTransform
 
 from lume_model.base import LUMEBaseModel
-from lume_model.variables import ScalarVariable
+from lume_model.variables import ScalarVariable, DistributionVariable
+from lume_model.models.utils import InputDictModel, format_inputs, itemize_dict
 
 logger = logging.getLogger(__name__)
 
 
 class GPModel(LUMEBaseModel):
-    model: Union[BatchedMultiOutputGPyTorchModel, ExactGP]
+    """LUME-model class for Single Task GP models, using GPyTorch and BoTorch.
+
+    Args:
+        model: A single task GPyTorch model or BoTorch model.
+        device: Device on which the model will be evaluated. Defaults to "cpu".
+        precision: Precision of the model, either "double" or "single". Defaults to "double".
+    """
+    model: SingleTaskGP
+    output_variables: list[DistributionVariable]
     device: Union[torch.device, str] = "cpu"
+    precision: str = "double"
 
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-        self.dtype = torch.double
+    @model_validator(mode='before')
+    def validate_input_number(cls, values: dict[str, Any]) -> dict[str, Any]:
+        """Validate the number of input variables to match the model."""
+        model = values["model"]
+        input_variables = values["input_variables"]
+        if model is None:
+            raise ValueError("Model attribute is missing.")
+        num_inputs = model.train_inputs[0].shape[-1]
+        if len(input_variables) != num_inputs:
+            raise ValueError(f"The initialized GPModel requires {num_inputs} input variables.")
+        return values
 
-    # TODO: add properties
-    # TODO: add validation
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # No range validation for GP models currently implemented
+        self.input_validation_config = {x: "none" for x in self.input_names}
+
+    @property
+    def dtype(self):
+        """Returns the data type for the model."""
+        if self.precision == "double":
+            return torch.double
+        elif self.precision == "single":
+            return torch.float
+        else:
+            raise ValueError(
+                f"Unknown precision {self.precision}, "
+                f"expected one of ['double', 'single']."
+            )
 
     @property
     def _tkwargs(self):
+        """Returns the device and dtype for the model."""
         return {"device": self.device, "dtype": self.dtype}
 
+    def input_transform(self) -> InputTransform:
+        """Returns the input transform of the model."""
+        return self.model.input_transform
+
+    def outcome_transform(self) -> OutcomeTransform:
+        """Returns the output transform of the model."""
+        return self.model.outcome_transform
+
     def likelihood(self):
+        """Returns the likelihood of the model."""
         return self.model.likelihood
 
     def mll(self, x, y):
-        """ Returns the marginal log-likelihood value"""
+        """Returns the marginal log-likelihood value"""
         self.model.eval()
         mll = ExactMarginalLogLikelihood(self.model.likelihood, self.model)
         return mll(self.model(x), y).item()
 
     def _posterior(self, x):
+        """Compute the posterior distribution."""
         self.model.eval()
         posterior = self.model.posterior(x)
         return posterior
 
-    def _evaluate(self, x): # make input dict and output dict
-        # transform
+    def _evaluate(self, input_dict: dict[str, Union[float, torch.Tensor]]) -> dict[str, TDistribution]:
+        """Evaluate the model.
 
-        # evaluate
-        posterior = self._posterior(x)
+        Args:
+            input_dict: Dictionary of input variable names to values.
 
-        # wrap the distribution in a torch distribution
+        Returns:
+            A dictionary of output variable names to distributions.
+        """
+        # Create input tensor
+        input_tensor = self._create_tensor_from_dict(input_dict)
+        # Evaluate
+        posterior = self._posterior(input_tensor)
+        # Wrap the distribution in a torch distribution
         distribution = self.get_distribution(posterior)
+        # Return output dictionary
+        return self._create_output_dict(distribution)
 
-        # untransform and prepare output
+    def get_distribution(self, posterior) -> TDistribution:
+        """Get the distribution from the posterior.
 
-        return distribution
+        Args:
+            posterior: Posterior object from the model.
 
-    def get_distribution(self, posterior):
+        Returns:
+            A torch distribution object.
+        """
         if isinstance(posterior.distribution, TDistribution):
             return posterior.distribution
         else:
-            # wrap the distribution in a torch distribution
+            # Wrap the distribution in a torch distribution
             return TorchDistributionWrapper(posterior.distribution)
+
+    @staticmethod
+    def _create_tensor_from_dict(d: dict[str, Union[float, torch.Tensor]],
+    ) -> torch.Tensor:
+        """Create a 2D tensor from a dictionary of floats and tensors.
+
+        Args:
+            d: Dictionary of floats or tensors.
+
+        Returns:
+            A Torch Tensor."""
+        tensors = []
+
+        for key, value in d.items():
+            if isinstance(value, float):
+                tensors.append(torch.tensor([value]))
+            elif isinstance(value, torch.Tensor):
+                tensors.append(value)
+            else:
+                raise ValueError(f"Value for key '{key}' must be either a float or a torch tensor.")
+
+        if all(isinstance(value, float) for value in d.values()):
+            # All values are floats
+            return torch.stack(tensors, dim=1)
+        elif all(isinstance(tensor, torch.Tensor) for tensor in tensors):
+            lengths = [tensor.size(0) for tensor in tensors]
+            if len(set(lengths)) != 1:
+                raise ValueError("All tensors must have the same length.")
+            # Stack tensors into a multidimensional tensor
+            return torch.stack(tensors, dim=1)
+        else:
+            raise ValueError(
+                "All values must be either floats or tensors, and all tensors must have the same length.")
+
+    def _create_output_dict(self, distribution: TDistribution) -> dict[str, TDistribution]:
+        """Returns outputs as dictionary.
+
+        Args:
+            distribution: Distribution corresponding to the output.
+
+        Returns:
+            Dictionary of output variable names to values.
+        """
+        if len(self.output_names) == 1:
+            return {self.output_names[0]: distribution}
+        else:
+            NotImplementedError("Multiple output variables not supported yet.")
+
+    def input_validation(self, input_dict: dict[str, Union[float, torch.Tensor]]):
+        """Validates input dictionary before evaluation.
+
+        Args:
+            input_dict: Input dictionary to validate.
+
+        Returns:
+            Validated input dictionary.
+        """
+        # validate input type (ints only are cast to floats for scalars)
+        validated_input = InputDictModel(input_dict=input_dict).input_dict
+        # format inputs as tensors w/o changing the dtype
+        formatted_inputs = format_inputs(validated_input)
+        # itemize inputs for validation
+        itemized_inputs = itemize_dict(formatted_inputs)
+
+        for ele in itemized_inputs:
+            # validate values that were in the torch tensor
+            # any ints in the torch tensor will be cast to floats by Pydantic
+            # but others will be caught, e.g. booleans
+            ele = InputDictModel(input_dict=ele).input_dict
+            # validate each value based on its var class and config
+            super().input_validation(ele)
+
+        # return the validated input dict for consistency w/ casting ints to floats
+        if any([isinstance(value, torch.Tensor) for value in validated_input.values()]):
+            validated_input = {k: v.to(**self._tkwargs) for k, v in validated_input.items()}
+
+        return validated_input
+
+    def output_validation(self, output_dict: dict[str, TDistribution]):
+        """Itemizes tensors before performing output validation."""
+        itemized_outputs = itemize_dict(output_dict)
+        for ele in itemized_outputs:
+            super().output_validation(ele)
 
 
 class TorchDistributionWrapper(TDistribution):
@@ -69,8 +211,8 @@ class TorchDistributionWrapper(TDistribution):
     def __init__(self, custom_dist):
         """
         Args:
-            custom_dist: An instance of a custom distribution with methods like mean, variance,
-                          log_prob, sample, and rsample.
+            custom_dist: An instance of a custom distribution with methods:
+                          mean, variance, log_prob, sample, and rsample.
         """
         super().__init__()
         self.custom_dist = custom_dist
