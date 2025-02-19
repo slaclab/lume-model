@@ -4,6 +4,7 @@ from typing import Union, Any
 from pydantic import field_validator, model_validator
 import torch
 from torch.distributions import Distribution as  TDistribution
+from torch.distributions import MultivariateNormal
 from botorch.models import SingleTaskGP
 from botorch.fit import fit_gpytorch_mll
 from gpytorch.mlls import ExactMarginalLogLikelihood
@@ -31,15 +32,22 @@ class GPModel(LUMEBaseModel):
     precision: str = "double"
 
     @model_validator(mode='before')
-    def validate_input_number(cls, values: dict[str, Any]) -> dict[str, Any]:
+    def validate_dimensions(cls, values: dict[str, Any]) -> dict[str, Any]:
         """Validate the number of input variables to match the model."""
         model = values["model"]
         input_variables = values["input_variables"]
+        output_variables = values["output_variables"]
+
         if model is None:
             raise ValueError("Model attribute is missing.")
+
         num_inputs = model.train_inputs[0].shape[-1]
+        num_outputs = model.train_targets.shape[0] if len(model.train_targets.shape) > 1 else 1
+
         if len(input_variables) != num_inputs:
             raise ValueError(f"The initialized GPModel requires {num_inputs} input variables.")
+        if len(output_variables) != num_outputs:
+            raise ValueError(f"The initialized GPModel requires {num_outputs} output variables.")
         return values
 
     def __init__(self, *args, **kwargs):
@@ -103,11 +111,12 @@ class GPModel(LUMEBaseModel):
         # Evaluate
         posterior = self._posterior(input_tensor)
         # Wrap the distribution in a torch distribution
-        distribution = self.get_distribution(posterior)
-        # Return output dictionary
+        distribution = self._get_distribution(posterior)
+        # Split multi-dimensional output into separate distributions and
+        # return output dictionary
         return self._create_output_dict(distribution)
 
-    def get_distribution(self, posterior) -> TDistribution:
+    def _get_distribution(self, posterior) -> TDistribution:
         """Get the distribution from the posterior.
 
         Args:
@@ -156,18 +165,31 @@ class GPModel(LUMEBaseModel):
                 "All values must be either floats or tensors, and all tensors must have the same length.")
 
     def _create_output_dict(self, distribution: TDistribution) -> dict[str, TDistribution]:
-        """Returns outputs as dictionary.
+        """Returns outputs as dictionary of output names and their corresponding distributions.
 
         Args:
-            distribution: Distribution corresponding to the output.
+            distribution: Distribution corresponding to the multi-dimensional output.
 
         Returns:
-            Dictionary of output variable names to values.
+            Dictionary of output variable names to distributions.
         """
         if len(self.output_names) == 1:
             return {self.output_names[0]: distribution}
         else:
-            NotImplementedError("Multiple output variables not supported yet.")
+            # Note: only for independent outputs (SingleTaskGP)
+            output_distributions = {}
+            mean = distribution.mean
+            ss = mean.shape[0]  # sample size
+            cov = distribution.covariance_matrix
+
+            # TODO: check if we need to implement for dists other than MVN?
+            for i, name in enumerate(self.output_names):
+                _mean = mean[:, i]
+                _cov = torch.zeros(ss, ss, **self._tkwargs)
+                _cov[:, :ss] = cov[i * ss:(i + 1) * ss, i * ss: (i + 1) * ss]
+                output_distributions[name] = MultivariateNormal(_mean, _cov)
+
+            return output_distributions
 
     def input_validation(self, input_dict: dict[str, Union[float, torch.Tensor]]):
         """Validates input dictionary before evaluation.
