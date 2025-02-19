@@ -87,6 +87,7 @@ class GPModel(LUMEBaseModel):
 
     def mll(self, x, y):
         """Returns the marginal log-likelihood value"""
+        # TODO: add validation for x and y?
         self.model.eval()
         mll = ExactMarginalLogLikelihood(self.model.likelihood, self.model)
         return mll(self.model(x), y).item()
@@ -217,7 +218,7 @@ class GPModel(LUMEBaseModel):
 
         # return the validated input dict for consistency w/ casting ints to floats
         if any([isinstance(value, torch.Tensor) for value in validated_input.values()]):
-            validated_input = {k: v.to(**self._tkwargs) for k, v in validated_input.items()}
+            validated_input = {k: v.to(**self._tkwargs).flatten() for k, v in validated_input.items()}
 
         return validated_input
 
