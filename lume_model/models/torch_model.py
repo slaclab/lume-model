@@ -31,6 +31,7 @@ class TorchModel(LUMEBaseModel):
           computation is deactivated.
         precision: Precision of the model, either "double" or "single".
     """
+
     model: torch.nn.Module
     input_transformers: list[Union[ReversibleInputTransform, torch.nn.Linear]] = None
     output_transformers: list[Union[ReversibleInputTransform, torch.nn.Linear]] = None
@@ -48,11 +49,15 @@ class TorchModel(LUMEBaseModel):
             **kwargs: See class attributes.
         """
         super().__init__(*args, **kwargs)
-        self.input_transformers = [] if self.input_transformers is None else self.input_transformers
-        self.output_transformers = [] if self.output_transformers is None else self.output_transformers
+        self.input_transformers = (
+            [] if self.input_transformers is None else self.input_transformers
+        )
+        self.output_transformers = (
+            [] if self.output_transformers is None else self.output_transformers
+        )
 
         # dtype property sets precision across model and transformers
-        self.dtype;
+        self.dtype
 
         # fixed model: set full model in eval mode and deactivate all gradients
         if self.fixed_model:
@@ -111,7 +116,9 @@ class TorchModel(LUMEBaseModel):
     def validate_output_format(cls, v):
         supported_formats = ["tensor", "variable", "raw"]
         if v not in supported_formats:
-            raise ValueError(f"Unknown output format {v}, expected one of {supported_formats}.")
+            raise ValueError(
+                f"Unknown output format {v}, expected one of {supported_formats}."
+            )
         return v
 
     def _set_precision(self, value: torch.dtype):
@@ -122,8 +129,8 @@ class TorchModel(LUMEBaseModel):
                 t.to(dtype=value)
 
     def _evaluate(
-            self,
-            input_dict: dict[str, Union[float, torch.Tensor]],
+        self,
+        input_dict: dict[str, Union[float, torch.Tensor]],
     ) -> dict[str, Union[float, torch.Tensor]]:
         """Evaluates model on the given input dictionary.
 
@@ -170,7 +177,9 @@ class TorchModel(LUMEBaseModel):
 
         # return the validated input dict for consistency w/ casting ints to floats
         if any([isinstance(value, torch.Tensor) for value in validated_input.values()]):
-            validated_input = {k: v.to(**self._tkwargs) for k, v in validated_input.items()}
+            validated_input = {
+                k: v.to(**self._tkwargs) for k, v in validated_input.items()
+            }
 
         return validated_input
 
@@ -192,13 +201,16 @@ class TorchModel(LUMEBaseModel):
         input_dict = {}
         for var in self.input_variables:
             if isinstance(var, ScalarVariable):
-                input_dict[var.name] = var.value_range[0] + torch.rand(size=(n_samples,)) * (
-                            var.value_range[1] - var.value_range[0])
+                input_dict[var.name] = var.value_range[0] + torch.rand(
+                    size=(n_samples,)
+                ) * (var.value_range[1] - var.value_range[0])
             else:
                 torch.tensor(var.default_value, **self._tkwargs).repeat((n_samples, 1))
         return input_dict
 
-    def random_evaluate(self, n_samples: int = 1) -> dict[str, Union[float, torch.Tensor]]:
+    def random_evaluate(
+        self, n_samples: int = 1
+    ) -> dict[str, Union[float, torch.Tensor]]:
         """Returns random evaluation(s) of the model.
 
         Args:
@@ -222,27 +234,39 @@ class TorchModel(LUMEBaseModel):
                 t.to(device)
         self.device = device
 
-    def insert_input_transformer(self, new_transformer: ReversibleInputTransform, loc: int):
+    def insert_input_transformer(
+        self, new_transformer: ReversibleInputTransform, loc: int
+    ):
         """Inserts an additional input transformer at the given location.
 
         Args:
             new_transformer: New transformer to add.
             loc: Location where the new transformer shall be added to the transformer list.
         """
-        self.input_transformers = (self.input_transformers[:loc] + [new_transformer] +
-                                   self.input_transformers[loc:])
+        self.input_transformers = (
+            self.input_transformers[:loc]
+            + [new_transformer]
+            + self.input_transformers[loc:]
+        )
 
-    def insert_output_transformer(self, new_transformer: ReversibleInputTransform, loc: int):
+    def insert_output_transformer(
+        self, new_transformer: ReversibleInputTransform, loc: int
+    ):
         """Inserts an additional output transformer at the given location.
 
         Args:
             new_transformer: New transformer to add.
             loc: Location where the new transformer shall be added to the transformer list.
         """
-        self.output_transformers = (self.output_transformers[:loc] + [new_transformer] +
-                                    self.output_transformers[loc:])
+        self.output_transformers = (
+            self.output_transformers[:loc]
+            + [new_transformer]
+            + self.output_transformers[loc:]
+        )
 
-    def update_input_variables_to_transformer(self, transformer_loc: int) -> list[ScalarVariable]:
+    def update_input_variables_to_transformer(
+        self, transformer_loc: int
+    ) -> list[ScalarVariable]:
         """Returns input variables updated to the transformer at the given location.
 
         Updated are the value ranges and default of the input variables. This allows, e.g., to add a
@@ -255,9 +279,15 @@ class TorchModel(LUMEBaseModel):
             The updated input variables.
         """
         x_old = {
-            "min": torch.tensor([var.value_range[0] for var in self.input_variables], dtype=self.dtype),
-            "max": torch.tensor([var.value_range[1] for var in self.input_variables], dtype=self.dtype),
-            "default": torch.tensor([var.default_value for var in self.input_variables], dtype=self.dtype),
+            "min": torch.tensor(
+                [var.value_range[0] for var in self.input_variables], dtype=self.dtype
+            ),
+            "max": torch.tensor(
+                [var.value_range[1] for var in self.input_variables], dtype=self.dtype
+            ),
+            "default": torch.tensor(
+                [var.default_value for var in self.input_variables], dtype=self.dtype
+            ),
         }
         x_new = {}
         for key in x_old.keys():
@@ -269,7 +299,9 @@ class TorchModel(LUMEBaseModel):
                 else:
                     x = self.input_transformers[i](x)
             # untransform of transformer to adjust for
-            if isinstance(self.input_transformers[transformer_loc], ReversibleInputTransform):
+            if isinstance(
+                self.input_transformers[transformer_loc], ReversibleInputTransform
+            ):
                 x = self.input_transformers[transformer_loc].untransform(x)
             else:
                 w = self.input_transformers[transformer_loc].weight
@@ -277,7 +309,9 @@ class TorchModel(LUMEBaseModel):
                 x = torch.matmul((x - b), torch.linalg.inv(w.T))
             # backtrack through transformers
             for transformer in self.input_transformers[:transformer_loc][::-1]:
-                if isinstance(self.input_transformers[transformer_loc], ReversibleInputTransform):
+                if isinstance(
+                    self.input_transformers[transformer_loc], ReversibleInputTransform
+                ):
                     x = transformer.untransform(x)
                 else:
                     w, b = transformer.weight, transformer.bias
@@ -290,8 +324,8 @@ class TorchModel(LUMEBaseModel):
         return updated_variables
 
     def _format_inputs(
-            self,
-            input_dict: dict[str, Union[float, torch.Tensor]],
+        self,
+        input_dict: dict[str, Union[float, torch.Tensor]],
     ) -> dict[str, torch.Tensor]:
         """Formats values of the input dictionary as tensors.
 
@@ -307,7 +341,9 @@ class TorchModel(LUMEBaseModel):
             formatted_inputs[var_name] = v.squeeze()
         return formatted_inputs
 
-    def _fill_default_inputs(self, input_dict: dict[str, torch.Tensor]) -> dict[str, torch.Tensor]:
+    def _fill_default_inputs(
+        self, input_dict: dict[str, torch.Tensor]
+    ) -> dict[str, torch.Tensor]:
         """Fills missing input variables with default values.
 
         Args:
@@ -321,7 +357,9 @@ class TorchModel(LUMEBaseModel):
                 input_dict[var.name] = torch.tensor(var.default_value, **self._tkwargs)
         return input_dict
 
-    def _arrange_inputs(self, formatted_inputs: dict[str, torch.Tensor]) -> torch.Tensor:
+    def _arrange_inputs(
+        self, formatted_inputs: dict[str, torch.Tensor]
+    ) -> torch.Tensor:
         """Enforces order of input variables.
 
         Enforces the order of the input variables to be passed to the transformers and model and updates the
@@ -408,8 +446,8 @@ class TorchModel(LUMEBaseModel):
         return parsed_outputs
 
     def _prepare_outputs(
-            self,
-            parsed_outputs: dict[str, torch.Tensor],
+        self,
+        parsed_outputs: dict[str, torch.Tensor],
     ) -> dict[str, Union[float, torch.Tensor]]:
         """Updates and returns outputs according to output_format.
 
@@ -424,11 +462,15 @@ class TorchModel(LUMEBaseModel):
         if self.output_format.lower() == "tensor":
             return parsed_outputs
         else:
-            return {key: value.item() if value.squeeze().dim() == 0 else value
-                    for key, value in parsed_outputs.items()}
+            return {
+                key: value.item() if value.squeeze().dim() == 0 else value
+                for key, value in parsed_outputs.items()
+            }
 
     @staticmethod
-    def _itemize_dict(d: dict[str, Union[float, torch.Tensor]]) -> list[dict[str, Union[float, torch.Tensor]]]:
+    def _itemize_dict(
+        d: dict[str, Union[float, torch.Tensor]],
+    ) -> list[dict[str, Union[float, torch.Tensor]]]:
         """Itemizes the given in-/output dictionary.
 
         Args:
@@ -449,7 +491,6 @@ class TorchModel(LUMEBaseModel):
         else:
             itemized_dicts = [d]
         return itemized_dicts
-
 
     # def _update_image_limits(
     #         self,
@@ -476,13 +517,14 @@ class TorchModel(LUMEBaseModel):
     #             self.output_variables[output_idx].y_max_variable
     #         ].item()
 
+
 class InputDictModel(BaseModel):
     """Pydantic model for input dictionary validation.
 
     Attributes:
         input_dict: Input dictionary to validate.
     """
+
     input_dict: Dict[str, Union[torch.Tensor, float]]
 
     model_config = ConfigDict(arbitrary_types_allowed=True, strict=True)
-
