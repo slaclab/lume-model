@@ -273,7 +273,9 @@ class TestTorchModule:
             warnings.simplefilter(
                 "ignore"
             )  # ignore warning that input data is not standardized
-            gp = SingleTaskGP(train_x, train_y, mean_module=california_module)
+            gp = SingleTaskGP(
+                train_x, train_y, mean_module=california_module, outcome_transform=None
+            )
         x_lim = torch.stack(
             [torch.min(train_x, dim=0).values, torch.max(train_x, dim=0).values]
         )
