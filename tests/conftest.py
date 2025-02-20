@@ -89,7 +89,9 @@ def california_model_kwargs(
     input_variables, output_variables = california_variables
     input_transformer, output_transformer = california_transformers
     model_kwargs = {
-        "model": torch.load(f"{rootdir}/test_files/california_regression/model.pt"),
+        "model": torch.load(
+            f"{rootdir}/test_files/california_regression/model.pt", weights_only=False
+        ),
         "input_variables": input_variables,
         "output_variables": output_variables,
         "input_transformers": [input_transformer],
@@ -105,7 +107,8 @@ def california_test_input_tensor(rootdir: str):
 
     try:
         test_input_tensor = torch.load(
-            f"{rootdir}/test_files/california_regression/test_input_tensor.pt"
+            f"{rootdir}/test_files/california_regression/test_input_tensor.pt",
+            weights_only=False,
         )
     except FileNotFoundError as e:
         pytest.skip(str(e))
