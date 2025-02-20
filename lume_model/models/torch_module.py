@@ -16,6 +16,7 @@ class TorchModule(torch.nn.Module):
     As the base model within the TorchModel is assumed to be fixed during instantiation,
     so is the TorchModule.
     """
+
     def __init__(
         self,
         *args,
@@ -37,11 +38,15 @@ class TorchModule(torch.nn.Module):
               the TorchModel is used.
         """
         if all(arg is None for arg in [*args, model]):
-            raise ValueError("Either a YAML string has to be given or model has to be defined.")
+            raise ValueError(
+                "Either a YAML string has to be given or model has to be defined."
+            )
         super().__init__()
         if len(args) == 1:
             if not all(v is None for v in [model, input_order, output_order]):
-                raise ValueError("Cannot specify YAML string and keyword arguments for TorchModule init.")
+                raise ValueError(
+                    "Cannot specify YAML string and keyword arguments for TorchModule init."
+                )
             model_fields = {f"model.{k}": v for k, v in TorchModel.model_fields.items()}
             kwargs = parse_config(args[0], model_fields)
             kwargs["model"] = TorchModel(kwargs["model"])
@@ -91,11 +96,11 @@ class TorchModule(torch.nn.Module):
         return y
 
     def yaml(
-            self,
-            base_key: str = "",
-            file_prefix: str = "",
-            save_models: bool = False,
-            save_jit: bool = False,
+        self,
+        base_key: str = "",
+        file_prefix: str = "",
+        save_models: bool = False,
+        save_jit: bool = False,
     ) -> str:
         """Serializes the object and returns a YAML formatted string defining the TorchModule instance.
 
@@ -113,7 +118,9 @@ class TorchModule(torch.nn.Module):
             if k not in ["self", "args", "model"]:
                 d[k] = getattr(self, k)
         output = json.loads(
-            json.dumps(recursive_serialize(d, base_key, file_prefix, save_models, save_jit))
+            json.dumps(
+                recursive_serialize(d, base_key, file_prefix, save_models, save_jit)
+            )
         )
         model_output = json.loads(
             self._model.to_json(
@@ -125,16 +132,19 @@ class TorchModule(torch.nn.Module):
         )
         output["model"] = model_output
         # create YAML formatted string
-        s = yaml.dump({"model_class": self.__class__.__name__} | output,
-                      default_flow_style=None, sort_keys=False)
+        s = yaml.dump(
+            {"model_class": self.__class__.__name__} | output,
+            default_flow_style=None,
+            sort_keys=False,
+        )
         return s
 
     def dump(
-            self,
-            file: Union[str, os.PathLike],
-            save_models: bool = True,
-            base_key: str = "",
-            save_jit: bool = False,
+        self,
+        file: Union[str, os.PathLike],
+        save_models: bool = True,
+        base_key: str = "",
+        save_jit: bool = False,
     ):
         """Returns and optionally saves YAML formatted string defining the model.
 
@@ -171,7 +181,8 @@ class TorchModule(torch.nn.Module):
 
     def _dictionary_to_tensor(self, y_model: dict[str, torch.Tensor]):
         output_tensor = torch.stack(
-            [y_model[output_name].unsqueeze(-1) for output_name in self.output_order], dim=-1
+            [y_model[output_name].unsqueeze(-1) for output_name in self.output_order],
+            dim=-1,
         )
         return output_tensor
 

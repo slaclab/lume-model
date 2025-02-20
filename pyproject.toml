@@ -32,8 +32,8 @@ version_file = "lume_model/_version.py"
 
 [project.optional-dependencies]
 dev = [
-    "botorch<0.11",
-    "torch<=2.5.1",
+    "botorch",
+    "torch",
     "pre-commit",
     "pytest"
 ]

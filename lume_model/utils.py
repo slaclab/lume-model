@@ -51,8 +51,14 @@ def serialize_variables(v: dict):
     """
     for key, value in v.items():
         if key in ["input_variables", "output_variables"] and isinstance(value, list):
-            v[key] = {var_dict["name"]: {var_k: var_v for var_k, var_v in var_dict.items() if
-                                         not (var_k == "name" or var_v is None)} for var_dict in value}
+            v[key] = {
+                var_dict["name"]: {
+                    var_k: var_v
+                    for var_k, var_v in var_dict.items()
+                    if not (var_k == "name" or var_v is None)
+                }
+                for var_dict in value
+            }
     return v
 
 
@@ -67,14 +73,16 @@ def deserialize_variables(v):
     """
     for key, value in v.items():
         if key in ["input_variables", "output_variables"] and isinstance(value, dict):
-            v[key] = [var_dict | {"name": var_name} for var_name, var_dict in value.items()]
+            v[key] = [
+                var_dict | {"name": var_name} for var_name, var_dict in value.items()
+            ]
     return v
 
 
 def variables_as_yaml(
-        input_variables: list[ScalarVariable],
-        output_variables: list[ScalarVariable],
-        file: Union[str, os.PathLike] = None,
+    input_variables: list[ScalarVariable],
+    output_variables: list[ScalarVariable],
+    file: Union[str, os.PathLike] = None,
 ) -> str:
     """Returns and optionally saves YAML formatted string defining the in- and output variables.
 
@@ -88,8 +96,10 @@ def variables_as_yaml(
     """
     for variables in [input_variables, output_variables]:
         verify_unique_variable_names(variables)
-    v = {"input_variables": [var.model_dump() for var in input_variables],
-         "output_variables": [var.model_dump() for var in output_variables]}
+    v = {
+        "input_variables": [var.model_dump() for var in input_variables],
+        "output_variables": [var.model_dump() for var in output_variables],
+    }
     s = yaml.safe_dump(serialize_variables(v), default_flow_style=None, sort_keys=False)
     if file is not None:
         with open(file, "w") as f:
@@ -97,7 +107,9 @@ def variables_as_yaml(
     return s
 
 
-def variables_from_dict(config: dict) -> tuple[list[ScalarVariable], list[ScalarVariable]]:
+def variables_from_dict(
+    config: dict,
+) -> tuple[list[ScalarVariable], list[ScalarVariable]]:
     """Parses given config and returns in- and output variable lists.
 
     Args:
@@ -120,7 +132,9 @@ def variables_from_dict(config: dict) -> tuple[list[ScalarVariable], list[Scalar
     return input_variables, output_variables
 
 
-def variables_from_yaml(yaml_obj: Union[str, os.PathLike]) -> tuple[list[ScalarVariable], list[ScalarVariable]]:
+def variables_from_yaml(
+    yaml_obj: Union[str, os.PathLike],
+) -> tuple[list[ScalarVariable], list[ScalarVariable]]:
     """Parses YAML object and returns in- and output variable lists.
 
     Args:
@@ -139,8 +153,8 @@ def variables_from_yaml(yaml_obj: Union[str, os.PathLike]) -> tuple[list[ScalarV
 
 
 def get_valid_path(
-        path: Union[str, os.PathLike],
-        directory: Union[str, os.PathLike] = "",
+    path: Union[str, os.PathLike],
+    directory: Union[str, os.PathLike] = "",
 ) -> Union[str, os.PathLike]:
     """Validates path exists either as relative or absolute path and returns the first valid option.
 
@@ -161,9 +175,9 @@ def get_valid_path(
 
 
 def replace_relative_paths(
-        d: dict,
-        model_fields: dict = None,
-        directory: Union[str, os.PathLike] = "",
+    d: dict,
+    model_fields: dict = None,
+    directory: Union[str, os.PathLike] = "",
 ) -> dict:
     """Replaces dictionary entries with absolute paths where the model field annotation is not string or path-like.
 
@@ -194,13 +208,15 @@ def replace_relative_paths(
                     else:
                         field_types.append(field_type)
                 for i, ele in enumerate(v):
-                    if (isinstance(ele, (str, os.PathLike)) and
-                            all([t not in field_types for t in [str, os.PathLike]])):
+                    if isinstance(ele, (str, os.PathLike)) and all(
+                        [t not in field_types for t in [str, os.PathLike]]
+                    ):
                         v[i] = get_valid_path(ele, directory)
         elif isinstance(v, dict):
             model_subfields = {
                 ".".join(key.split(".")[1:]): value
-                for key, value in model_fields.items() if key.startswith(f"{k}.")
+                for key, value in model_fields.items()
+                if key.startswith(f"{k}.")
             }
             d[k] = replace_relative_paths(v, model_subfields, directory)
     return d

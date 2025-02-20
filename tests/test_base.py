@@ -56,13 +56,15 @@ class TestBaseModel:
 
     def test_json(self, simple_variables):
         example_model = ExampleModel(**simple_variables)
-        dict_output = example_model.json()
+        _ = example_model.json()
 
     def test_yaml_serialization(self, simple_variables):
         example_model = ExampleModel(**simple_variables)
         yaml_output = example_model.yaml()
         dict_output = yaml.safe_load(yaml_output)
-        dict_output["input_variables"]["input1"]["variable_class"] = ScalarVariable.__name__
+        dict_output["input_variables"]["input1"]["variable_class"] = (
+            ScalarVariable.__name__
+        )
 
         # test loading from yaml
         loaded_model = ExampleModel(**dict_output)
@@ -119,7 +121,7 @@ class TestBaseModel:
         example_model.input_validation_config = {input_variables[0].name: "warn"}
         input_dict[input_variables[0].name] = 6.0
         fake_out = io.StringIO()
-        monkeypatch.setattr(sys, 'stdout', fake_out)
+        monkeypatch.setattr(sys, "stdout", fake_out)
         example_model.input_validation(input_dict)
         assert "Warning" in fake_out.getvalue()
 

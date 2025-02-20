@@ -17,6 +17,7 @@ except ImportError:
 
 random.seed(42)
 
+
 def assert_model_equality(m1: TorchModel, m2: TorchModel):
     assert m1.input_variables == m2.input_variables
     assert m1.output_variables == m2.output_variables
@@ -35,12 +36,12 @@ def assert_model_equality(m1: TorchModel, m2: TorchModel):
 
 class TestTorchModel:
     def test_model_from_objects(
-            self,
-            california_model_info: dict[str, str],
-            california_model_kwargs: dict[str, Union[list, dict, str]],
-            california_variables: tuple[list[ScalarVariable], list[ScalarVariable]],
-            california_transformers: tuple[list, list],
-            california_model,
+        self,
+        california_model_info: dict[str, str],
+        california_model_kwargs: dict[str, Union[list, dict, str]],
+        california_variables: tuple[list[ScalarVariable], list[ScalarVariable]],
+        california_transformers: tuple[list, list],
+        california_model,
     ):
         input_variables, output_variables = california_variables
         input_transformer, output_transformer = california_transformers
@@ -87,31 +88,42 @@ class TestTorchModel:
         # set back to double
         california_model.precision = "double"
 
-    def test_model_evaluate_single_sample(self, california_test_input_dict: dict, california_model):
+    def test_model_evaluate_single_sample(
+        self, california_test_input_dict: dict, california_model
+    ):
         results = california_model.evaluate(california_test_input_dict)
 
         assert isinstance(results["MedHouseVal"], torch.Tensor)
         assert torch.isclose(
-            results["MedHouseVal"], torch.tensor(4.063651, dtype=results["MedHouseVal"].dtype)
+            results["MedHouseVal"],
+            torch.tensor(4.063651, dtype=results["MedHouseVal"].dtype),
         )
 
-    def test_model_evaluate_n_samples(self, california_test_input_tensor, california_model):
+    def test_model_evaluate_n_samples(
+        self, california_test_input_tensor, california_model
+    ):
         test_dict = {
-            key: california_test_input_tensor[:, idx] for idx, key in enumerate(california_model.input_names)
+            key: california_test_input_tensor[:, idx]
+            for idx, key in enumerate(california_model.input_names)
         }
         results = california_model.evaluate(test_dict)
-        target_tensor = torch.tensor([4.063651, 2.7774928, 2.792812], dtype=results["MedHouseVal"].dtype)
+        target_tensor = torch.tensor(
+            [4.063651, 2.7774928, 2.792812], dtype=results["MedHouseVal"].dtype
+        )
 
-        assert all(torch.isclose(results["MedHouseVal"], target_tensor))
+        assert torch.all(torch.isclose(results["MedHouseVal"], target_tensor))
 
     def test_model_evaluate_batch_n_samples(
-            self,
-            california_test_input_tensor,
-            california_model,
+        self,
+        california_test_input_tensor,
+        california_model,
     ):
         # model should be able to handle input of shape [n_batch, n_samples, n_dim]
         input_dict = {
-            key: california_test_input_tensor[:, idx].unsqueeze(-1).unsqueeze(1).repeat((1, 3, 1))
+            key: california_test_input_tensor[:, idx]
+            .unsqueeze(-1)
+            .unsqueeze(1)
+            .repeat((1, 3, 1))
             for idx, key in enumerate(california_model.input_names)
         }
         results = california_model.evaluate(input_dict)
@@ -120,20 +132,24 @@ class TestTorchModel:
         assert tuple(results["MedHouseVal"].shape) == (3, 3)
 
     def test_model_evaluate_raw(
-            self,
-            california_test_input_dict: dict,
-            california_model_kwargs: dict[str, Union[list, dict, str]],
+        self,
+        california_test_input_dict: dict,
+        california_model_kwargs: dict[str, Union[list, dict, str]],
     ):
         kwargs = deepcopy(california_model_kwargs)
         kwargs["output_format"] = "raw"
         california_model = TorchModel(**kwargs)
-        float_dict = {key: value.item() for key, value in california_test_input_dict.items()}
+        float_dict = {
+            key: value.item() for key, value in california_test_input_dict.items()
+        }
         results = california_model.evaluate(float_dict)
 
         assert isinstance(results["MedHouseVal"], float)
         assert results["MedHouseVal"] == pytest.approx(4.063651)
 
-    def test_model_evaluate_shuffled_input(self, california_test_input_dict: dict, california_model):
+    def test_model_evaluate_shuffled_input(
+        self, california_test_input_dict: dict, california_model
+    ):
         shuffled_input = deepcopy(california_test_input_dict)
         item_list = list(shuffled_input.items())
         random.shuffle(item_list)
@@ -142,29 +158,32 @@ class TestTorchModel:
 
         assert isinstance(results["MedHouseVal"], torch.Tensor)
         assert torch.isclose(
-            results["MedHouseVal"], torch.tensor(4.063651, dtype=results["MedHouseVal"].dtype)
+            results["MedHouseVal"],
+            torch.tensor(4.063651, dtype=results["MedHouseVal"].dtype),
         )
 
-    @pytest.mark.parametrize("test_idx,expected", [(0, 4.063651), (1, 2.7774928), (2, 2.792812)])
+    @pytest.mark.parametrize(
+        "test_idx,expected", [(0, 4.063651), (1, 2.7774928), (2, 2.792812)]
+    )
     def test_model_evaluate_different_values(
-            self,
-            test_idx: int,
-            expected: float,
-            california_test_input_tensor,
-            california_model,
+        self,
+        test_idx: int,
+        expected: float,
+        california_test_input_tensor,
+        california_model,
     ):
         input_dict = {
-            key: california_test_input_tensor[test_idx][idx] for idx, key in
-            enumerate(california_model.input_names)
+            key: california_test_input_tensor[test_idx][idx]
+            for idx, key in enumerate(california_model.input_names)
         }
         results = california_model.evaluate(input_dict)
 
         assert results["MedHouseVal"].item() == pytest.approx(expected)
 
     def test_model_evaluate_with_no_output_transformers(
-            self,
-            california_test_input_dict: dict,
-            california_model_kwargs: dict[str, Union[list, dict, str]],
+        self,
+        california_test_input_dict: dict,
+        california_model_kwargs: dict[str, Union[list, dict, str]],
     ):
         kwargs = deepcopy(california_model_kwargs)
         kwargs["output_transformers"] = []
@@ -172,13 +191,14 @@ class TestTorchModel:
         results = model.evaluate(california_test_input_dict)
 
         assert torch.isclose(
-            results["MedHouseVal"], torch.tensor(1.8523695, dtype=results["MedHouseVal"].dtype)
+            results["MedHouseVal"],
+            torch.tensor(1.8523695, dtype=results["MedHouseVal"].dtype),
         )
 
     def test_differentiability(
-            self,
-            california_test_input_dict: dict,
-            california_model_kwargs: dict[str, Any],
+        self,
+        california_test_input_dict: dict,
+        california_model_kwargs: dict[str, Any],
     ):
         kwargs = deepcopy(california_model_kwargs)
         kwargs["model"].train().requires_grad_(True)
@@ -202,9 +222,15 @@ class TestTorchModel:
 
         def get_x_limits(v):
             x_limits = {
-                "min": torch.tensor([var.value_range[0] for var in v], dtype=california_model.dtype),
-                "max": torch.tensor([var.value_range[1] for var in v], dtype=california_model.dtype),
-                "default": torch.tensor([var.default_value for var in v], dtype=california_model.dtype),
+                "min": torch.tensor(
+                    [var.value_range[0] for var in v], dtype=california_model.dtype
+                ),
+                "max": torch.tensor(
+                    [var.value_range[1] for var in v], dtype=california_model.dtype
+                ),
+                "default": torch.tensor(
+                    [var.default_value for var in v], dtype=california_model.dtype
+                ),
             }
             return x_limits
 
@@ -212,41 +238,46 @@ class TestTorchModel:
         x_lim_nn = {key: model._transform_inputs(x_lim[key]) for key in x_lim.keys()}
         # add new transformer
         d = len(model.input_variables)
-        new_transformer = AffineInputTransform(d=d, offset=torch.rand(d), coefficient=1.0 + torch.rand(d))
-        model.insert_input_transformer(new_transformer, loc=len(model.input_transformers))
-        updated_input_variables = model.update_input_variables_to_transformer(len(model.input_transformers) - 1)
+        new_transformer = AffineInputTransform(
+            d=d, offset=torch.rand(d), coefficient=1.0 + torch.rand(d)
+        )
+        model.insert_input_transformer(
+            new_transformer, loc=len(model.input_transformers)
+        )
+        updated_input_variables = model.update_input_variables_to_transformer(
+            len(model.input_transformers) - 1
+        )
         model.input_variables = updated_input_variables
         # compute new NN limits
         x_lim_updated = get_x_limits(updated_input_variables)
-        x_lim_nn_updated = {key: model._transform_inputs(x_lim_updated[key]) for key in x_lim_updated.keys()}
+        x_lim_nn_updated = {
+            key: model._transform_inputs(x_lim_updated[key])
+            for key in x_lim_updated.keys()
+        }
 
         for key in x_lim_nn.keys():
-            assert all(torch.isclose(x_lim_nn[key], x_lim_nn_updated[key], atol=1e-6))
+            assert torch.all(
+                torch.isclose(x_lim_nn[key], x_lim_nn_updated[key], atol=1e-6)
+            )
 
     def test_jit_serialization(self, california_model):
-        file = "test_jit.yml"
-        jit_file = "test_jit_model.jit"
-        model_file = "test_jit_model.pt"
-        t_in_file = "test_jit_input_transformers_0.pt"
-        t_out_file = "test_jit_output_transformers_0.pt"
+        filename = "test_torch_model"
+        file = f"{filename}.yml"
 
         # Test saving with save_jit=True
         california_model.dump(file, save_jit=True)
         assert os.path.exists(file)
-        assert os.path.exists(jit_file)
-        assert os.path.exists(model_file)
-        assert os.path.exists(t_in_file)
-        assert os.path.exists(t_out_file)
+        assert os.path.exists(f"{filename}_model.jit")
 
         # Test loading the JIT model
         try:
-            loaded_model = torch.jit.load(jit_file)
+            loaded_model = torch.jit.load(f"{filename}_model.jit")
             assert loaded_model is not None
         except Exception as e:
             pytest.fail(f"Failed to load JIT model: {e}")
 
         os.remove(file)
-        os.remove(jit_file)
-        os.remove(model_file)
-        os.remove(t_in_file)
-        os.remove(t_out_file)
+        os.remove(f"{filename}_model.pt")
+        os.remove(f"{filename}_model.jit")
+        os.remove(f"{filename}_input_transformers_0.pt")
+        os.remove(f"{filename}_output_transformers_0.pt")
