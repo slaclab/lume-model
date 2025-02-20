@@ -92,7 +92,7 @@ class TorchModel(LUMEBaseModel):
     def validate_torch_model(cls, v):
         if isinstance(v, (str, os.PathLike)):
             if os.path.exists(v):
-                v = torch.load(v, weight_only=False)
+                v = torch.load(v, weights_only=False)
             else:
                 raise OSError(f"File {v} is not found.")
         return v
