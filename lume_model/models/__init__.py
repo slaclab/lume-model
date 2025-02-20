@@ -8,6 +8,7 @@ registered_models = []
 try:
     from lume_model.models.torch_model import TorchModel
     from lume_model.models.torch_module import TorchModule
+
     registered_models += [TorchModel, TorchModule]
 except ModuleNotFoundError:
     pass
@@ -24,7 +25,9 @@ def get_model(name: str):
     """
     model_lookup = {m.__name__: m for m in registered_models}
     if name not in model_lookup.keys():
-        raise KeyError(f"No model named {name}, available models are {list(model_lookup.keys())}")
+        raise KeyError(
+            f"No model named {name}, available models are {list(model_lookup.keys())}"
+        )
     return model_lookup[name]
 
 

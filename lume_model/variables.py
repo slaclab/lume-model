@@ -5,6 +5,7 @@ but they can be used to validate encountered values.
 
 For now, only scalar floating-point variables are supported.
 """
+
 from abc import ABC, abstractmethod
 from typing import Any, Optional, Type
 from enum import Enum
@@ -16,6 +17,7 @@ from pydantic import BaseModel, field_validator, model_validator, ConfigDict
 
 class ConfigEnum(str, Enum):
     """Enum for configuration options during validation."""
+
     NULL = "none"
     WARN = "warn"
     ERROR = "error"
@@ -27,6 +29,7 @@ class Variable(BaseModel, ABC):
     Attributes:
         name: Name of the variable.
     """
+
     name: str
 
     @property
@@ -55,6 +58,7 @@ class ScalarVariable(Variable):
         is_constant: Flag indicating whether the variable is constant.
         unit: Unit associated with the variable.
     """
+
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
     default_value: Optional[float] = None
@@ -70,7 +74,9 @@ class ScalarVariable(Variable):
         if value is not None:
             value = tuple(value)
             if not value[0] <= value[1]:
-                raise ValueError(f"Minimum value ({value[0]}) must be lower or equal than maximum ({value[1]}).")
+                raise ValueError(
+                    f"Minimum value ({value[0]}) must be lower or equal than maximum ({value[1]})."
+                )
         return value
 
     @model_validator(mode="after")
@@ -78,15 +84,16 @@ class ScalarVariable(Variable):
         if self.default_value is not None and self.value_range is not None:
             if not self._value_is_within_range(self.default_value):
                 raise ValueError(
-                    "Default value ({}) is out of valid range "
-                    "([{},{}]).".format(self.default_value, *self.value_range)
+                    "Default value ({}) is out of valid range ([{},{}]).".format(
+                        self.default_value, *self.value_range
+                    )
                 )
         return self
 
     @model_validator(mode="after")
     def validate_constant_value_range(self):
         if self.is_constant and self.value_range is not None:
-            #if the upper limit is not equal to the lower limit, raise an error
+            # if the upper limit is not equal to the lower limit, raise an error
             if not self.value_range[0] == self.value_range[1]:
                 error_message = (
                     f"Expected range to be constant for constant variable '{self.name}', "
@@ -131,12 +138,18 @@ class ScalarVariable(Variable):
 
     def _validate_value_is_within_range(self, value: float, config: ConfigEnum = None):
         if not self._value_is_within_range(value):
-            error_message = "Value ({}) of '{}' is out of valid range.".format(value, self.name)
+            error_message = "Value ({}) of '{}' is out of valid range.".format(
+                value, self.name
+            )
             if self.value_range is not None:
-                error_message = error_message[:-1] + " ([{},{}]).".format(*self.value_range)
-            error_message = error_message + \
-                " Executing the model outside of the training data range may result in" \
+                error_message = error_message[:-1] + " ([{},{}]).".format(
+                    *self.value_range
+                )
+            error_message = (
+                error_message
+                + " Executing the model outside of the training data range may result in"
                 " unpredictable and invalid predictions."
+            )
             if config == "warn":
                 print("Warning: " + error_message)
             else:
@@ -151,12 +164,17 @@ class ScalarVariable(Variable):
             if self.default_value is None:
                 is_within_tolerance = True
             else:
-                is_within_tolerance = math.isclose(value, self.default_value, **tolerances)
+                is_within_tolerance = math.isclose(
+                    value, self.default_value, **tolerances
+                )
         # non-constant variables
         else:
             is_within_range = self.value_range[0] <= value <= self.value_range[1]
-            is_within_tolerance = any([math.isclose(value, ele, **tolerances) for ele in self.value_range])
+            is_within_tolerance = any(
+                [math.isclose(value, ele, **tolerances) for ele in self.value_range]
+            )
         return is_within_range or is_within_tolerance
+
 
 def get_variable(name: str) -> Type[Variable]:
     """Returns the Variable subclass with the given name.
@@ -170,7 +188,9 @@ def get_variable(name: str) -> Type[Variable]:
     classes = [ScalarVariable]
     class_lookup = {c.__name__: c for c in classes}
     if name not in class_lookup.keys():
-        raise KeyError(f"No variable named {name}, valid names are {list(class_lookup.keys())}")
+        raise KeyError(
+            f"No variable named {name}, valid names are {list(class_lookup.keys())}"
+        )
     return class_lookup[name]
 
 

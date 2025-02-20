@@ -16,8 +16,11 @@ except ImportError:
 
 random.seed(42)
 
+
 def assert_california_module_result(result: torch.Tensor, idx=None):
-    target = torch.tensor([4.0636503726, 2.7774916915, 2.7928111793], dtype=result.dtype)
+    target = torch.tensor(
+        [4.0636503726, 2.7774916915, 2.7928111793], dtype=result.dtype
+    )
     if idx is None:
         assert all(torch.isclose(result, target))
     else:
@@ -49,7 +52,9 @@ def assert_module_equality(m1: TorchModule, m2: TorchModule):
 class TestTorchModule:
     def test_module_initialization(self, california_model):
         lume_module = TorchModule(model=california_model)
-        parameters_with_requires_grad = [param for param in lume_module.parameters() if param.requires_grad]
+        parameters_with_requires_grad = [
+            param for param in lume_module.parameters() if param.requires_grad
+        ]
 
         # gradients should be deactivated and module in eval mode
         assert not parameters_with_requires_grad
@@ -58,10 +63,15 @@ class TestTorchModule:
     def test_module_parameters_match_model(self, california_model):
         california_module = TorchModule(model=california_model)
         params_match = [
-            a == b for a, b in zip(california_module.parameters(), california_model.model.parameters())
+            a == b
+            for a, b in zip(
+                california_module.parameters(), california_model.model.parameters()
+            )
         ]
 
-        assert len(list(california_module.parameters())) == len(list(california_model.model.parameters()))
+        assert len(list(california_module.parameters())) == len(
+            list(california_model.model.parameters())
+        )
         for param_match in params_match:
             if isinstance(param_match, torch.Tensor):
                 assert torch.all(param_match)
@@ -78,11 +88,15 @@ class TestTorchModule:
         assert california_module.training is False
         assert california_module._model.model.training is False
 
-    def test_module_differentiability(self, california_test_input_tensor, california_module):
+    def test_module_differentiability(
+        self, california_test_input_tensor, california_module
+    ):
         lume_module = deepcopy(california_module)
         lume_module.train()
         lume_module.requires_grad_(True)
-        parameters_with_requires_grad = [param for param in lume_module.parameters() if param.requires_grad]
+        parameters_with_requires_grad = [
+            param for param in lume_module.parameters() if param.requires_grad
+        ]
         criterion = torch.nn.MSELoss()
 
         assert lume_module.training
@@ -135,19 +149,27 @@ class TestTorchModule:
         os.remove(f"{filename}_input_transformers_0.pt")
         os.remove(f"{filename}_output_transformers_0.pt")
 
-    def test_module_call_single_input(self, california_test_input_tensor, california_model):
+    def test_module_call_single_input(
+        self, california_test_input_tensor, california_model
+    ):
         lume_module = TorchModule(
             model=california_model,
             input_order=[california_model.input_names[0]],
         )
-        input_tensor = deepcopy(california_test_input_tensor[:, 0].unsqueeze(-1))  # shape (3, 1)
+        input_tensor = deepcopy(
+            california_test_input_tensor[:, 0].unsqueeze(-1)
+        )  # shape (3, 1)
         result = lume_module(input_tensor)
-        target = torch.tensor([3.5094612847, 1.7297480438, 2.7042855903], dtype=result.dtype)
+        target = torch.tensor(
+            [3.5094612847, 1.7297480438, 2.7042855903], dtype=result.dtype
+        )
 
         assert tuple(result.size()) == (3,)
         assert all(torch.isclose(result, target))
 
-    def test_module_call_single_input_bad_shape(self, california_test_input_tensor, california_model):
+    def test_module_call_single_input_bad_shape(
+        self, california_test_input_tensor, california_model
+    ):
         lume_module = TorchModule(
             model=california_model,
             input_order=[california_model.input_names[0]],
@@ -157,24 +179,34 @@ class TestTorchModule:
         with pytest.raises(ValueError):
             lume_module(input_tensor)
 
-    def test_module_call_single_sample(self, california_test_input_tensor, california_module):
+    def test_module_call_single_sample(
+        self, california_test_input_tensor, california_module
+    ):
         idx = 0
-        input_tensor = deepcopy(california_test_input_tensor[idx, :]).unsqueeze(0)  # shape (1,8)
+        input_tensor = deepcopy(california_test_input_tensor[idx, :]).unsqueeze(
+            0
+        )  # shape (1,8)
         result = california_module(input_tensor)
 
         assert tuple(result.size()) == ()
         assert_california_module_result(result, idx=idx)
 
-    def test_module_call_n_samples(self, california_test_input_tensor, california_module):
+    def test_module_call_n_samples(
+        self, california_test_input_tensor, california_module
+    ):
         result = california_module(california_test_input_tensor)
 
-        assert tuple(result.size()) == (3, )
+        assert tuple(result.size()) == (3,)
         assert_california_module_result(result)
 
-    def test_module_reordered_inputs(self, california_test_input_tensor, california_model):
+    def test_module_reordered_inputs(
+        self, california_test_input_tensor, california_model
+    ):
         # shuffle the input names and the values associated with them
         idx = 0
-        shuffled_inputs = list(zip(california_model.input_names, california_test_input_tensor[idx]))
+        shuffled_inputs = list(
+            zip(california_model.input_names, california_test_input_tensor[idx])
+        )
         random.shuffle(shuffled_inputs)
         input_names = [shuffled_inputs[i][0] for i in range(len(shuffled_inputs))]
         input_tensor = torch.tensor(
@@ -191,7 +223,9 @@ class TestTorchModule:
         assert tuple(result.size()) == ()
         assert_california_module_result(result, idx=idx)
 
-    def test_module_call_manipulate_output(self, california_test_input_tensor, california_model):
+    def test_module_call_manipulate_output(
+        self, california_test_input_tensor, california_model
+    ):
         n = 2
         output_order = deepcopy(california_model.output_names)
         output_order.append(f"MedHouseVal_x{n}")
@@ -218,7 +252,9 @@ class TestTorchModule:
         assert_california_module_result(result[:, 0])
         assert_california_module_result(result[:, 1] / n)
 
-    def test_module_call_batch_n_samples(self, california_test_input_tensor, california_module):
+    def test_module_call_batch_n_samples(
+        self, california_test_input_tensor, california_module
+    ):
         # module should be able to handle input of shape [n_batch, n_samples, n_dim]
         n_batch = 5
         input_tensor = california_test_input_tensor.unsqueeze(0).repeat((n_batch, 1, 1))
@@ -228,14 +264,23 @@ class TestTorchModule:
         for i in range(n_batch):
             assert_california_module_result(result[i])
 
-    def test_module_as_gp_prior_mean(self, california_test_input_tensor, california_module):
+    def test_module_as_gp_prior_mean(
+        self, california_test_input_tensor, california_module
+    ):
         train_x = california_test_input_tensor.double()
         train_y = california_module(train_x).unsqueeze(-1)
         with warnings.catch_warnings():
-            warnings.simplefilter("ignore")  # ignore warning that input data is not standardized
+            warnings.simplefilter(
+                "ignore"
+            )  # ignore warning that input data is not standardized
             gp = SingleTaskGP(train_x, train_y, mean_module=california_module)
-        x_lim = torch.stack([torch.min(train_x, dim=0).values, torch.max(train_x, dim=0).values])
-        x_i = [x_lim[0, i] + (x_lim[1, i] - x_lim[0, i]) * torch.rand(size=(2,)) for i in range(x_lim.shape[-1])]
+        x_lim = torch.stack(
+            [torch.min(train_x, dim=0).values, torch.max(train_x, dim=0).values]
+        )
+        x_i = [
+            x_lim[0, i] + (x_lim[1, i] - x_lim[0, i]) * torch.rand(size=(2,))
+            for i in range(x_lim.shape[-1])
+        ]
         test_x = torch.cartesian_prod(*x_i)
         test_y = california_module(test_x)
         post = gp.posterior(test_x)

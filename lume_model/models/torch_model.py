@@ -292,6 +292,13 @@ class TorchModel(LUMEBaseModel):
         x_new = {}
         for key in x_old.keys():
             x = x_old[key]
+
+            # Make at least 2D
+            if x.ndim == 0:
+                x = x.unsqueeze(0)
+            if x.ndim == 1:
+                x = x.unsqueeze(0)
+
             # compute previous limits at transformer location
             for i in range(transformer_loc):
                 if isinstance(self.input_transformers[i], ReversibleInputTransform):
@@ -319,8 +326,8 @@ class TorchModel(LUMEBaseModel):
             x_new[key] = x
         updated_variables = deepcopy(self.input_variables)
         for i, var in enumerate(updated_variables):
-            var.value_range = [x_new["min"][i].item(), x_new["max"][i].item()]
-            var.default_value = x_new["default"][i].item()
+            var.value_range = [x_new["min"][0][i].item(), x_new["max"][0][i].item()]
+            var.default_value = x_new["default"][0][i].item()
         return updated_variables
 
     def _format_inputs(
@@ -402,6 +409,12 @@ class TorchModel(LUMEBaseModel):
         Returns:
             Tensor of transformed inputs to be passed to the model.
         """
+        # Make at least 2D
+        if input_tensor.ndim == 0:
+            input_tensor = input_tensor.unsqueeze(0)
+        if input_tensor.ndim == 1:
+            input_tensor = input_tensor.unsqueeze(0)
+
         for transformer in self.input_transformers:
             if isinstance(transformer, ReversibleInputTransform):
                 input_tensor = transformer.transform(input_tensor)
