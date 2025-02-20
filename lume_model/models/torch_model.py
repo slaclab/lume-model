@@ -92,7 +92,7 @@ class TorchModel(LUMEBaseModel):
     def validate_torch_model(cls, v):
         if isinstance(v, (str, os.PathLike)):
             if os.path.exists(v):
-                v = torch.load(v)
+                v = torch.load(v, weight_only=False)
             else:
                 raise OSError(f"File {v} is not found.")
         return v
@@ -105,7 +105,7 @@ class TorchModel(LUMEBaseModel):
         for t in v:
             if isinstance(t, (str, os.PathLike)):
                 if os.path.exists(t):
-                    t = torch.load(t)
+                    t = torch.load(t, weights_only=False)
                 else:
                     raise OSError(f"File {t} is not found.")
             loaded_transformers.append(t)
