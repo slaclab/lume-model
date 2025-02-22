@@ -4,15 +4,20 @@ LUME-model holds data structures used in the LUME modeling toolset. Variables an
 
 ## Requirements
 
-* Python >= 3.9
+* Python >= 3.10
 * pydantic
 * numpy
+* pyyaml
 
 ## Install
 
 LUME-model can be installed with conda using the command:
 
 ``` $ conda install lume-model -c conda-forge ```
+
+or through pip (coming soon):
+
+``` $ pip install lume-model ```
 
 ## Developer
 
@@ -59,7 +64,7 @@ Example model implementation and instantiation:
 
 ```python
 from lume_model.base import LUMEBaseModel
-from lume_model.variables import ScalarInputVariable, ScalarOutputVariable
+from lume_model.variables import ScalarVariable
 
 
 class ExampleModel(LUMEBaseModel):
@@ -72,12 +77,12 @@ class ExampleModel(LUMEBaseModel):
 
 
 input_variables = [
-    ScalarInputVariable(name="input1", default=0.1, value_range=[0.0, 1.0]),
-    ScalarInputVariable(name="input2", default=0.2, value_range=[0.0, 1.0]),
+    ScalarVariable(name="input1", default=0.1, value_range=[0.0, 1.0]),
+    ScalarVariable(name="input2", default=0.2, value_range=[0.0, 1.0]),
 ]
 output_variables = [
-    ScalarOutputVariable(name="output1"),
-    ScalarOutputVariable(name="output2"),
+    ScalarVariable(name="output1"),
+    ScalarVariable(name="output2"),
 ]
 
 m = ExampleModel(input_variables=input_variables, output_variables=output_variables)
@@ -145,11 +150,11 @@ fixed_model: true
 ```
 
 In addition to the model_class, we also specify the path to the
-PyTorch model and the transformers (saved using `torch.save()`).
+TorchModel's model and transformers (saved using `torch.save()`).
 
 The `output_format` specification indicates which form the outputs
 of the model's `evaluate()` function should take, which may vary
-depending on the application. PyTorchModels working with the
+depending on the application. TorchModel instances working with the
 [LUME-EPICS](https://github.com/slaclab/lume-epics) service will
 require an `OutputVariable` type, while [Xopt](https://github.
 com/xopt-org/Xopt) requires either a dictionary of float
@@ -268,3 +273,8 @@ output = torch_module(input_data)
 # Output will be a tensor
 print(output)
 ```
+### Saving using TorchScript
+
+The `TorchModule` class' dump method has the option to save as a scripted JIT model by passing `save_jit=True` when calling the dump method. This will save the model as a TorchScript model, which can be loaded and used without the need for the original model file.
+
+Note that saving as JIT through scripting has only been evaluated for NN models that don't depend on BoTorch modules.
