@@ -19,3 +19,4 @@ dependencies:
   - mkdocstrings
   - mkdocstrings-python
   - mkdocs-material
+  - mkdocs-include-markdown-plugin

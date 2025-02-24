@@ -27,6 +27,25 @@ A development environment may be created using the packaged `dev-environment.yml
 conda env create -f dev-environment.yml
 ```
 
+Install as editable:
+
+```
+conda activate lume-model-dev
+pip install --no-dependencies -e .
+```
+
+Or by creating a fresh environment and installing the package:
+
+```
+pip install -e ".[dev]"
+```
+
+Note that this repository uses pre-commit hooks. To install these hooks, run:
+
+```
+pre-commit install
+```
+
 ## Variables
 
 The lume-model variables are intended to enforce requirements for input and output variables by variable type. For now, only scalar variables (floats) are supported.
