@@ -1,18 +1,16 @@
 import logging
-from typing import Union, Any
+from typing import Union
 
-from pydantic import field_validator, model_validator
 import torch
-from torch.distributions import Distribution as  TDistribution
+from torch.distributions import Distribution as TDistribution
 from torch.distributions import MultivariateNormal
-from botorch.models import SingleTaskGP
-from botorch.fit import fit_gpytorch_mll
+from botorch.models import SingleTaskGP, MultiTaskGP
 from gpytorch.mlls import ExactMarginalLogLikelihood
 from botorch.models.transforms.input import InputTransform
 from botorch.models.transforms.outcome import OutcomeTransform
 
 from lume_model.base import LUMEBaseModel
-from lume_model.variables import ScalarVariable, DistributionVariable
+from lume_model.variables import DistributionVariable
 from lume_model.models.utils import InputDictModel, format_inputs, itemize_dict
 
 logger = logging.getLogger(__name__)
@@ -26,29 +24,30 @@ class GPModel(LUMEBaseModel):
         device: Device on which the model will be evaluated. Defaults to "cpu".
         precision: Precision of the model, either "double" or "single". Defaults to "double".
     """
-    model: SingleTaskGP
+
+    model: SingleTaskGP | MultiTaskGP  # TODO: update/generalize
     output_variables: list[DistributionVariable]
     device: Union[torch.device, str] = "cpu"
     precision: str = "double"
 
-    @model_validator(mode='before')
-    def validate_dimensions(cls, values: dict[str, Any]) -> dict[str, Any]:
-        """Validate the number of input variables to match the model."""
-        model = values["model"]
-        input_variables = values["input_variables"]
-        output_variables = values["output_variables"]
-
-        if model is None:
-            raise ValueError("Model attribute is missing.")
-
-        num_inputs = model.train_inputs[0].shape[-1]
-        num_outputs = model.train_targets.shape[0] if len(model.train_targets.shape) > 1 else 1
-
-        if len(input_variables) != num_inputs:
-            raise ValueError(f"The initialized GPModel requires {num_inputs} input variables.")
-        if len(output_variables) != num_outputs:
-            raise ValueError(f"The initialized GPModel requires {num_outputs} output variables.")
-        return values
+    # @model_validator(mode='before')
+    # def validate_dimensions(cls, values: dict[str, Any]) -> dict[str, Any]:
+    #     """Validate the number of input variables to match the model."""
+    #     model = values["model"]
+    #     input_variables = values["input_variables"]
+    #     output_variables = values["output_variables"]
+    #
+    #     if model is None:
+    #         raise ValueError("Model attribute is missing.")
+    #
+    #     num_inputs = model.train_inputs[0].shape[-1]
+    #     num_outputs = model.train_targets.shape[0] if len(model.train_targets.shape) > 1 else 1
+    #
+    #     if len(input_variables) != num_inputs:
+    #         raise ValueError(f"The initialized GPModel requires {num_inputs} input variables.")
+    #     if len(output_variables) != num_outputs:
+    #         raise ValueError(f"The initialized GPModel requires {num_outputs} output variables.")
+    #     return values
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -98,7 +97,9 @@ class GPModel(LUMEBaseModel):
         posterior = self.model.posterior(x)
         return posterior
 
-    def _evaluate(self, input_dict: dict[str, Union[float, torch.Tensor]]) -> dict[str, TDistribution]:
+    def _evaluate(
+        self, input_dict: dict[str, Union[float, torch.Tensor]]
+    ) -> dict[str, TDistribution]:
         """Evaluate the model.
 
         Args:
@@ -133,7 +134,8 @@ class GPModel(LUMEBaseModel):
             return TorchDistributionWrapper(posterior.distribution)
 
     @staticmethod
-    def _create_tensor_from_dict(d: dict[str, Union[float, torch.Tensor]],
+    def _create_tensor_from_dict(
+        d: dict[str, Union[float, torch.Tensor]],
     ) -> torch.Tensor:
         """Create a 2D tensor from a dictionary of floats and tensors.
 
@@ -150,7 +152,9 @@ class GPModel(LUMEBaseModel):
             elif isinstance(value, torch.Tensor):
                 tensors.append(value)
             else:
-                raise ValueError(f"Value for key '{key}' must be either a float or a torch tensor.")
+                raise ValueError(
+                    f"Value for key '{key}' must be either a float or a torch tensor."
+                )
 
         if all(isinstance(value, float) for value in d.values()):
             # All values are floats
@@ -159,13 +163,17 @@ class GPModel(LUMEBaseModel):
             lengths = [tensor.size(0) for tensor in tensors]
             if len(set(lengths)) != 1:
                 raise ValueError("All tensors must have the same length.")
+            dim = tensors[0].dim()
             # Stack tensors into a multidimensional tensor
-            return torch.stack(tensors, dim=1)
+            return torch.stack(tensors, dim=dim)
         else:
             raise ValueError(
-                "All values must be either floats or tensors, and all tensors must have the same length.")
+                "All values must be either floats or tensors, and all tensors must have the same length."
+            )
 
-    def _create_output_dict(self, distribution: TDistribution) -> dict[str, TDistribution]:
+    def _create_output_dict(
+        self, distribution: TDistribution
+    ) -> dict[str, TDistribution]:
         """Returns outputs as dictionary of output names and their corresponding distributions.
 
         Args:
@@ -180,14 +188,25 @@ class GPModel(LUMEBaseModel):
             # Note: only for independent outputs (SingleTaskGP)
             output_distributions = {}
             mean = distribution.mean
-            ss = mean.shape[0]  # sample size
-            cov = distribution.covariance_matrix
+            ss = mean.shape[1] if len(mean.shape) > 2 else mean.shape[0]  # sample size
+            cov = (
+                distribution.covariance_matrix
+            )  # special case, what if this doesn't exist?
+            # TODO: adjust based on whether multioutput dist has cov matrix/var or not
 
             # TODO: check if we need to implement for dists other than MVN?
+            batch = mean.shape[0] if len(mean.shape) > 2 else None
             for i, name in enumerate(self.output_names):
-                _mean = mean[:, i]
-                _cov = torch.zeros(ss, ss, **self._tkwargs)
-                _cov[:, :ss] = cov[i * ss:(i + 1) * ss, i * ss: (i + 1) * ss]
+                if batch is None:
+                    _mean = mean[:, :, i]
+                    _cov = torch.zeros(ss, ss, **self._tkwargs)
+                    _cov[:, :ss] = cov[i * ss : (i + 1) * ss, i * ss : (i + 1) * ss]
+                else:
+                    _mean = mean[:, i]
+                    _cov = torch.zeros(batch, ss, ss, **self._tkwargs)
+                    _cov[:, :ss, :ss] = cov[
+                        :, i * ss : (i + 1) * ss, i * ss : (i + 1) * ss
+                    ]
                 output_distributions[name] = MultivariateNormal(_mean, _cov)
 
             return output_distributions
@@ -218,7 +237,9 @@ class GPModel(LUMEBaseModel):
 
         # return the validated input dict for consistency w/ casting ints to floats
         if any([isinstance(value, torch.Tensor) for value in validated_input.values()]):
-            validated_input = {k: v.to(**self._tkwargs).flatten() for k, v in validated_input.items()}
+            validated_input = {
+                k: v.to(**self._tkwargs).squeeze(-1) for k, v in validated_input.items()
+            }
 
         return validated_input
 
@@ -231,6 +252,7 @@ class GPModel(LUMEBaseModel):
 
 class TorchDistributionWrapper(TDistribution):
     """Wraps any distribution to provide a torch.distributions-like interface."""
+
     def __init__(self, custom_dist):
         """
         Args:
@@ -256,15 +278,15 @@ class TorchDistributionWrapper(TDistribution):
     @property
     def variance(self) -> torch.Tensor:
         """Return the variance of the custom distribution."""
-        attribute_names = ['variance', 'var', 'cov', 'covariance', 'covariance_matrix']
+        attribute_names = ["variance", "var", "cov", "covariance", "covariance_matrix"]
         result, attr_name = self._get_attr(attribute_names)
 
-        if attr_name in ['cov', 'covariance', 'covariance_matrix']:
+        if attr_name in ["cov", "covariance", "covariance_matrix"]:
             return torch.diagonal(torch.tensor(result))
 
         return result
 
-    def log_prob(self,  value: torch.Tensor) -> torch.Tensor:
+    def log_prob(self, value: torch.Tensor) -> torch.Tensor:
         """Compute the log probability for a given value."""
         attribute_names = ["log_prob", "log_likelihood", "logpdf"]
         result, _ = self._get_attr(attribute_names, value)
@@ -300,4 +322,6 @@ class TorchDistributionWrapper(TDistribution):
 
                 return torch.tensor(result, **self._tkwargs), attr_name
 
-        raise AttributeError(f"None of the attributes {attribute_names} found in the distribution.")
+        raise AttributeError(
+            f"None of the attributes {attribute_names} found in the distribution."
+        )

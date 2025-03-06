@@ -3,7 +3,9 @@ from typing import Union, Dict
 from pydantic import BaseModel, ConfigDict
 
 
-def itemize_dict(d: dict[str, Union[float, torch.Tensor]]) -> list[dict[str, Union[float, torch.Tensor]]]:
+def itemize_dict(
+    d: dict[str, Union[float, torch.Tensor]],
+) -> list[dict[str, Union[float, torch.Tensor]]]:
     """Itemizes the given in-/output dictionary.
 
     Args:
@@ -27,7 +29,7 @@ def itemize_dict(d: dict[str, Union[float, torch.Tensor]]) -> list[dict[str, Uni
 
 
 def format_inputs(
-        input_dict: dict[str, Union[float, torch.Tensor]],
+    input_dict: dict[str, Union[float, torch.Tensor]],
 ) -> dict[str, torch.Tensor]:
     """Formats values of the input dictionary as tensors.
 
@@ -40,7 +42,7 @@ def format_inputs(
     formatted_inputs = {}
     for var_name, value in input_dict.items():
         v = value if isinstance(value, torch.Tensor) else torch.tensor(value)
-        formatted_inputs[var_name] = v.squeeze()
+        formatted_inputs[var_name] = v
     return formatted_inputs
 
 
@@ -50,6 +52,7 @@ class InputDictModel(BaseModel):
     Attributes:
         input_dict: Input dictionary to validate.
     """
+
     input_dict: Dict[str, Union[torch.Tensor, float]]
 
     model_config = ConfigDict(arbitrary_types_allowed=True, strict=True)
