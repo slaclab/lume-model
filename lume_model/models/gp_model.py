@@ -1,6 +1,7 @@
 import logging
-from typing import Union
+from typing import Union, Any
 
+from pydantic import model_validator
 import torch
 from torch.distributions import Distribution as TDistribution
 from torch.distributions import MultivariateNormal
@@ -30,24 +31,40 @@ class GPModel(LUMEBaseModel):
     device: Union[torch.device, str] = "cpu"
     precision: str = "double"
 
-    # @model_validator(mode='before')
-    # def validate_dimensions(cls, values: dict[str, Any]) -> dict[str, Any]:
-    #     """Validate the number of input variables to match the model."""
-    #     model = values["model"]
-    #     input_variables = values["input_variables"]
-    #     output_variables = values["output_variables"]
-    #
-    #     if model is None:
-    #         raise ValueError("Model attribute is missing.")
-    #
-    #     num_inputs = model.train_inputs[0].shape[-1]
-    #     num_outputs = model.train_targets.shape[0] if len(model.train_targets.shape) > 1 else 1
-    #
-    #     if len(input_variables) != num_inputs:
-    #         raise ValueError(f"The initialized GPModel requires {num_inputs} input variables.")
-    #     if len(output_variables) != num_outputs:
-    #         raise ValueError(f"The initialized GPModel requires {num_outputs} output variables.")
-    #     return values
+    @model_validator(mode="before")
+    def validate_dimensions(cls, values: dict[str, Any]) -> dict[str, Any]:
+        """Validate the number of input variables to match the model."""
+        model = values["model"]
+        input_variables = values["input_variables"]
+        output_variables = values["output_variables"]
+
+        if model is None:
+            raise ValueError("Model attribute is missing.")
+
+        if isinstance(model, SingleTaskGP):
+            num_inputs = model.train_inputs[0].shape[-1]
+            num_outputs = (
+                model.train_targets.shape[0]
+                if len(model.train_targets.shape) > 1
+                else 1
+            )
+        elif isinstance(model, MultiTaskGP):
+            num_inputs = model.train_inputs[0].shape[-1] - 1
+            num_outputs = len(model._output_tasks)
+        else:
+            raise ValueError(
+                "Model must be an instance of SingleTaskGP or MultiTaskGP."
+            )
+
+        if len(input_variables) != num_inputs:
+            raise ValueError(
+                f"The initialized GPModel requires {num_inputs} input variables."
+            )
+        if len(output_variables) != num_outputs:
+            raise ValueError(
+                f"The initialized GPModel requires {num_outputs} output variables."
+            )
+        return values
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -198,11 +215,11 @@ class GPModel(LUMEBaseModel):
             batch = mean.shape[0] if len(mean.shape) > 2 else None
             for i, name in enumerate(self.output_names):
                 if batch is None:
-                    _mean = mean[:, :, i]
+                    _mean = mean[:, i]
                     _cov = torch.zeros(ss, ss, **self._tkwargs)
                     _cov[:, :ss] = cov[i * ss : (i + 1) * ss, i * ss : (i + 1) * ss]
                 else:
-                    _mean = mean[:, i]
+                    _mean = mean[:, :, i]
                     _cov = torch.zeros(batch, ss, ss, **self._tkwargs)
                     _cov[:, :ss, :ss] = cov[
                         :, i * ss : (i + 1) * ss, i * ss : (i + 1) * ss
