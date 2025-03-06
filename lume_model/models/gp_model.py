@@ -120,7 +120,8 @@ class GPModel(LUMEBaseModel):
         """Evaluate the model.
 
         Args:
-            input_dict: Dictionary of input variable names to values.
+            input_dict: Dictionary of input variable names to values. Values can be floats or
+                `n` or `b x n` (batch mode) torch tensors.
 
         Returns:
             A dictionary of output variable names to distributions.
