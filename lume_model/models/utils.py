@@ -1,10 +1,12 @@
-import torch
 from typing import Union, Dict
+
 from pydantic import BaseModel, ConfigDict
+import torch
+from torch.distributions import Distribution
 
 
 def itemize_dict(
-    d: dict[str, Union[float, torch.Tensor]],
+    d: dict[str, Union[float, torch.Tensor, Distribution]],
 ) -> list[dict[str, Union[float, torch.Tensor]]]:
     """Itemizes the given in-/output dictionary.
 
