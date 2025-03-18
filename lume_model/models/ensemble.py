@@ -9,23 +9,13 @@ from lume_model.models.torch_model import TorchModel
 class NNEnsemble(ProbModelBaseModel):
     """LUME-model class for neural network ensembles.
 
-    This class allows for the evaluation of multiple NN models or a
-    single probabilistic NN model with multiple predictions.
+    This class allows for the evaluation of multiple NN models as an ensemble.
 
     Args:
-        models: List of one or more LUME-model neural network models.
+        models: List of one or more LUME-model neural network models (TorchModel instances).
     """
 
     models: list[TorchModel]
-
-    # for a list of models, each will return a dict of output names with the value
-    # so we need to take mean and var of the output values for each output name
-    # for a single model, it will return a dict of output names with the values,
-    # it will either be "mean" and "var" with float values, or "output1" etc
-    # with tensor values that we'd need to take mean and var of
-    # TODO: will single model return mean and var for each output name? is that compatible
-    #       with the current implementation of TorchModel?
-    # TODO: would single model be a ProbModelBaseModel?
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -34,15 +24,14 @@ class NNEnsemble(ProbModelBaseModel):
         self, input_dict: dict[str, float | torch.Tensor]
     ) -> dict[str, TDistribution]:
         """Get the predictions of the ensemble of models.
+        This implements the abstract method from ProbModelBaseModel.
 
         Args:
-            x: Input tensor.
+            input_dict: Dictionary of input variable names to values.
 
         Returns:
-            Distribution of the predictions.
+            Dictionary of output variable names to distributions.
         """
-        # TorchModels take a dict of input variable names to values
-        # so no need to convert the input to tensor
         predictions = []
         for model in self.models:
             predictions.append(model.evaluate(input_dict))
@@ -50,7 +39,7 @@ class NNEnsemble(ProbModelBaseModel):
         return self._create_output_dict(predictions)
 
     def _create_output_dict(self, output_list: list) -> dict[str, TDistribution]:
-        """Creates the output dictionary from the distribution.
+        """Creates the output dictionary from the ensemble output.
 
         Args:
             output_list: List of output dictionaries.
@@ -58,8 +47,7 @@ class NNEnsemble(ProbModelBaseModel):
         Returns:
             Dictionary of output variable names to distributions.
         """
-
-        # Predictions are a list of dicts of output names to values
+        # Ensemble output is a list of dicts of output names to values
         # need to map them to a dict of output names to distributions
         ensemble_output_dict = {}
 

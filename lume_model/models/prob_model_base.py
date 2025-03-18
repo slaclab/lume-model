@@ -11,7 +11,18 @@ from lume_model.base import LUMEBaseModel
 
 
 class ProbModelBaseModel(LUMEBaseModel):  # TODO: brainstorm a better name
-    """Abstract base class for probabilistic models."""
+    """Abstract base class for probabilistic models.
+
+    This class provides a common interface for probabilistic models. All subclasses need to
+     implement a `_get_predictions` method that accepts a dictionary input, and returns a
+     dictionary of output names to _distributions_. The distributions should be instances of
+    `torch.distributions.Distribution`.
+
+    Attributes:
+        output_variables: List of output variables, which should be of DistributionVariable type.
+        device: Device on which the model will be evaluated. Defaults to "cpu".
+        precision: Precision of the model, either "double" or "single". Defaults to "double".
+    """
 
     output_variables: list[DistributionVariable]
     device: Union[torch.device, str] = "cpu"
@@ -19,7 +30,7 @@ class ProbModelBaseModel(LUMEBaseModel):  # TODO: brainstorm a better name
 
     @model_validator(mode="before")
     def validate_output_variables(cls, values: dict[str, Any]) -> dict[str, Any]:
-        # check that outputs are distribution type
+        """Validate output variables as DistributionVariable."""
         return values
 
     # @model_validator(mode="after")
@@ -47,7 +58,7 @@ class ProbModelBaseModel(LUMEBaseModel):  # TODO: brainstorm a better name
     @property
     def dtype(
         self,
-    ):  # TODO: make it general beyond torch types eg if torch isnt being used
+    ):
         """Returns the data type for the model."""
         if self.precision == "double":
             return torch.double
@@ -69,16 +80,16 @@ class ProbModelBaseModel(LUMEBaseModel):  # TODO: brainstorm a better name
     #     """Get the dimensions of the output variables."""
     #     pass
 
-    @abstractmethod
     def _create_output_dict(
         self, output: list[TDistribution] | TDistribution
     ) -> dict[str, TDistribution]:
         """Create a dictionary of output variable names to distributions.
-        This needs to be defined at the subclass level to handle multi-dimensional outputs correctly
-        for each model type.
+        This can be defined at the subclass level to handle multi-dimensional outputs correctly
+        for each model type before returning the dictionary with `_get_predictions`.
 
         Args:
-            distribution:  Distribution corresponding to the multi-dimensional output.
+            output: A Distribution instance (single model) or a list of Distribution instances
+                corresponding to the multi-dimensional output.
 
         Returns:
             Dictionary of output variable names to distributions.
@@ -130,17 +141,17 @@ class ProbModelBaseModel(LUMEBaseModel):  # TODO: brainstorm a better name
         """Get predictions from the model.
 
         Args:
-            x: Input tensor.
-
+             input_dict: Dictionary of input variable names to values. Values can be floats or
+                `n` or `b x n` (batch mode) torch tensors.
         Returns:
-            Distribution of the output variables.
+            A dictionary of output variable names to distributions.
         """
         pass
 
     def _evaluate(
         self, input_dict: dict[str, Union[float, torch.Tensor]]
     ) -> dict[str, TDistribution]:
-        """Evaluate the model(s).
+        """Evaluate the model.
 
         Args:
             input_dict: Dictionary of input variable names to values. Values can be floats or
@@ -149,9 +160,7 @@ class ProbModelBaseModel(LUMEBaseModel):  # TODO: brainstorm a better name
         Returns:
             A dictionary of output variable names to distributions.
         """
-        # TODO: Actually if it's a TorchModel, it takes input dict directly...
-        #      but they won't all be torchmodels....how to handle this?
-        # Evaluate and get mean and variance
+        # Evaluate and get mean and variance for each output
         output_dict = self._get_predictions(input_dict)
         # Split multi-dimensional output into separate distributions and
         # return output dictionary

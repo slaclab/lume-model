@@ -31,9 +31,6 @@ class GPModel(ProbModelBaseModel):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-    # def _evaluate(self, input_dict: dict[str, Any]) -> dict[str, Any]:
-    #     pass
-
     def get_input_size(self) -> int:
         """Get the dimensions of the input variables."""
         if isinstance(self.model, SingleTaskGP):
@@ -89,8 +86,18 @@ class GPModel(ProbModelBaseModel):
     def _get_predictions(
         self, input_dict: dict[str, float | torch.Tensor]
     ) -> dict[str, TDistribution]:
+        """Get the predictions of the model.
+        This implements the abstract method from ProbModelBaseModel.
+
+        Args:
+            input_dict: Dictionary of input variable names to values.
+
+        Returns:
+            Dictionary of output variable names to distributions.
+        """
         # Create tensor from input_dict
         x = super()._create_tensor_from_dict(input_dict)
+        # Get the posterior distribution
         posterior = self._posterior(x)
         # Wrap the distribution in a torch distribution
         distribution = self._get_distribution(posterior)
@@ -98,13 +105,20 @@ class GPModel(ProbModelBaseModel):
         return self._create_output_dict(distribution)
 
     def _posterior(self, x):
-        """Compute the posterior distribution."""
+        """Compute the posterior distribution.
+
+        Args:
+            x: Input tensor.
+
+        Returns:
+            Posterior object from the model.
+        """
         self.model.eval()
         posterior = self.model.posterior(x)
         return posterior
 
     def _get_distribution(self, posterior) -> TDistribution:
-        """Get the distribution from the posterior.
+        """Get the distribution from the posterior.s
 
         Args:
             posterior: Posterior object from the model.
