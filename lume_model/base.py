@@ -17,7 +17,7 @@ from lume_model.utils import (
     serialize_variables,
     deserialize_variables,
     variables_from_dict,
-    replace_relative_paths
+    replace_relative_paths,
 )
 
 logger = logging.getLogger(__name__)
@@ -35,12 +35,12 @@ JSON_ENCODERS = {
 
 
 def process_torch_module(
-        module,
-        base_key: str = "",
-        key: str = "",
-        file_prefix: Union[str, os.PathLike] = "",
-        save_modules: bool = True,
-        save_jit: bool = False,
+    module,
+    base_key: str = "",
+    key: str = "",
+    file_prefix: Union[str, os.PathLike] = "",
+    save_modules: bool = True,
+    save_jit: bool = False,
 ):
     """Optionally saves the given torch module to file and returns the filename.
 
@@ -74,17 +74,19 @@ def process_torch_module(
         except Exception as e:
             logger.warning(
                 "Saving as JIT through scripting has only been evaluated "
-                "for NN models that don't depend on BoTorch modules.")
+                "for NN models that don't depend on BoTorch modules."
+            )
             logger.error(f"Failed to script the model: {e}")
             raise e
-    return jit_filename if not save_modules and save_jit else filename
+    return jit_filename if save_jit else filename
+
 
 def recursive_serialize(
-        v: dict[str, Any],
-        base_key: str = "",
-        file_prefix: Union[str, os.PathLike] = "",
-        save_models: bool = True,
-        save_jit: bool = False,
+    v: dict[str, Any],
+    base_key: str = "",
+    file_prefix: Union[str, os.PathLike] = "",
+    save_models: bool = True,
+    save_jit: bool = False,
 ):
     """Recursively performs custom serialization for the given object.
 
@@ -106,13 +108,18 @@ def recursive_serialize(
         if isinstance(value, dict):
             v[key] = recursive_serialize(value, key)
         elif torch is not None and isinstance(value, torch.nn.Module):
-            v[key] = process_torch_module(value, base_key, key, file_prefix,
-                                          save_models, save_jit)
-        elif isinstance(value, list) and torch is not None and any(
-                isinstance(ele, torch.nn.Module) for ele in value):
+            v[key] = process_torch_module(
+                value, base_key, key, file_prefix, save_models, save_jit
+            )
+        elif (
+            isinstance(value, list)
+            and torch is not None
+            and any(isinstance(ele, torch.nn.Module) for ele in value)
+        ):
             v[key] = [
-                process_torch_module(value[i], base_key, f"{key}_{i}", file_prefix,
-                                     save_models, False)
+                process_torch_module(
+                    value[i], base_key, f"{key}_{i}", file_prefix, save_models, False
+                )
                 for i in range(len(value))
             ]
         else:
@@ -146,12 +153,12 @@ def recursive_deserialize(v):
 
 
 def json_dumps(
-        v,
-        *,
-        base_key="",
-        file_prefix: Union[str, os.PathLike] = "",
-        save_models: bool = True,
-        save_jit: bool = False,
+    v,
+    *,
+    base_key="",
+    file_prefix: Union[str, os.PathLike] = "",
+    save_models: bool = True,
+    save_jit: bool = False,
 ):
     """Serializes variables before dumping with json.
 
@@ -165,7 +172,9 @@ def json_dumps(
     Returns:
         JSON formatted string.
     """
-    v = recursive_serialize(v.model_dump(), base_key, file_prefix, save_models, save_jit)
+    v = recursive_serialize(
+        v.model_dump(), base_key, file_prefix, save_models, save_jit
+    )
     v = json.dumps(v)
     return v
 
@@ -185,8 +194,8 @@ def json_loads(v):
 
 
 def parse_config(
-        config: Union[dict, str, TextIOWrapper, os.PathLike],
-        model_fields: dict = None,
+    config: Union[dict, str, TextIOWrapper, os.PathLike],
+    model_fields: dict = None,
 ) -> dict:
     """Parses model configuration and returns keyword arguments for model constructor.
 
@@ -229,7 +238,8 @@ def model_kwargs_from_dict(config: dict) -> dict:
     config = deserialize_variables(config)
     if all(key in config.keys() for key in ["input_variables", "output_variables"]):
         config["input_variables"], config["output_variables"] = variables_from_dict(
-            config)
+            config
+        )
     config.pop("model_class", None)
     return config
 
@@ -248,6 +258,7 @@ class LUMEBaseModel(BaseModel, ABC):
         output_validation_config: Determines the behavior during output validation by specifying the validation
           config for each output variable: {var_name: value}. Value can be "warn", "error", or None.
     """
+
     input_variables: list[ScalarVariable]
     output_variables: list[ScalarVariable]
     input_validation_config: Optional[dict[str, ConfigEnum]] = None
@@ -281,7 +292,9 @@ class LUMEBaseModel(BaseModel, ABC):
         """
         if len(args) == 1:
             if len(kwargs) > 0:
-                raise ValueError("Cannot specify YAML string and keyword arguments for LUMEBaseModel init.")
+                raise ValueError(
+                    "Cannot specify YAML string and keyword arguments for LUMEBaseModel init."
+                )
             super().__init__(**parse_config(args[0], self.model_fields))
         elif len(args) > 1:
             raise ValueError(
@@ -294,6 +307,16 @@ class LUMEBaseModel(BaseModel, ABC):
     @field_validator("input_variables", "output_variables")
     def unique_variable_names(cls, value):
         verify_unique_variable_names(value)
+        return value
+
+    @field_validator("input_variables")
+    def verify_input_default_value(cls, value):
+        """Verifies that input variables have the required default values."""
+        for var in value:
+            if var.default_value is None:
+                raise ValueError(
+                    f"Input variable {var.name} must have a default value."
+                )
         return value
 
     @property
@@ -312,7 +335,9 @@ class LUMEBaseModel(BaseModel, ABC):
     @property
     def default_output_validation_config(self) -> dict[str, ConfigEnum]:
         """Determines default behavior during output validation (if output_validation_config is None)."""
-        return {var.name: var.default_validation_config for var in self.output_variables}
+        return {
+            var.name: var.default_validation_config for var in self.output_variables
+        }
 
     def evaluate(self, input_dict: dict[str, Any]) -> dict[str, Any]:
         """Main evaluation function, child classes must implement the _evaluate method."""
@@ -327,14 +352,22 @@ class LUMEBaseModel(BaseModel, ABC):
 
     def input_validation(self, input_dict: dict[str, Any]) -> dict[str, Any]:
         for name, value in input_dict.items():
-            _config = None if self.input_validation_config is None else self.input_validation_config.get(name)
+            _config = (
+                None
+                if self.input_validation_config is None
+                else self.input_validation_config.get(name)
+            )
             var = self.input_variables[self.input_names.index(name)]
             var.validate_value(value, config=_config)
         return input_dict
 
     def output_validation(self, output_dict: dict[str, Any]) -> dict[str, Any]:
         for name, value in output_dict.items():
-            _config = None if self.output_validation_config is None else self.output_validation_config.get(name)
+            _config = (
+                None
+                if self.output_validation_config is None
+                else self.output_validation_config.get(name)
+            )
             var = self.output_variables[self.output_names.index(name)]
             var.validate_value(value, config=_config)
         return output_dict
@@ -354,11 +387,11 @@ class LUMEBaseModel(BaseModel, ABC):
         return json.dumps(config)
 
     def yaml(
-            self,
-            base_key: str = "",
-            file_prefix: str = "",
-            save_models: bool = False,
-            save_jit: bool = False,
+        self,
+        base_key: str = "",
+        file_prefix: str = "",
+        save_models: bool = False,
+        save_jit: bool = False,
     ) -> str:
         """Serializes the object and returns a YAML formatted string defining the model.
 
@@ -382,11 +415,11 @@ class LUMEBaseModel(BaseModel, ABC):
         return s
 
     def dump(
-            self,
-            file: Union[str, os.PathLike],
-            base_key: str = "",
-            save_models: bool = True,
-            save_jit: bool = False,
+        self,
+        file: Union[str, os.PathLike],
+        base_key: str = "",
+        save_models: bool = True,
+        save_jit: bool = False,
     ):
         """Returns and optionally saves YAML formatted string defining the model.
 
