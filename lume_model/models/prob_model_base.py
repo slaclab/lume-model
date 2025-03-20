@@ -31,6 +31,11 @@ class ProbModelBaseModel(LUMEBaseModel):  # TODO: brainstorm a better name
     @model_validator(mode="before")
     def validate_output_variables(cls, values: dict[str, Any]) -> dict[str, Any]:
         """Validate output variables as DistributionVariable."""
+        for variable in values["output_variables"]:
+            if not isinstance(variable, DistributionVariable):
+                raise ValueError(
+                    "Output variables must be of type DistributionVariable."
+                )
         return values
 
     # @model_validator(mode="after")
@@ -80,16 +85,14 @@ class ProbModelBaseModel(LUMEBaseModel):  # TODO: brainstorm a better name
     #     """Get the dimensions of the output variables."""
     #     pass
 
-    def _create_output_dict(
-        self, output: list[TDistribution] | TDistribution
-    ) -> dict[str, TDistribution]:
+    def _create_output_dict(self, output: Any) -> dict[str, TDistribution]:
         """Create a dictionary of output variable names to distributions.
         This can be defined at the subclass level to handle multi-dimensional outputs correctly
         for each model type before returning the dictionary with `_get_predictions`.
 
         Args:
-            output: A Distribution instance (single model) or a list of Distribution instances
-                corresponding to the multi-dimensional output.
+            output: Can be Distribution instance (single model), a list of Distribution instances
+                corresponding to the multi-dimensional output, or tensors defining the mean and covariance.
 
         Returns:
             Dictionary of output variable names to distributions.
