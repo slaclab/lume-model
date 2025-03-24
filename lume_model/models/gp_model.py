@@ -84,7 +84,14 @@ class GPModel(ProbModelBaseModel):
                         "Input transforms do not match the trained model's input transforms.\n"
                         f"Model attr: {self.model.input_transform}\n"
                         f"Passed attr: {self.input_transformers}\n"
+                        "LUME-Model uses the passed input transforms only. "
+                        "This may lead to inaccurate predictions."
                     )
+                # Either way, the internal transform should be removed
+                # to avoid double transformations
+                # TODO: should this get saved somewhere though, e.g. as metadata?
+                delattr(self.model, "input_transform")
+
         if self.input_transformers is None:
             self.input_transformers = []
 
@@ -98,7 +105,14 @@ class GPModel(ProbModelBaseModel):
                         "Output transforms do not match the trained model's output transforms.\n"
                         f"Model attr: {self.model.outcome_transform}\n"
                         f"Passed attr: {self.output_transformers}\n"
+                        "LUME-Model uses the passed output transforms only. "
+                        "This may lead to inaccurate predictions."
                     )
+                # Either way, the internal transform should be removed
+                # to avoid double transformations
+                # TODO: should this get saved somewhere though, e.g. as metadata?
+                delattr(self.model, "outcome_transform")
+
         if self.output_transformers is None:
             self.output_transformers = []
 
