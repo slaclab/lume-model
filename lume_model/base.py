@@ -78,7 +78,7 @@ def process_torch_module(
             )
             logger.error(f"Failed to script the model: {e}")
             raise e
-    return jit_filename if not save_modules and save_jit else filename
+    return jit_filename if save_jit else filename
 
 
 def recursive_serialize(
