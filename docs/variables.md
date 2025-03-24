@@ -3,9 +3,7 @@
 ::: lume_model.variables
     options:
         members:
+            - ConfigEnum
             - Variable
             - ScalarVariable
-            - InputVariable
-            - OutputVariable
-            - ScalarInputVariable
-            - ScalarOutputVariable
+            - get_variable
