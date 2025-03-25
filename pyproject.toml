@@ -13,7 +13,6 @@ keywords = ["machine learning", "accelerator physics"]
 classifiers = [
     "Natural Language :: English",
     "Programming Language :: Python :: 3 :: Only",
-    "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
@@ -32,8 +31,8 @@ version_file = "lume_model/_version.py"
 
 [project.optional-dependencies]
 dev = [
-    "botorch<0.11",
-    "torch<=2.5.1",
+    "botorch",
+    "torch",
     "pre-commit",
     "pytest"
 ]
@@ -41,7 +40,8 @@ docs = [
     "mkdocs",
     "mkdocstrings",
     "mkdocstrings-python",
-    "mkdocs-material"
+    "mkdocs-material",
+    "mkdocs-include-markdown-plugin"
 ]
 
 [project.urls]

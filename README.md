@@ -4,9 +4,10 @@ LUME-model holds data structures used in the LUME modeling toolset. Variables an
 
 ## Requirements
 
-* Python >= 3.9
+* Python >= 3.10
 * pydantic
 * numpy
+* pyyaml
 
 ## Install
 
@@ -14,12 +15,35 @@ LUME-model can be installed with conda using the command:
 
 ``` $ conda install lume-model -c conda-forge ```
 
+or through pip (coming soon):
+
+``` $ pip install lume-model ```
+
 ## Developer
 
 A development environment may be created using the packaged `dev-environment.yml` file.
 
 ```
 conda env create -f dev-environment.yml
+```
+
+Install as editable:
+
+```
+conda activate lume-model-dev
+pip install --no-dependencies -e .
+```
+
+Or by creating a fresh environment and installing the package:
+
+```
+pip install -e ".[dev]"
+```
+
+Note that this repository uses pre-commit hooks. To install these hooks, run:
+
+```
+pre-commit install
 ```
 
 ## Variables
@@ -39,9 +63,9 @@ input_variable = ScalarVariable(
 output_variable = ScalarVariable(name="example_output")
 ```
 
-All input variables may be made into constants by passing the 
-`is_constant=True` keyword argument. These constant variables are always 
-set to their default value and any other value assignments on 
+All input variables may be made into constants by passing the
+`is_constant=True` keyword argument. These constant variables are always
+set to their default value and any other value assignments on
 them will raise an error message.
 
 ## Models
@@ -52,14 +76,14 @@ Requirements for model classes:
 
 * input_variables: A list defining the input variables for the model. Variable names must be unique. Required for use with lume-epics tools.
 * output_variables: A list defining the output variables for the model. Variable names must be unique. Required for use with lume-epics tools.
-* _evaluate: The evaluate method is called by the serving model. 
+* _evaluate: The evaluate method is called by the serving model.
   Subclasses must implement this method, accepting and returning a dictionary.
 
 Example model implementation and instantiation:
 
 ```python
 from lume_model.base import LUMEBaseModel
-from lume_model.variables import ScalarInputVariable, ScalarOutputVariable
+from lume_model.variables import ScalarVariable
 
 
 class ExampleModel(LUMEBaseModel):
@@ -72,12 +96,12 @@ class ExampleModel(LUMEBaseModel):
 
 
 input_variables = [
-    ScalarInputVariable(name="input1", default=0.1, value_range=[0.0, 1.0]),
-    ScalarInputVariable(name="input2", default=0.2, value_range=[0.0, 1.0]),
+    ScalarVariable(name="input1", default=0.1, value_range=[0.0, 1.0]),
+    ScalarVariable(name="input2", default=0.2, value_range=[0.0, 1.0]),
 ]
 output_variables = [
-    ScalarOutputVariable(name="output1"),
-    ScalarOutputVariable(name="output2"),
+    ScalarVariable(name="output1"),
+    ScalarVariable(name="output2"),
 ]
 
 m = ExampleModel(input_variables=input_variables, output_variables=output_variables)
@@ -133,7 +157,7 @@ m = ExampleModel("example_model.yml")
 
 ## PyTorch Toolkit
 
-A TorchModel can also be loaded from a YAML, specifying `TorchModel` in 
+A TorchModel can also be loaded from a YAML, specifying `TorchModel` in
 the `model_class` of the configuration file.
 
 ```yaml
@@ -144,18 +168,18 @@ device: cpu
 fixed_model: true
 ```
 
-In addition to the model_class, we also specify the path to the 
-PyTorch model and the transformers (saved using `torch.save()`).
+In addition to the model_class, we also specify the path to the
+TorchModel's model and transformers (saved using `torch.save()`).
 
-The `output_format` specification indicates which form the outputs 
-of the model's `evaluate()` function should take, which may vary 
-depending on the application. PyTorchModels working with the 
-[LUME-EPICS](https://github.com/slaclab/lume-epics) service will 
+The `output_format` specification indicates which form the outputs
+of the model's `evaluate()` function should take, which may vary
+depending on the application. TorchModel instances working with the
+[LUME-EPICS](https://github.com/slaclab/lume-epics) service will
 require an `OutputVariable` type, while [Xopt](https://github.
-com/xopt-org/Xopt) requires either a dictionary of float 
+com/xopt-org/Xopt) requires either a dictionary of float
 values or tensors as output.
 
-The variables and any transformers can also be added to the YAML 
+The variables and any transformers can also be added to the YAML
 configuration file:
 
 ```yaml
@@ -199,8 +223,8 @@ torch_model = TorchModel("path/to/model_config.yml")
 
 ## TorchModule Usage
 
-The `TorchModule` wrapper around the `TorchModel` is used to provide 
-a consistent API with PyTorch, making it easier to integrate with 
+The `TorchModule` wrapper around the `TorchModel` is used to provide
+a consistent API with PyTorch, making it easier to integrate with
 other PyTorch-based tools and workflows.
 
 ### Initialization
@@ -218,7 +242,7 @@ torch_module = TorchModule("path/to/module_config.yml")
 
 ### Model Configuration
 
-The YAML configuration file should specify the `TorchModule` class 
+The YAML configuration file should specify the `TorchModule` class
 as well as the `TorchModel` configuration:
 
 ```yaml
@@ -250,8 +274,8 @@ model:
 
 ### Using the Model
 
-Once the `TorchModule` is initialized, you can use it just like a 
-regular PyTorch model. You can pass tensor-type inputs to the model and 
+Once the `TorchModule` is initialized, you can use it just like a
+regular PyTorch model. You can pass tensor-type inputs to the model and
 get tensor-type outputs.
 
 ```python
@@ -268,3 +292,8 @@ output = torch_module(input_data)
 # Output will be a tensor
 print(output)
 ```
+### Saving using TorchScript
+
+The `TorchModule` class' dump method has the option to save as a scripted JIT model by passing `save_jit=True` when calling the dump method. This will save the model as a TorchScript model, which can be loaded and used without the need for the original model file.
+
+Note that saving as JIT through scripting has only been evaluated for NN models that don't depend on BoTorch modules.
