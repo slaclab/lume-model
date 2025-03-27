@@ -79,7 +79,7 @@ class GPModel(ProbModelBaseModel):
             and self.model.input_transform is not None
         ):
             if self.input_transformers is not None:
-                if self.model.input_transform != self.input_transformers:
+                if [self.model.input_transform] != self.input_transformers:
                     warnings.warn(
                         "Input transforms do not match the trained model's input transforms.\n"
                         f"Model attr: {self.model.input_transform}\n"
@@ -100,7 +100,7 @@ class GPModel(ProbModelBaseModel):
             and self.model.outcome_transform is not None
         ):
             if self.output_transformers is not None:
-                if self.model.outcome_transform != self.output_transformers:
+                if [self.model.outcome_transform] != self.output_transformers:
                     warnings.warn(
                         "Output transforms do not match the trained model's output transforms.\n"
                         f"Model attr: {self.model.outcome_transform}\n"
@@ -182,7 +182,6 @@ class GPModel(ProbModelBaseModel):
         # Wrap the distribution in a torch distribution
         distribution = self._get_distribution(posterior)
         # Take mean and covariance of the distribution
-        # TODO: TDist wrapper doesnt have covar_matrix!
         mean, covar = distribution.mean, distribution.covariance_matrix
         # Transform the output (mean and covariance)
         if self.output_transformers is not None:
@@ -204,8 +203,7 @@ class GPModel(ProbModelBaseModel):
         return posterior
 
     def _get_distribution(self, posterior) -> TDistribution:
-        """Get the distribution from the posterior.s
-
+        """Get the distribution from the posterior and checks that the covariance_matrix attribute exists.
         Args:
             posterior: Posterior object from the model.
 
@@ -213,28 +211,36 @@ class GPModel(ProbModelBaseModel):
             A torch distribution object.
         """
         if isinstance(posterior.distribution, TDistribution):
-            return posterior.distribution
+            d = posterior.distribution
         else:
             # Wrap the distribution in a torch distribution
-            return TorchDistributionWrapper(posterior.distribution)
+            d = TorchDistributionWrapper(posterior.distribution)
+
+        if not hasattr(d, "covariance_matrix"):
+            raise ValueError(
+                f"The posterior distribution {type(posterior.distribution)} does not have a covariance matrix attribute."
+            )
+
+        return d
 
     def _create_output_dict(
         self, output: tuple[torch.Tensor, torch.Tensor]
     ) -> dict[str, TDistribution]:
         """Returns outputs as dictionary of output names and their corresponding distributions.
+        The returned distributions are constructed as torch multivariate normal distributions.
+        At the moment, no other distribution types are supported.
 
         Args:
             output: Tuple containing mean and covariance of the output.
 
         Returns:
-            Dictionary of output variable names to distributions.
+            Dictionary of output variable names to distributions. Distribution is a torch
+            multivariate normal distribution.
         """
         output_distributions = {}
-        # TODO: adjust based on whether multioutput dist has cov matrix/var or not
         mean, cov = output
         ss = mean.shape[1] if len(mean.shape) > 2 else mean.shape[0]  # sample size
 
-        # TODO: check if we need to implement for dists other than MVN?
         batch = mean.shape[0] if len(mean.shape) > 2 else None
         for i, name in enumerate(self.output_names):
             if batch is None:
@@ -245,9 +251,11 @@ class GPModel(ProbModelBaseModel):
                 _mean = mean[:, :, i]
                 _cov = torch.zeros(batch, ss, ss, **self._tkwargs)
                 _cov[:, :ss, :ss] = cov[:, i * ss : (i + 1) * ss, i * ss : (i + 1) * ss]
+
+            _cov = self._check_covariance_matrix(_cov)
             output_distributions[name] = MultivariateNormal(_mean, _cov)
 
-            return output_distributions
+        return output_distributions
 
     def _transform_inputs(self, input_tensor: torch.Tensor) -> torch.Tensor:
         """Applies transformations to the inputs.
@@ -281,3 +289,16 @@ class GPModel(ProbModelBaseModel):
                 w, b = transformer.weight, transformer.bias
                 output_tensor = torch.matmul((output_tensor - b), torch.linalg.inv(w.T))
         return output_tensor
+
+    def _check_covariance_matrix(self, cov: torch.Tensor) -> torch.Tensor:
+        """Checks that the covariance matrix is positive definite."""
+        try:
+            torch.linalg.cholesky(cov)
+        except torch._C._LinAlgError:
+            warnings.warn(
+                "Covariance matrix is not positive definite. Attempting to fix. "
+                "This may lead to inaccurate predictions."
+            )
+            eps = torch.tensor(1e-10, **self._tkwargs)
+            cov = cov + torch.eye(cov.shape[-1], **self._tkwargs) * eps
+        return cov

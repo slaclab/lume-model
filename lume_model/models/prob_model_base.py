@@ -1,4 +1,4 @@
-from typing import Union, Any
+from typing import Union, Any, Tuple
 from abc import abstractmethod
 
 from pydantic import model_validator
@@ -243,6 +243,31 @@ class TorchDistributionWrapper(TDistribution):
             return torch.diagonal(torch.tensor(result))
 
         return result
+
+    @property
+    def covariance_matrix(self) -> torch.Tensor:
+        """Return the covariance matrix of the custom distribution."""
+        attribute_names = ["covariance_matrix", "cov", "covariance"]
+        result, _ = self._get_attr(attribute_names)
+        return result
+
+    def confidence_region(self) -> Tuple[torch.tensor, torch.tensor]:
+        """
+        Adapted from gpytorch.distributions.multivariate_normal
+        Returns 2 standard deviations above and below the mean.
+
+        Returns:
+            Pair of tensors of size `... x N`, where N is the
+            dimensionality of the random variable. The first (second) Tensor is the
+            lower (upper) end of the confidence region.
+        """
+        try:
+            stddev = self.variance.sqrt()
+            std2 = stddev.mul_(2)
+            mean = self.mean
+            return mean.sub(std2), mean.add(std2)
+        except AttributeError:
+            raise AttributeError("The distribution does not have a variance attribute.")
 
     def log_prob(self, value: torch.Tensor) -> torch.Tensor:
         """Compute the log probability for a given value."""

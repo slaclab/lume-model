@@ -139,20 +139,25 @@ class ScalarVariable(Variable):
 
     def _validate_value_is_within_range(self, value: float, config: ConfigEnum = None):
         if not self._value_is_within_range(value):
-            error_message = "Value ({}) of '{}' is out of valid range.".format(
-                value, self.name
-            )
+            if self.is_constant:
+                error_message = "Expected value to be ({}) for constant variable ({}), but received ({}).".format(
+                    self.default_value, self.name, value
+                )
+            else:
+                error_message = "Value ({}) of '{}' is out of valid range.".format(
+                    value, self.name
+                )
             if self.value_range is not None:
                 error_message = error_message[:-1] + " ([{},{}]).".format(
                     *self.value_range
                 )
-            error_message = (
+            range_warning_message = (
                 error_message
                 + " Executing the model outside of the training data range may result in"
                 " unpredictable and invalid predictions."
             )
             if config == "warn":
-                print("Warning: " + error_message)
+                print("Warning: " + range_warning_message)
             else:
                 raise ValueError(error_message)
 
@@ -181,11 +186,11 @@ class DistributionVariable(Variable):
     """Variable for distributions. Currently, only torch distributions are supported.
 
     Attributes:
-        distribution_type: Type of the distribution. E.g., "Normal", "Uniform". Must be a
+        distribution_type: Optional. Type of the distribution. E.g., "Normal", "Uniform". Must be a
           subclass of torch.distributions.Distribution.
     """
 
-    distribution_type: str
+    distribution_type: str = "MultivariateNormal"
 
     @property
     def default_validation_config(self) -> ConfigEnum:

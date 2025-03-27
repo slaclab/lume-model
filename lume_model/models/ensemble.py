@@ -1,3 +1,4 @@
+import warnings
 import torch
 from torch.distributions import Normal
 from torch.distributions.distribution import Distribution as TDistribution
@@ -19,6 +20,7 @@ class NNEnsemble(ProbModelBaseModel):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        warnings.warn("This class is still under development.")
 
     def _get_predictions(
         self, input_dict: dict[str, float | torch.Tensor]
@@ -54,7 +56,7 @@ class NNEnsemble(ProbModelBaseModel):
         for key in output_list[0]:  # for each named output
             output_tensor = torch.tensor([d[key].tolist() for d in output_list])
             # TODO: use whatever distribution is defined for that particular output
-            #       in self.output_variables["distribution_type"]
+            #       in self.output_variables["distribution_type"], if none, take Normal
             ensemble_output_dict[key] = Normal(
                 output_tensor.mean(axis=0),
                 torch.sqrt(output_tensor.var(axis=0)),
