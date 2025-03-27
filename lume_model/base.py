@@ -107,6 +107,10 @@ def recursive_serialize(
     for key, value in v.items():
         if isinstance(value, dict):
             v[key] = recursive_serialize(value, key)
+        elif isinstance(value, list) and all(isinstance(ele, dict) for ele in value):
+            # e.g. NN ensemble
+            # TODO: finish implementation
+            v[key] = [recursive_serialize(value[i]) for i in range(len(value))]
         elif torch is not None and isinstance(value, torch.nn.Module):
             v[key] = process_torch_module(
                 value, base_key, key, file_prefix, save_models, save_jit
@@ -130,6 +134,7 @@ def recursive_serialize(
         try:
             json.dumps(v[key])
         except (TypeError, OverflowError):
+            # print(e)
             v[key] = f"{v[key].__module__}.{v[key].__class__.__qualname__}"
 
     return v
@@ -307,16 +312,6 @@ class LUMEBaseModel(BaseModel, ABC):
     @field_validator("input_variables", "output_variables")
     def unique_variable_names(cls, value):
         verify_unique_variable_names(value)
-        return value
-
-    @field_validator("input_variables")
-    def verify_input_default_value(cls, value):
-        """Verifies that input variables have the required default values."""
-        for var in value:
-            if var.default_value is None:
-                raise ValueError(
-                    f"Input variable {var.name} must have a default value."
-                )
         return value
 
     @property
