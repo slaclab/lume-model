@@ -22,12 +22,15 @@ logger = logging.getLogger(__name__)
 
 
 class GPModel(ProbModelBaseModel):
-    """LUME-model class for Single Task GP models, using GPyTorch and BoTorch.
+    """
+    LUME-model class for GP models.
+    This supports SingleTask and MultiTask models, using GPyTorch and BoTorch.
 
     Args:
         model: A single task GPyTorch model or BoTorch model.
-        device: Device on which the model will be evaluated. Defaults to "cpu".
-        precision: Precision of the model, either "double" or "single". Defaults to "double".
+        input_transformers: List of input transformers to apply to the input data. Optional, default is None.
+        output_transformers: List of output transformers to apply to the output data. Optional, default is None.
+        jitter: Jitter to add to diagonal of covariance matrix for numerical stability, if matrix is not positive definite. Optional, default is 1e-8.
     """
 
     model: SingleTaskGP | MultiTaskGP  # TODO: any other types?
