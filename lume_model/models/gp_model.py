@@ -39,6 +39,8 @@ class GPModel(ProbModelBaseModel):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.check_transforms()
+        # jitter for numerical stability
+        self.jitter = 1e-8
 
     @field_validator("model", mode="before")
     def validate_gp_model(cls, v):
@@ -296,9 +298,8 @@ class GPModel(ProbModelBaseModel):
             torch.linalg.cholesky(cov)
         except torch._C._LinAlgError:
             warnings.warn(
-                "Covariance matrix is not positive definite. Attempting to fix. "
-                "This may lead to inaccurate predictions."
+                f"Covariance matrix is not positive definite. Added jitter of {self.jitter:.1e} to the diagonal."
             )
-            eps = torch.tensor(1e-10, **self._tkwargs)
+            eps = torch.tensor(self.jitter, **self._tkwargs)
             cov = cov + torch.eye(cov.shape[-1], **self._tkwargs) * eps
         return cov
