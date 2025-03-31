@@ -35,12 +35,12 @@ class GPModel(ProbModelBaseModel):
     output_transformers: list[
         OutcomeTransform | ReversibleInputTransform | torch.nn.Linear
     ] = None
+    # jitter for numerical stability
+    jitter: float = 1e-8
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.check_transforms()
-        # jitter for numerical stability
-        self.jitter = 1e-8
 
     @field_validator("model", mode="before")
     def validate_gp_model(cls, v):
