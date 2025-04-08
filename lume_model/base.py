@@ -107,6 +107,16 @@ def recursive_serialize(
     for key, value in v.items():
         if isinstance(value, dict):
             v[key] = recursive_serialize(value, key)
+        elif isinstance(value, list) and all(isinstance(ele, dict) for ele in value):
+            # e.g. NN ensemble
+            v[key] = [
+                recursive_serialize(value[i], f"{base_key}{i}", file_prefix)
+                for i in range(len(value))
+            ]
+            # For NN ensembles, we want v[key] to be a list of the filenames corresponding to each
+            # model in the ensemble and not the serialized dict of each
+            # NOTE: If this clause is reached for other models, we may need to do this differently
+            v[key] = [v[key][i]["model"] for i in range(len(value))]
         elif torch is not None and isinstance(value, torch.nn.Module):
             v[key] = process_torch_module(
                 value, base_key, key, file_prefix, save_models, save_jit
@@ -118,7 +128,7 @@ def recursive_serialize(
         ):
             v[key] = [
                 process_torch_module(
-                    value[i], base_key, f"{key}_{i}", file_prefix, save_models, False
+                    value[i], base_key, f"{key}_{i}", file_prefix, save_models, save_jit
                 )
                 for i in range(len(value))
             ]
@@ -130,6 +140,7 @@ def recursive_serialize(
         try:
             json.dumps(v[key])
         except (TypeError, OverflowError):
+            # print(e)
             v[key] = f"{v[key].__module__}.{v[key].__class__.__qualname__}"
 
     return v
@@ -307,16 +318,6 @@ class LUMEBaseModel(BaseModel, ABC):
     @field_validator("input_variables", "output_variables")
     def unique_variable_names(cls, value):
         verify_unique_variable_names(value)
-        return value
-
-    @field_validator("input_variables")
-    def verify_input_default_value(cls, value):
-        """Verifies that input variables have the required default values."""
-        for var in value:
-            if var.default_value is None:
-                raise ValueError(
-                    f"Input variable {var.name} must have a default value."
-                )
         return value
 
     @property

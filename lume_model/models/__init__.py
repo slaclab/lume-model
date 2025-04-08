@@ -8,8 +8,10 @@ registered_models = []
 try:
     from lume_model.models.torch_model import TorchModel
     from lume_model.models.torch_module import TorchModule
+    from lume_model.models.ensemble import NNEnsemble
+    from lume_model.models.gp_model import GPModel
 
-    registered_models += [TorchModel, TorchModule]
+    registered_models += [TorchModel, TorchModule, NNEnsemble, GPModel]
 except ModuleNotFoundError:
     pass
 
