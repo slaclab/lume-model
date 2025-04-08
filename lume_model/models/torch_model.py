@@ -93,12 +93,13 @@ class TorchModel(LUMEBaseModel):
     def validate_torch_model(cls, v):
         if isinstance(v, (str, os.PathLike)):
             if os.path.exists(v):
+                fname = v
                 try:
                     v = torch.jit.load(v)
-                    print(f"Loaded TorchScript (JIT) model from file: {v}")
+                    print(f"Loaded TorchScript (JIT) model from file: {fname}")
                 except RuntimeError:
                     v = torch.load(v, weights_only=False)
-                    print(f"Loaded PyTorch model from file: {v}")
+                    print(f"Loaded PyTorch model from file: {fname}")
             else:
                 raise OSError(f"File {v} is not found.")
         return v

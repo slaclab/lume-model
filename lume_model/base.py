@@ -109,8 +109,14 @@ def recursive_serialize(
             v[key] = recursive_serialize(value, key)
         elif isinstance(value, list) and all(isinstance(ele, dict) for ele in value):
             # e.g. NN ensemble
-            # TODO: finish implementation
-            v[key] = [recursive_serialize(value[i]) for i in range(len(value))]
+            v[key] = [
+                recursive_serialize(value[i], f"{base_key}{i}", file_prefix)
+                for i in range(len(value))
+            ]
+            # For NN ensembles, we want v[key] to be a list of the filenames corresponding to each
+            # model in the ensemble and not the serialized dict of each
+            # NOTE: If this clause is reached for other models, we may need to do this differently
+            v[key] = [v[key][i]["model"] for i in range(len(value))]
         elif torch is not None and isinstance(value, torch.nn.Module):
             v[key] = process_torch_module(
                 value, base_key, key, file_prefix, save_models, save_jit
@@ -122,7 +128,7 @@ def recursive_serialize(
         ):
             v[key] = [
                 process_torch_module(
-                    value[i], base_key, f"{key}_{i}", file_prefix, save_models, False
+                    value[i], base_key, f"{key}_{i}", file_prefix, save_models, save_jit
                 )
                 for i in range(len(value))
             ]

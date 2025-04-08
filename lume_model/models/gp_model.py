@@ -38,7 +38,6 @@ class GPModel(ProbModelBaseModel):
     output_transformers: list[
         OutcomeTransform | ReversibleInputTransform | torch.nn.Linear
     ] = None
-    # jitter for numerical stability
     jitter: float = 1e-8
 
     def __init__(self, *args, **kwargs):
@@ -290,13 +289,15 @@ class GPModel(ProbModelBaseModel):
         for transformer in self.output_transformers:
             if isinstance(transformer, ReversibleInputTransform):
                 output_tensor = transformer.untransform(output_tensor)
+            elif isinstance(transformer, OutcomeTransform):
+                output_tensor = transformer.untransform(output_tensor)
             else:
                 w, b = transformer.weight, transformer.bias
                 output_tensor = torch.matmul((output_tensor - b), torch.linalg.inv(w.T))
         return output_tensor
 
     def _check_covariance_matrix(self, cov: torch.Tensor) -> torch.Tensor:
-        """Checks that the covariance matrix is positive definite."""
+        """Checks that the covariance matrix is positive definite, and adds jitter if not."""
         try:
             torch.linalg.cholesky(cov)
         except torch._C._LinAlgError:

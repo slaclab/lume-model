@@ -1,4 +1,10 @@
+import os
 import warnings
+from typing import Union
+from pathlib import Path
+
+from pydantic import field_validator
+
 import torch
 from torch.distributions import Normal
 from torch.distributions.distribution import Distribution as TDistribution
@@ -21,6 +27,21 @@ class NNEnsemble(ProbModelBaseModel):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         warnings.warn("This class is still under development.")
+
+    @field_validator("models", mode="before")
+    def validate_torch_model_list(cls, v):
+        if all(isinstance(m, (str, os.PathLike)) for m in v):
+            for i, m in enumerate(v):
+                if os.path.exists(m):
+                    # TODO: if it's a wrapper around TorchModel, how to handle that?
+                    v[i] = TorchModel(Path(f"{m[:-9]}.yml"))
+                else:
+                    raise OSError(f"File {m} is not found.")
+
+        if not all(isinstance(m, TorchModel) for m in v):
+            raise TypeError("All models must be of type TorchModel.")
+
+        return v
 
     def _get_predictions(
         self, input_dict: dict[str, float | torch.Tensor]
@@ -67,3 +88,30 @@ class NNEnsemble(ProbModelBaseModel):
     def _tkwargs(self):
         """Returns the device and dtype for the model."""
         return {"device": self.device, "dtype": self.dtype}
+
+    def dump(
+        self,
+        file: Union[str, os.PathLike],
+        base_key: str = "",
+        save_models: bool = True,
+        save_jit: bool = False,
+    ):
+        """Dump the model to a file.
+
+        Args:
+            file: Path to the file to save the model.
+            base_key: Base key for the model.
+            save_models: Whether to save the models.
+            save_jit: Whether to save the JIT models.
+        """
+        # Save each model in the ensemble
+        for idx, model in enumerate(self.models):
+            model.dump(
+                f"{file[:-4]}_{idx}.yml",  # TODO: make filename more robust
+                base_key=base_key,
+                save_models=False,  # will be saved in the ensemble
+                save_jit=False,
+            )
+
+        # Save the ensemble of models
+        super().dump(file, base_key, save_models, save_jit)
