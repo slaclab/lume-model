@@ -126,9 +126,11 @@ def recursive_serialize(
             and torch is not None
             and any(isinstance(ele, torch.nn.Module) for ele in value)
         ):
+            # List of transformers
+            print(v[key])
             v[key] = [
                 process_torch_module(
-                    value[i], base_key, f"{key}_{i}", file_prefix, save_models, save_jit
+                    value[i], base_key, f"{key}_{i}", file_prefix, save_models, False
                 )
                 for i in range(len(value))
             ]
