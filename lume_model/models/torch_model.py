@@ -1,14 +1,15 @@
 import os
 import logging
-from typing import Union, Dict
+from typing import Union
 from copy import deepcopy
 
 import torch
-from pydantic import field_validator, BaseModel, ConfigDict
+from pydantic import field_validator
 from botorch.models.transforms.input import ReversibleInputTransform
 
 from lume_model.base import LUMEBaseModel
 from lume_model.variables import ScalarVariable
+from lume_model.models.utils import itemize_dict, format_inputs, InputDictModel
 
 logger = logging.getLogger(__name__)
 
@@ -103,6 +104,16 @@ class TorchModel(LUMEBaseModel):
                 raise OSError(f"File {v} is not found.")
         return v
 
+    @field_validator("input_variables")
+    def verify_input_default_value(cls, value):
+        """Verifies that input variables have the required default values."""
+        for var in value:
+            if var.default_value is None or not var.default_value:
+                raise ValueError(
+                    f"Input variable {var.name} must have a default value."
+                )
+        return value
+
     @field_validator("input_transformers", "output_transformers", mode="before")
     def validate_transformers(cls, v):
         if not isinstance(v, list):
@@ -146,7 +157,7 @@ class TorchModel(LUMEBaseModel):
         Returns:
             Dictionary of output variable names to values.
         """
-        formatted_inputs = self._format_inputs(input_dict)
+        formatted_inputs = format_inputs(input_dict)
         input_tensor = self._arrange_inputs(formatted_inputs)
         input_tensor = self._transform_inputs(input_tensor)
         output_tensor = self.model(input_tensor)
@@ -167,11 +178,11 @@ class TorchModel(LUMEBaseModel):
         # validate input type (ints only are cast to floats for scalars)
         validated_input = InputDictModel(input_dict=input_dict).input_dict
         # format inputs as tensors w/o changing the dtype
-        formatted_inputs = self._format_inputs(validated_input)
+        formatted_inputs = format_inputs(validated_input)
         # check default values for missing inputs
         filled_inputs = self._fill_default_inputs(formatted_inputs)
         # itemize inputs for validation
-        itemized_inputs = self._itemize_dict(filled_inputs)
+        itemized_inputs = itemize_dict(filled_inputs)
 
         for ele in itemized_inputs:
             # validate values that were in the torch tensor
@@ -191,7 +202,7 @@ class TorchModel(LUMEBaseModel):
 
     def output_validation(self, output_dict: dict[str, Union[float, torch.Tensor]]):
         """Itemizes tensors before performing output validation."""
-        itemized_outputs = self._itemize_dict(output_dict)
+        itemized_outputs = itemize_dict(output_dict)
         for ele in itemized_outputs:
             super().output_validation(ele)
 
@@ -336,24 +347,6 @@ class TorchModel(LUMEBaseModel):
             var.default_value = x_new["default"][0][i].item()
         return updated_variables
 
-    def _format_inputs(
-        self,
-        input_dict: dict[str, Union[float, torch.Tensor]],
-    ) -> dict[str, torch.Tensor]:
-        """Formats values of the input dictionary as tensors.
-
-        Args:
-            input_dict: Dictionary of input variable names to values.
-
-        Returns:
-            Dictionary of input variable names to tensors.
-        """
-        formatted_inputs = {}
-        for var_name, value in input_dict.items():
-            v = value if isinstance(value, torch.Tensor) else torch.tensor(value)
-            formatted_inputs[var_name] = v.squeeze()
-        return formatted_inputs
-
     def _fill_default_inputs(
         self, input_dict: dict[str, torch.Tensor]
     ) -> dict[str, torch.Tensor]:
@@ -485,65 +478,3 @@ class TorchModel(LUMEBaseModel):
                 key: value.item() if value.squeeze().dim() == 0 else value
                 for key, value in parsed_outputs.items()
             }
-
-    @staticmethod
-    def _itemize_dict(
-        d: dict[str, Union[float, torch.Tensor]],
-    ) -> list[dict[str, Union[float, torch.Tensor]]]:
-        """Itemizes the given in-/output dictionary.
-
-        Args:
-            d: Dictionary to itemize.
-
-        Returns:
-            List of in-/output dictionaries, each containing only a single value per in-/output.
-        """
-        has_tensors = any([isinstance(value, torch.Tensor) for value in d.values()])
-        itemized_dicts = []
-        if has_tensors:
-            for k, v in d.items():
-                for i, ele in enumerate(v.flatten()):
-                    if i >= len(itemized_dicts):
-                        itemized_dicts.append({k: ele.item()})
-                    else:
-                        itemized_dicts[i][k] = ele.item()
-        else:
-            itemized_dicts = [d]
-        return itemized_dicts
-
-    # def _update_image_limits(
-    #         self,
-    #         variable: ScalarVariable, predicted_output: dict[str, torch.Tensor],
-    # ):
-    #     output_idx = self.output_names.index(variable.name)
-    #     if self.output_variables[output_idx].x_min_variable:
-    #         self.output_variables[output_idx].x_min = predicted_output[
-    #             self.output_variables[output_idx].x_min_variable
-    #         ].item()
-    #
-    #     if self.output_variables[output_idx].x_max_variable:
-    #         self.output_variables[output_idx].x_max = predicted_output[
-    #             self.output_variables[output_idx].x_max_variable
-    #         ].item()
-    #
-    #     if self.output_variables[output_idx].y_min_variable:
-    #         self.output_variables[output_idx].y_min = predicted_output[
-    #             self.output_variables[output_idx].y_min_variable
-    #         ].item()
-    #
-    #     if self.output_variables[output_idx].y_max_variable:
-    #         self.output_variables[output_idx].y_max = predicted_output[
-    #             self.output_variables[output_idx].y_max_variable
-    #         ].item()
-
-
-class InputDictModel(BaseModel):
-    """Pydantic model for input dictionary validation.
-
-    Attributes:
-        input_dict: Input dictionary to validate.
-    """
-
-    input_dict: Dict[str, Union[torch.Tensor, float]]
-
-    model_config = ConfigDict(arbitrary_types_allowed=True, strict=True)

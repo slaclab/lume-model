@@ -12,6 +12,7 @@ from enum import Enum
 import math
 
 import numpy as np
+from torch.distributions import Distribution as TDistribution
 from pydantic import BaseModel, field_validator, model_validator, ConfigDict
 
 
@@ -179,6 +180,48 @@ class ScalarVariable(Variable):
         return is_within_range or is_within_tolerance
 
 
+class DistributionVariable(Variable):
+    """Variable for distributions. Currently, only torch distributions are supported.
+
+    Attributes:
+        distribution_type: Optional. Type of the distribution. E.g., "Normal", "Uniform". Must be a
+          subclass of torch.distributions.Distribution.
+    """
+
+    distribution_type: str = "MultivariateNormal"
+
+    @property
+    def default_validation_config(self) -> ConfigEnum:
+        return "none"
+
+    def validate_value(self, value: TDistribution, config: ConfigEnum = None):
+        """
+        Validates the given value.
+
+        Args:
+            value (Distribution): The value to be validated.
+            config (ConfigEnum, optional): The configuration for validation. Defaults to None.
+              Allowed values are "none", "warn", and "error".
+
+        Raises:
+            TypeError: If the value is not an instance of Distribution.
+        """
+        _config = self.default_validation_config if config is None else config
+        # mandatory validation
+        self._validate_value_type(value)
+        # optional validation
+        if config != "none":
+            pass  # not implemented
+
+    @staticmethod
+    def _validate_value_type(value: TDistribution):
+        if not isinstance(value, TDistribution):
+            raise TypeError(
+                f"Expected value to be of type {TDistribution}, "
+                f"but received {type(value)}."
+            )
+
+
 def get_variable(name: str) -> Type[Variable]:
     """Returns the Variable subclass with the given name.
 
@@ -188,7 +231,7 @@ def get_variable(name: str) -> Type[Variable]:
     Returns:
         Variable subclass with the given name.
     """
-    classes = [ScalarVariable]
+    classes = [ScalarVariable, DistributionVariable]
     class_lookup = {c.__name__: c for c in classes}
     if name not in class_lookup.keys():
         raise KeyError(
