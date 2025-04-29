@@ -337,9 +337,9 @@ class GPModel(ProbModelBaseModel):
             torch.linalg.cholesky(cov)
         except torch._C._LinAlgError:
             warnings.warn(
-                f"Covariance matrix is not positive definite. Attempting to add jitter the diagonal."
+                "Covariance matrix is not positive definite. Attempting to add jitter the diagonal."
             )
-            l  = psd_safe_cholesky(cov) # determines jitter iteratively
-            cov = l @ l.transpose(-1, -2)
+            lm  = psd_safe_cholesky(cov) # determines jitter iteratively
+            cov = lm @ lm.transpose(-1, -2)
 
         return cov
