@@ -12,6 +12,7 @@ from gpytorch.mlls import ExactMarginalLogLikelihood
 from botorch.models.transforms.input import ReversibleInputTransform
 from botorch.models.transforms.outcome import OutcomeTransform
 from linear_operator.utils.cholesky import psd_safe_cholesky
+from linear_operator.operators import DiagLinearOperator
 
 from lume_model.models.prob_model_base import (
     ProbModelBaseModel,
@@ -114,6 +115,8 @@ class GPModel(ProbModelBaseModel):
                 # Either way, the internal transform should be removed
                 # to avoid double transformations
                 # TODO: should this get saved somewhere though, e.g. as metadata?
+                # TODO: is this how we want to handle this? Wouldn't results be inaccurate if the GP was trained w/
+                # TODO: different outcome_transform?
                 delattr(self.model, "outcome_transform")
 
         if self.output_transformers is None:
@@ -253,12 +256,14 @@ class GPModel(ProbModelBaseModel):
                 _cov = torch.zeros(batch, ss, ss, **self._tkwargs)
                 _cov[:, :ss, :ss] = cov[:, i * ss : (i + 1) * ss, i * ss : (i + 1) * ss]
 
+            # Check that the covariance matrix is positive definite
             _cov = self._check_covariance_matrix(_cov)
+
             # Last step is to untransform
             if self.output_transformers is not None:
-                _mean, _cov = self._transform_outputs(_mean), self._transform_outputs(_cov)
+                _mean = self._transform_mean(_mean)
+                _cov = self._transform_covar(_cov, _mean)
 
-            # TODO: add a check for final covariance matrix to be positive definite?
             output_distributions[name] = MultivariateNormal(_mean, _cov)
 
         return output_distributions
@@ -279,24 +284,52 @@ class GPModel(ProbModelBaseModel):
                 input_tensor = transformer(input_tensor)
         return input_tensor
 
-    def _transform_outputs(self, output_tensor: torch.Tensor) -> torch.Tensor:
-        """(Un-)Transforms the model output tensor.
+    def _transform_mean(self, mean: torch.Tensor) -> torch.Tensor:
+        """(Un-)Transforms the model output mean.
 
         Args:
-            output_tensor: Output tensor from the model.
+            mean: Output mean tensor from the model.
 
         Returns:
-            (Un-)Transformed output tensor.
+            (Un-)Transformed output mean tensor.
         """
         for transformer in self.output_transformers:
             if isinstance(transformer, ReversibleInputTransform):
-                output_tensor = transformer.untransform(output_tensor)
+                mean = transformer.untransform(mean)
             elif isinstance(transformer, OutcomeTransform):
-                output_tensor = transformer.untransform(output_tensor)[0]
+                scale_fac = transformer.stdvs.squeeze(0)
+                offset = transformer.means.squeeze(0)
+                mean = offset + scale_fac * mean
             else:
-                w, b = transformer.weight, transformer.bias
-                output_tensor = torch.matmul((output_tensor - b), torch.linalg.inv(w.T))
-        return output_tensor
+                raise NotImplementedError(
+                    f"Output transformer {type(transformer)} is not supported."
+                )
+        return mean
+
+    def _transform_covar(self, cov: torch.Tensor) -> torch.Tensor:
+        """(Un-)Transforms the model output covariance matrix.
+
+        Args:
+            cov: Output covariance matrix tensor from the model.
+
+        Returns:
+            (Un-)Transformed output covariance matrix tensor.
+        """
+        for transformer in self.output_transformers:
+            if isinstance(transformer, ReversibleInputTransform):
+                scale_fac = transformer.coefficient.expand(cov.shape[:-1])
+                scale_mat = DiagLinearOperator(scale_fac)
+                cov = scale_mat @ cov @ scale_mat
+            elif isinstance(transformer, OutcomeTransform):
+                scale_fac = transformer.stdvs.squeeze(0)
+                scale_fac = scale_fac.expand(cov.shape[:-1])
+                scale_mat = DiagLinearOperator(scale_fac)
+                cov = scale_mat @ cov @ scale_mat
+            else:
+                raise NotImplementedError(
+                    f"Output transformer {type(transformer)} is not supported."
+                )
+        return cov
 
     def _check_covariance_matrix(self, cov: torch.Tensor) -> torch.Tensor:
         """Checks that the covariance matrix is positive definite, and adds jitter if not."""
