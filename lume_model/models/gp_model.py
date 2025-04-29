@@ -262,7 +262,7 @@ class GPModel(ProbModelBaseModel):
             # Last step is to untransform
             if self.output_transformers is not None:
                 _mean = self._transform_mean(_mean)
-                _cov = self._transform_covar(_cov, _mean)
+                _cov = self._transform_covar(_cov)
 
             output_distributions[name] = MultivariateNormal(_mean, _cov)
 
