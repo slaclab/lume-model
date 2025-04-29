@@ -11,6 +11,7 @@ from botorch.models import SingleTaskGP, MultiTaskGP
 from gpytorch.mlls import ExactMarginalLogLikelihood
 from botorch.models.transforms.input import ReversibleInputTransform
 from botorch.models.transforms.outcome import OutcomeTransform
+from linear_operator.utils.cholesky import psd_safe_cholesky
 
 from lume_model.models.prob_model_base import (
     ProbModelBaseModel,
@@ -30,7 +31,6 @@ class GPModel(ProbModelBaseModel):
         model: A single task GPyTorch model or BoTorch model.
         input_transformers: List of input transformers to apply to the input data. Optional, default is None.
         output_transformers: List of output transformers to apply to the output data. Optional, default is None.
-        jitter: Jitter to add to diagonal of covariance matrix for numerical stability, if matrix is not positive definite. Optional, default is 1e-8.
     """
 
     model: SingleTaskGP | MultiTaskGP  # TODO: any other types?
@@ -38,7 +38,6 @@ class GPModel(ProbModelBaseModel):
     output_transformers: list[
         OutcomeTransform | ReversibleInputTransform | torch.nn.Linear
     ] = None
-    jitter: float = 1e-8
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -187,10 +186,8 @@ class GPModel(ProbModelBaseModel):
         distribution = self._get_distribution(posterior)
         # Take mean and covariance of the distribution
         mean, covar = distribution.mean, distribution.covariance_matrix
-        # Transform the output (mean and covariance)
-        if self.output_transformers is not None:
-            mean, covar = self._transform_outputs(mean), self._transform_outputs(covar)
         # Return a dictionary of output variable names to distributions
+        # this untransforms the mean and covariance before returning
         return self._create_output_dict((mean, covar))
 
     def _posterior(self, x):
@@ -257,6 +254,11 @@ class GPModel(ProbModelBaseModel):
                 _cov[:, :ss, :ss] = cov[:, i * ss : (i + 1) * ss, i * ss : (i + 1) * ss]
 
             _cov = self._check_covariance_matrix(_cov)
+            # Last step is to untransform
+            if self.output_transformers is not None:
+                _mean, _cov = self._transform_outputs(_mean), self._transform_outputs(_cov)
+
+            # TODO: add a check for final covariance matrix to be positive definite?
             output_distributions[name] = MultivariateNormal(_mean, _cov)
 
         return output_distributions
@@ -290,7 +292,7 @@ class GPModel(ProbModelBaseModel):
             if isinstance(transformer, ReversibleInputTransform):
                 output_tensor = transformer.untransform(output_tensor)
             elif isinstance(transformer, OutcomeTransform):
-                output_tensor = transformer.untransform(output_tensor)
+                output_tensor = transformer.untransform(output_tensor)[0]
             else:
                 w, b = transformer.weight, transformer.bias
                 output_tensor = torch.matmul((output_tensor - b), torch.linalg.inv(w.T))
@@ -302,8 +304,9 @@ class GPModel(ProbModelBaseModel):
             torch.linalg.cholesky(cov)
         except torch._C._LinAlgError:
             warnings.warn(
-                f"Covariance matrix is not positive definite. Added jitter of {self.jitter:.1e} to the diagonal."
+                f"Covariance matrix is not positive definite. Attempting to add jitter the diagonal."
             )
-            eps = torch.tensor(self.jitter, **self._tkwargs)
-            cov = cov + torch.eye(cov.shape[-1], **self._tkwargs) * eps
+            l  = psd_safe_cholesky(cov) # determines jitter iteratively
+            cov = l @ l.transpose(-1, -2)
+
         return cov

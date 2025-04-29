@@ -127,7 +127,6 @@ def recursive_serialize(
             and any(isinstance(ele, torch.nn.Module) for ele in value)
         ):
             # List of transformers
-            print(v[key])
             v[key] = [
                 process_torch_module(
                     value[i], base_key, f"{key}_{i}", file_prefix, save_models, False
