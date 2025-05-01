@@ -339,7 +339,7 @@ class GPModel(ProbModelBaseModel):
             warnings.warn(
                 "Covariance matrix is not positive definite. Attempting to add jitter the diagonal."
             )
-            lm  = psd_safe_cholesky(cov) # determines jitter iteratively
+            lm = psd_safe_cholesky(cov)  # determines jitter iteratively
             cov = lm @ lm.transpose(-1, -2)
 
         return cov
