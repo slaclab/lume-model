@@ -34,7 +34,8 @@ dev = [
     "botorch",
     "torch",
     "pre-commit",
-    "pytest"
+    "pytest",
+    "mlflow"
 ]
 docs = [
     "mkdocs",
