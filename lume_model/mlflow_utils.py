@@ -4,8 +4,6 @@ from typing import Dict, Any, Union
 
 from torch import Tensor, nn
 
-from lume_model.models import registered_models
-
 try:
     import mlflow
     HAS_MLFLOW = True
