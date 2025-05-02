@@ -3,6 +3,9 @@ import warnings
 from typing import Dict, Any, Union
 
 from torch import Tensor
+
+from lume_model.models import registered_models
+
 try:
     import mlflow
     HAS_MLFLOW = True
@@ -20,6 +23,7 @@ def register_model(
             alias: str | None = None,
             run_name: str | None = None,
             log_model_dump: bool = True,
+            save_jit: bool = False,
             **kwargs
     ) -> mlflow.models.model.ModelInfo:
     """
@@ -41,7 +45,8 @@ def register_model(
         alias: Alias to add to this MLflow model version.
         run_name: Name of the MLflow run.
         log_model_dump: If True, the model dump is logged to MLflow.
-        **kwargs: Additional arguments for mlflow.pytorch.log_model or torch.save.
+        save_jit: If True, the model is saved as a JIT model when calling model.dump, if log_model_dump=True.
+        **kwargs: Additional arguments for mlflow.pyfunc.log_model.
 
     Returns:
         Model info metadata, mlflow.models.model.ModelInfo.
@@ -76,19 +81,19 @@ def register_model(
             **kwargs
         )
         if log_model_dump:
-            # Log the model dump to MLflow
-            #model_dump_path = os.path.join("model_dump.yml")
+            # Log the model dump files to MLflow
             # TODO: pass directory where user wants local dump to, default to working directory
-            name = "model_dump"
-            lume_model.dump(f"{name}.yml")
+            run_name = mlflow.active_run().info.run_name
+            name = registered_model_name or f"{run_name}"
+            lume_model.dump(f"{name}.yml", save_jit=save_jit)
+            mlflow.log_artifact(f"{name}.yml", artifact_path)
             mlflow.log_artifact(f"{name}_model.pt", artifact_path)
-            # TODO: arg to add jit saving?
-            try:
+            if save_jit:
                 mlflow.log_artifact(f"{name}.jit", artifact_path)
-            except FileNotFoundError:
-                pass
-            # TODO: get names of in/out transform files and save them
-
+            for i in range(len(lume_model.input_transformers)):
+                mlflow.log_artifact(f"{name}_input_transformers_{i}.pt", artifact_path)
+            for i in range(len(lume_model.output_transformers)):
+                mlflow.log_artifact(f"{name}_output_transformers_{i}.pt", artifact_path)
 
     if (tags or alias or version_tags) and registered_model_name:
         from mlflow import MlflowClient

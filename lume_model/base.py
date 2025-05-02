@@ -465,6 +465,7 @@ class LUMEBaseModel(BaseModel, ABC):
             alias: str | None = None,
             run_name: str | None = None,
             log_model_dump: bool = True,
+            save_jit: bool = False,
             **kwargs
     ):
         """
@@ -485,7 +486,8 @@ class LUMEBaseModel(BaseModel, ABC):
             alias: Alias to add to this MLflow model version. Optional.
             run_name: Name of the MLflow run. Optional.
             log_model_dump: Whether to log the model dump files as artifacts. Optional.
-            **kwargs: Additional arguments for mlflow.pytorch.log_model or torch.save.
+            save_jit: Whether to save the model as TorchScript when calling model.dump, if log_model_dump=True. Optional.
+            **kwargs: Additional arguments for mlflow.pyfunc.log_model.
 
         Returns:
             Model info metadata, mlflow.models.model.ModelInfo.
@@ -500,5 +502,6 @@ class LUMEBaseModel(BaseModel, ABC):
             alias,
             run_name,
             log_model_dump,
+            save_jit,
             **kwargs
     )
