@@ -2,7 +2,7 @@ import os
 import warnings
 from typing import Dict, Any, Union
 
-from torch import Tensor
+from torch import Tensor, nn
 
 from lume_model.models import registered_models
 
@@ -15,7 +15,7 @@ except ImportError:
 
 def register_model(
             lume_model,
-            input_dict: dict[str, Union[float, Tensor]],
+            input: dict[str, Union[float, Tensor]] | Tensor,
             artifact_path: str,
             registered_model_name: str | None = None,
             tags: dict[str, Any] | None = None,
@@ -37,7 +37,7 @@ def register_model(
 
     Args:
         lume_model: LumeModel to register.
-        input_dict: Input dictionary to infer the model signature.
+        input: Input dictionary to infer the model signature.
         artifact_path: Path to store the model in MLflow.
         registered_model_name: Name of the registered model in MLflow.
         tags: Tags to add to the MLflow model.
@@ -58,28 +58,36 @@ def register_model(
             "MLFLOW_TRACKING_URI is not set. Data and artifacts will be saved directly under your current directory."
         )
 
-    # Adjust the input_dict to match the expected input format
-    # Input must be one of `numpy.ndarray`, `List[numpy.ndarray]`, `Dict[str, numpy.ndarray]` or `pandas.DataFrame`
-    input_dict = {
-        key: value.numpy()
-        for key, value in input_dict.items()
-    }
-
-    # Create pyfunc model for MLflow to be able to log/load the model
-    pf_model = create_mlflow_model(lume_model)
-
-    # Define the signature of the model
-    signature = mlflow.models.infer_signature(input_dict, pf_model.predict([input_dict]))
-
     # Log the model to MLflow
     with mlflow.start_run(run_name=run_name):
-        model_info = mlflow.pyfunc.log_model(
-            python_model=pf_model,
-            artifact_path=artifact_path,
-            signature=signature,
-            registered_model_name=registered_model_name,
-            **kwargs
-        )
+        # Define the signature of the model
+        if isinstance(lume_model, nn.Module):
+            signature = mlflow.models.infer_signature(input.numpy(), lume_model(Tensor(input)).detach().numpy())
+            model_info = mlflow.pytorch.log_model(
+                pytorch_model=lume_model,
+                artifact_path=artifact_path,
+                signature=signature,
+                registered_model_name=registered_model_name,
+                **kwargs
+            )
+        else:
+            # Create pyfunc model for MLflow to be able to log/load the model
+            pf_model = create_mlflow_model(lume_model)
+            # Adjust the input to match the expected input format
+            # Must be one of `numpy.ndarray`, `List[numpy.ndarray]`, `Dict[str, numpy.ndarray]` or `pandas.DataFrame`
+            input = {
+                key: value.numpy()
+                for key, value in input.items()
+            }
+            signature = mlflow.models.infer_signature(input, pf_model.predict([input]))
+            model_info = mlflow.pyfunc.log_model(
+                python_model=pf_model,
+                artifact_path=artifact_path,
+                signature=signature,
+                registered_model_name=registered_model_name,
+                **kwargs
+            )
+
         if log_model_dump:
             # Log the model dump files to MLflow
             # TODO: pass directory where user wants local dump to, default to working directory
@@ -90,6 +98,9 @@ def register_model(
             mlflow.log_artifact(f"{name}_model.pt", artifact_path)
             if save_jit:
                 mlflow.log_artifact(f"{name}.jit", artifact_path)
+
+            # Get and log the input and output transformers
+            lume_model = lume_model._model if isinstance(lume_model, nn.Module) else lume_model
             for i in range(len(lume_model.input_transformers)):
                 mlflow.log_artifact(f"{name}_input_transformers_{i}.pt", artifact_path)
             for i in range(len(lume_model.output_transformers)):
@@ -100,7 +111,7 @@ def register_model(
 
         client = MlflowClient()
         # Get the latest version of the registered model that we just registered
-        latest_version = client.get_latest_versions(registered_model_name)[0].version
+        latest_version = model_info.registered_model_version
 
         if tags:
             for key, value in tags.items():
