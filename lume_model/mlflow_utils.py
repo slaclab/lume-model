@@ -7,6 +7,10 @@ from torch import Tensor, nn
 try:
     import mlflow
     HAS_MLFLOW = True
+    import logging
+    logger = logging.getLogger("mlflow")
+    # Set log level to error until annoying signature warnings are fixed
+    logger.setLevel(logging.ERROR)
 except ImportError:
     pass
 
@@ -77,11 +81,12 @@ def register_model(
                 key: value.numpy()
                 for key, value in input.items()
             }
-            signature = mlflow.models.infer_signature(input, pf_model.predict([input]))
+            signature = mlflow.models.infer_signature(input, pf_model.predict(input))
             model_info = mlflow.pyfunc.log_model(
                 python_model=pf_model,
                 artifact_path=artifact_path,
                 signature=signature,
+                input_example=input,
                 registered_model_name=registered_model_name,
                 **kwargs
             )
@@ -146,13 +151,13 @@ class PyFuncModel(mlflow.pyfunc.PythonModel):
     def __init__(self, model):
         self.model = model
 
-    def predict(self, model_input: list[Dict[str, Any]]) -> Dict[str, Any]:
+    def predict(self, model_input: Dict[str, Any]) -> Dict[str, Any]:
         """Evaluate the model with the given input."""
         # Convert input to the format expected by the model
         # TODO: this isn't very general but type validation in torch modules requires this. May need to adjust.
         model_input = {
             key: Tensor(value)
-            for key, value in model_input[0].items()
+            for key, value in model_input.items()
         }
         return self.model.evaluate(model_input)
 
