@@ -6,8 +6,10 @@ from torch import Tensor, nn
 
 try:
     import mlflow
+
     HAS_MLFLOW = True
     import logging
+
     logger = logging.getLogger("mlflow")
     # Set log level to error until annoying signature warnings are fixed
     logger.setLevel(logging.ERROR)
@@ -16,18 +18,18 @@ except ImportError:
 
 
 def register_model(
-            lume_model,
-            input: dict[str, Union[float, Tensor]] | Tensor,
-            artifact_path: str,
-            registered_model_name: str | None = None,
-            tags: dict[str, Any] | None = None,
-            version_tags: dict[str, Any] | None = None,
-            alias: str | None = None,
-            run_name: str | None = None,
-            log_model_dump: bool = True,
-            save_jit: bool = False,
-            **kwargs
-    ) -> mlflow.models.model.ModelInfo:
+    lume_model,
+    input: dict[str, Union[float, Tensor]] | Tensor,
+    artifact_path: str,
+    registered_model_name: str | None = None,
+    tags: dict[str, Any] | None = None,
+    version_tags: dict[str, Any] | None = None,
+    alias: str | None = None,
+    run_name: str | None = None,
+    log_model_dump: bool = True,
+    save_jit: bool = False,
+    **kwargs,
+) -> mlflow.models.model.ModelInfo:
     """
     Registers the model to MLflow if mlflow is installed. Each time this function is called, a new version
     of the model is created. The model is saved to the tracking server or local directory, depending on the
@@ -64,23 +66,22 @@ def register_model(
     with mlflow.start_run(run_name=run_name):
         # Define the signature of the model
         if isinstance(lume_model, nn.Module):
-            signature = mlflow.models.infer_signature(input.numpy(), lume_model(Tensor(input)).detach().numpy())
+            signature = mlflow.models.infer_signature(
+                input.numpy(), lume_model(Tensor(input)).detach().numpy()
+            )
             model_info = mlflow.pytorch.log_model(
                 pytorch_model=lume_model,
                 artifact_path=artifact_path,
                 signature=signature,
                 registered_model_name=registered_model_name,
-                **kwargs
+                **kwargs,
             )
         else:
             # Create pyfunc model for MLflow to be able to log/load the model
             pf_model = create_mlflow_model(lume_model)
             # Adjust the input to match the expected input format
             # Must be one of `numpy.ndarray`, `List[numpy.ndarray]`, `Dict[str, numpy.ndarray]` or `pandas.DataFrame`
-            input = {
-                key: value.numpy()
-                for key, value in input.items()
-            }
+            input = {key: value.numpy() for key, value in input.items()}
             signature = mlflow.models.infer_signature(input, pf_model.predict(input))
             model_info = mlflow.pyfunc.log_model(
                 python_model=pf_model,
@@ -88,7 +89,7 @@ def register_model(
                 signature=signature,
                 input_example=input,
                 registered_model_name=registered_model_name,
-                **kwargs
+                **kwargs,
             )
 
         if log_model_dump:
@@ -103,7 +104,9 @@ def register_model(
                 mlflow.log_artifact(f"{name}.jit", artifact_path)
 
             # Get and log the input and output transformers
-            lume_model = lume_model._model if isinstance(lume_model, nn.Module) else lume_model
+            lume_model = (
+                lume_model._model if isinstance(lume_model, nn.Module) else lume_model
+            )
             for i in range(len(lume_model.input_transformers)):
                 mlflow.log_artifact(f"{name}_input_transformers_{i}.pt", artifact_path)
             for i in range(len(lume_model.output_transformers)):
@@ -122,13 +125,12 @@ def register_model(
         if version_tags:
             for key, value in version_tags.items():
                 client.set_model_version_tag(
-                    registered_model_name,
-                    latest_version,
-                    key,
-                    value
+                    registered_model_name, latest_version, key, value
                 )
         if alias:
-            client.set_registered_model_alias(registered_model_name, alias, latest_version)
+            client.set_registered_model_alias(
+                registered_model_name, alias, latest_version
+            )
 
     elif (tags or alias or version_tags) and not registered_model_name:
         warnings.warn(
@@ -137,9 +139,11 @@ def register_model(
 
     return model_info
 
+
 def create_mlflow_model(model) -> mlflow.pyfunc.PythonModel:
     """Creates an MLflow model from the given model."""
     return PyFuncModel(model=model)
+
 
 class PyFuncModel(mlflow.pyfunc.PythonModel):
     """
@@ -148,6 +152,7 @@ class PyFuncModel(mlflow.pyfunc.PythonModel):
 
     Must implement the `predict` method.
     """
+
     def __init__(self, model):
         self.model = model
 
@@ -155,10 +160,7 @@ class PyFuncModel(mlflow.pyfunc.PythonModel):
         """Evaluate the model with the given input."""
         # Convert input to the format expected by the model
         # TODO: this isn't very general but type validation in torch modules requires this. May need to adjust.
-        model_input = {
-            key: Tensor(value)
-            for key, value in model_input.items()
-        }
+        model_input = {key: Tensor(value) for key, value in model_input.items()}
         return self.model.evaluate(model_input)
 
     def save_model(self):

@@ -197,17 +197,17 @@ class TorchModule(torch.nn.Module):
             return x
 
     def register_to_mlflow(
-            self,
-            input: torch.Tensor,
-            artifact_path: str,
-            registered_model_name: str | None = None,
-            tags: dict[str, Any] | None = None,
-            version_tags: dict[str, Any] | None = None,
-            alias: str | None = None,
-            run_name: str | None = None,
-            log_model_dump: bool = True,
-            save_jit: bool = False,
-            **kwargs
+        self,
+        input: torch.Tensor,
+        artifact_path: str,
+        registered_model_name: str | None = None,
+        tags: dict[str, Any] | None = None,
+        version_tags: dict[str, Any] | None = None,
+        alias: str | None = None,
+        run_name: str | None = None,
+        log_model_dump: bool = True,
+        save_jit: bool = False,
+        **kwargs,
     ):
         """
         Registers the model to MLflow if mlflow is installed. Each time this function is called, a new version
@@ -244,5 +244,5 @@ class TorchModule(torch.nn.Module):
             run_name,
             log_model_dump,
             save_jit,
-            **kwargs
-    )
+            **kwargs,
+        )

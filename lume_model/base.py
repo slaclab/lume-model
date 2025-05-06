@@ -9,7 +9,7 @@ from io import TextIOWrapper
 import yaml
 import numpy as np
 from pydantic import BaseModel, ConfigDict, field_validator
-import torch # TODO: for torch.Tensor type hinting, but may need to make more general in mlflow class
+import torch  # TODO: for torch.Tensor type hinting, but may need to make more general in mlflow class
 
 from lume_model.variables import ScalarVariable, get_variable, ConfigEnum
 from lume_model.utils import (
@@ -18,7 +18,7 @@ from lume_model.utils import (
     serialize_variables,
     deserialize_variables,
     variables_from_dict,
-    replace_relative_paths
+    replace_relative_paths,
 )
 from lume_model.mlflow_utils import register_model
 
@@ -456,17 +456,17 @@ class LUMEBaseModel(BaseModel, ABC):
         return cls.model_validate(parse_config(yaml_obj, cls.model_fields))
 
     def register_to_mlflow(
-            self,
-            input_dict: dict[str, Union[float, torch.Tensor]],
-            artifact_path: str,
-            registered_model_name: str | None = None,
-            tags: dict[str, Any] | None = None,
-            version_tags: dict[str, Any] | None = None,
-            alias: str | None = None,
-            run_name: str | None = None,
-            log_model_dump: bool = True,
-            save_jit: bool = False,
-            **kwargs
+        self,
+        input_dict: dict[str, Union[float, torch.Tensor]],
+        artifact_path: str,
+        registered_model_name: str | None = None,
+        tags: dict[str, Any] | None = None,
+        version_tags: dict[str, Any] | None = None,
+        alias: str | None = None,
+        run_name: str | None = None,
+        log_model_dump: bool = True,
+        save_jit: bool = False,
+        **kwargs,
     ):
         """
         Registers the model to MLflow if mlflow is installed. Each time this function is called, a new version
@@ -503,5 +503,5 @@ class LUMEBaseModel(BaseModel, ABC):
             run_name,
             log_model_dump,
             save_jit,
-            **kwargs
-    )
+            **kwargs,
+        )
