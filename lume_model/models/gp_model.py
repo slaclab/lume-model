@@ -190,7 +190,6 @@ class GPModel(ProbModelBaseModel):
         # Take mean and covariance of the distribution
         mean, covar = distribution.mean, distribution.covariance_matrix
         # Return a dictionary of output variable names to distributions
-        # this untransforms the mean and covariance before returning
         return self._create_output_dict((mean, covar))
 
     def _posterior(self, x):
@@ -259,10 +258,11 @@ class GPModel(ProbModelBaseModel):
             # Check that the covariance matrix is positive definite
             _cov = self._check_covariance_matrix(_cov)
 
-            # Last step is to untransform
             if self.output_transformers is not None:
-                _mean = self._transform_mean(_mean)
-                _cov = self._transform_covar(_cov)
+                # TODO: if we have two outputs (e.g. multitask), but transformer has length 1, we should apply the
+                # same transform to both outputs
+                _mean = self._transform_mean(_mean, i)
+                _cov = self._transform_covar(_cov, i)
 
             output_distributions[name] = MultivariateNormal(_mean, _cov)
 
@@ -284,7 +284,7 @@ class GPModel(ProbModelBaseModel):
                 input_tensor = transformer(input_tensor)
         return input_tensor
 
-    def _transform_mean(self, mean: torch.Tensor) -> torch.Tensor:
+    def _transform_mean(self, mean: torch.Tensor, i) -> torch.Tensor:
         """(Un-)Transforms the model output mean.
 
         Args:
@@ -295,10 +295,24 @@ class GPModel(ProbModelBaseModel):
         """
         for transformer in self.output_transformers:
             if isinstance(transformer, ReversibleInputTransform):
-                mean = transformer.untransform(mean)
+                try:
+                    scale_fac = transformer.coefficient[
+                        i
+                    ]  # TODO: make this more robust
+                    offset = transformer.offset[i]
+                except IndexError:  # TODO: make this more robust
+                    # If the transformer has only one coefficient, use it for all outputs
+                    scale_fac = transformer.coefficient[0]
+                    offset = transformer.offset[0]
+                mean = offset + scale_fac * mean
             elif isinstance(transformer, OutcomeTransform):
-                scale_fac = transformer.stdvs.squeeze(0)
-                offset = transformer.means.squeeze(0)
+                try:
+                    scale_fac = transformer.stdvs.squeeze(0)[i]
+                    offset = transformer.means.squeeze(0)[i]
+                except IndexError:  # TODO: make this more robust
+                    # If the transformer has only one coefficient, use it for all outputs
+                    scale_fac = transformer.stdvs.squeeze(0)[0]
+                    offset = transformer.means.squeeze(0)[0]
                 mean = offset + scale_fac * mean
             else:
                 raise NotImplementedError(
@@ -306,22 +320,32 @@ class GPModel(ProbModelBaseModel):
                 )
         return mean
 
-    def _transform_covar(self, cov: torch.Tensor) -> torch.Tensor:
+    def _transform_covar(self, cov: torch.Tensor, i: int) -> torch.Tensor:
         """(Un-)Transforms the model output covariance matrix.
 
         Args:
             cov: Output covariance matrix tensor from the model.
+            i: Index of the output variable.
 
         Returns:
             (Un-)Transformed output covariance matrix tensor.
         """
         for transformer in self.output_transformers:
             if isinstance(transformer, ReversibleInputTransform):
-                scale_fac = transformer.coefficient.expand(cov.shape[:-1])
+                try:
+                    scale_fac = transformer.coefficient[i]
+                except IndexError:  # TODO: make this more robust # can also maybe do this before splitting?
+                    # If the transformer has only one coefficient, use it for all outputs
+                    scale_fac = transformer.coefficient[0]
+                scale_fac = scale_fac.expand(cov.shape[:-1])
                 scale_mat = DiagLinearOperator(scale_fac)
                 cov = scale_mat @ cov @ scale_mat
             elif isinstance(transformer, OutcomeTransform):
-                scale_fac = transformer.stdvs.squeeze(0)
+                try:
+                    scale_fac = transformer.stdvs.squeeze(0)[i]
+                except IndexError:  # TODO: make this more robust
+                    # If the transformer has only one coefficient, use it for all outputs
+                    scale_fac = transformer.stdvs.squeeze(0)[0]
                 scale_fac = scale_fac.expand(cov.shape[:-1])
                 scale_mat = DiagLinearOperator(scale_fac)
                 cov = scale_mat @ cov @ scale_mat
