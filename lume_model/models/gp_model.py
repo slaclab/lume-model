@@ -259,8 +259,9 @@ class GPModel(ProbModelBaseModel):
             _cov = self._check_covariance_matrix(_cov)
 
             if self.output_transformers is not None:
-                # TODO: if we have two outputs (e.g. multitask), but transformer has length 1, we should apply the
-                # same transform to both outputs
+                # TODO: make this more robust?
+                # If we have two outputs, but transformer has length 1 (e.g. multitask),
+                # we should apply the same transform to both outputs
                 _mean = self._transform_mean(_mean, i)
                 _cov = self._transform_covar(_cov, i)
 
@@ -296,11 +297,9 @@ class GPModel(ProbModelBaseModel):
         for transformer in self.output_transformers:
             if isinstance(transformer, ReversibleInputTransform):
                 try:
-                    scale_fac = transformer.coefficient[
-                        i
-                    ]  # TODO: make this more robust
+                    scale_fac = transformer.coefficient[i]
                     offset = transformer.offset[i]
-                except IndexError:  # TODO: make this more robust
+                except IndexError:
                     # If the transformer has only one coefficient, use it for all outputs
                     scale_fac = transformer.coefficient[0]
                     offset = transformer.offset[0]
@@ -309,7 +308,7 @@ class GPModel(ProbModelBaseModel):
                 try:
                     scale_fac = transformer.stdvs.squeeze(0)[i]
                     offset = transformer.means.squeeze(0)[i]
-                except IndexError:  # TODO: make this more robust
+                except IndexError:
                     # If the transformer has only one coefficient, use it for all outputs
                     scale_fac = transformer.stdvs.squeeze(0)[0]
                     offset = transformer.means.squeeze(0)[0]
@@ -334,7 +333,7 @@ class GPModel(ProbModelBaseModel):
             if isinstance(transformer, ReversibleInputTransform):
                 try:
                     scale_fac = transformer.coefficient[i]
-                except IndexError:  # TODO: make this more robust # can also maybe do this before splitting?
+                except IndexError:
                     # If the transformer has only one coefficient, use it for all outputs
                     scale_fac = transformer.coefficient[0]
                 scale_fac = scale_fac.expand(cov.shape[:-1])
@@ -343,7 +342,7 @@ class GPModel(ProbModelBaseModel):
             elif isinstance(transformer, OutcomeTransform):
                 try:
                     scale_fac = transformer.stdvs.squeeze(0)[i]
-                except IndexError:  # TODO: make this more robust
+                except IndexError:
                     # If the transformer has only one coefficient, use it for all outputs
                     scale_fac = transformer.stdvs.squeeze(0)[0]
                 scale_fac = scale_fac.expand(cov.shape[:-1])
