@@ -101,7 +101,7 @@ def register_model(
             mlflow.log_artifact(f"{name}.yml", artifact_path)
             mlflow.log_artifact(f"{name}_model.pt", artifact_path)
             if save_jit:
-                mlflow.log_artifact(f"{name}.jit", artifact_path)
+                mlflow.log_artifact(f"{name}_model.jit", artifact_path)
 
             # Get and log the input and output transformers
             lume_model = (
