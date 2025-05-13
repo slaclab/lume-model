@@ -139,7 +139,7 @@ class ProbModelBaseModel(LUMEBaseModel):  # TODO: brainstorm a better name
 
     @abstractmethod
     def _get_predictions(
-        self, input_dict: dict[str, float | torch.Tensor]
+        self, input_dict: dict[str, float | torch.Tensor], **kwargs
     ) -> dict[str, TDistribution]:
         """Get predictions from the model.
 
@@ -152,7 +152,7 @@ class ProbModelBaseModel(LUMEBaseModel):  # TODO: brainstorm a better name
         pass
 
     def _evaluate(
-        self, input_dict: dict[str, Union[float, torch.Tensor]]
+        self, input_dict: dict[str, Union[float, torch.Tensor]], **kwargs
     ) -> dict[str, TDistribution]:
         """Evaluate the model.
 
@@ -164,7 +164,7 @@ class ProbModelBaseModel(LUMEBaseModel):  # TODO: brainstorm a better name
             A dictionary of output variable names to distributions.
         """
         # Evaluate and get mean and variance for each output
-        output_dict = self._get_predictions(input_dict)
+        output_dict = self._get_predictions(input_dict, **kwargs)
         # Split multi-dimensional output into separate distributions and
         # return output dictionary
         return output_dict

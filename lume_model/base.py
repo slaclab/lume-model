@@ -143,7 +143,6 @@ def recursive_serialize(
         try:
             json.dumps(v[key])
         except (TypeError, OverflowError):
-            # print(e)
             v[key] = f"{v[key].__module__}.{v[key].__class__.__qualname__}"
 
     return v
@@ -343,15 +342,15 @@ class LUMEBaseModel(BaseModel, ABC):
             var.name: var.default_validation_config for var in self.output_variables
         }
 
-    def evaluate(self, input_dict: dict[str, Any]) -> dict[str, Any]:
+    def evaluate(self, input_dict: dict[str, Any], **kwargs) -> dict[str, Any]:
         """Main evaluation function, child classes must implement the _evaluate method."""
         validated_input_dict = self.input_validation(input_dict)
-        output_dict = self._evaluate(validated_input_dict)
+        output_dict = self._evaluate(validated_input_dict, **kwargs)
         self.output_validation(output_dict)
         return output_dict
 
     @abstractmethod
-    def _evaluate(self, input_dict: dict[str, Any]) -> dict[str, Any]:
+    def _evaluate(self, input_dict: dict[str, Any], **kwargs) -> dict[str, Any]:
         pass
 
     def input_validation(self, input_dict: dict[str, Any]) -> dict[str, Any]:
