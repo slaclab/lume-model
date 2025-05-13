@@ -141,7 +141,6 @@ def recursive_serialize(
         try:
             json.dumps(v[key])
         except (TypeError, OverflowError):
-            # print(e)
             v[key] = f"{v[key].__module__}.{v[key].__class__.__qualname__}"
 
     return v
