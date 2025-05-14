@@ -1,10 +1,17 @@
 import pytest
-import torch
-from botorch.models import SingleTaskGP, MultiTaskGP
+import random
+
+try:
+    import torch
+    from botorch.models import SingleTaskGP, MultiTaskGP
+
+    torch.manual_seed(42)
+except ImportError:
+    pass
+
 from lume_model.models.gp_model import GPModel
 
-# check means and covars match original (more of an integration test)
-# check other little things/methods in class (unit tests)
+random.seed(42)
 
 
 class TestGPModel:
@@ -65,6 +72,35 @@ class TestGPModel:
         assert torch.allclose(original_mean[:, 1], lume_pred["output2"].mean)
         assert torch.allclose(original_variance[:, 1], lume_pred["output2"].variance)
 
+        # Test batched evaluation
+        batch_test_x = test_x.reshape(-1, 1).repeat(2, 1, 1)
+        # Predict with original model
+        batch_test_x_tf = input_transformer.transform(batch_test_x)
+        original_pred = original_model.posterior(batch_test_x_tf)
+        # Output transformer is a ReversibleInputTransform type
+        original_mean = output_transformer.untransform(original_pred.mean)
+        original_variance = (
+            abs(output_transformer.coefficient) ** 2 * original_pred.variance
+        )
+        # Predict with GPModel
+        lume_pred = gp_model.evaluate({"input": batch_test_x})
+
+        assert lume_pred["output1"].mean.shape == (2, 10) and lume_pred[
+            "output1"
+        ].variance.shape == (2, 10)
+        assert lume_pred["output2"].mean.shape == (2, 10) and lume_pred[
+            "output2"
+        ].variance.shape == (2, 10)
+        assert original_pred.mean.shape == (
+            2,
+            10,
+            2,
+        ) and original_pred.variance.shape == (2, 10, 2)
+        assert torch.allclose(original_mean[:, :, 0], lume_pred["output1"].mean)
+        assert torch.allclose(original_variance[:, :, 0], lume_pred["output1"].variance)
+        assert torch.allclose(original_mean[:, :, 1], lume_pred["output2"].mean)
+        assert torch.allclose(original_variance[:, :, 1], lume_pred["output2"].variance)
+
     def test_multi_task_gp(self, multi_task_gp_model_kwargs):
         gp_model = GPModel(
             model=multi_task_gp_model_kwargs["model"],
@@ -97,7 +133,48 @@ class TestGPModel:
         assert gp_model.get_input_size() == 1
         assert gp_model.get_output_size() == 2
         assert len(lume_pred) == 2
+        assert lume_pred["output1"].mean.shape == (200,) and lume_pred[
+            "output1"
+        ].variance.shape == (200,)
+        assert lume_pred["output2"].mean.shape == (200,) and lume_pred[
+            "output2"
+        ].variance.shape == (200,)
+        assert original_pred.mean.shape == (
+            200,
+            2,
+        ) and original_pred.variance.shape == (200, 2)
         assert torch.allclose(original_mean[:, 0], lume_pred["output1"].mean)
         assert torch.allclose(original_variance[:, 0], lume_pred["output1"].variance)
         assert torch.allclose(original_mean[:, 1], lume_pred["output2"].mean)
         assert torch.allclose(original_variance[:, 1], lume_pred["output2"].variance)
+
+        # Test batched evaluation
+        batch_test_x = test_x.repeat(2, 1, 1)
+        # Predict with original model
+        batch_test_x_tf = input_transformer.transform(batch_test_x)
+        original_pred = original_model.posterior(batch_test_x_tf)
+        m = original_pred.mean
+        v = original_pred.variance
+        # Output transformer is a OutcomeTransform type
+        original_mean = output_transformer.stdvs.squeeze(
+            0
+        ) * m + output_transformer.means.squeeze(0)
+        original_variance = abs(output_transformer.stdvs.squeeze(0)) ** 2 * v
+        # Predict with GPModel
+        lume_pred = gp_model.evaluate({"input": batch_test_x})
+
+        assert lume_pred["output1"].mean.shape == (2, 200) and lume_pred[
+            "output1"
+        ].variance.shape == (2, 200)
+        assert lume_pred["output2"].mean.shape == (2, 200) and lume_pred[
+            "output2"
+        ].variance.shape == (2, 200)
+        assert original_pred.mean.shape == (
+            2,
+            200,
+            2,
+        ) and original_pred.variance.shape == (2, 200, 2)
+        assert torch.allclose(original_mean[:, :, 0], lume_pred["output1"].mean)
+        assert torch.allclose(original_variance[:, :, 0], lume_pred["output1"].variance)
+        assert torch.allclose(original_mean[:, :, 1], lume_pred["output2"].mean)
+        assert torch.allclose(original_variance[:, :, 1], lume_pred["output2"].variance)
