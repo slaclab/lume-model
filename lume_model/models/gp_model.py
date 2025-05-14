@@ -6,9 +6,9 @@ from pydantic import field_validator
 
 import torch
 from torch.distributions import Distribution as TDistribution
-from torch.distributions import MultivariateNormal
 from botorch.models import SingleTaskGP, MultiTaskGP
 from gpytorch.mlls import ExactMarginalLogLikelihood
+from gpytorch.distributions import MultivariateNormal as GPMultivariateNormal
 from botorch.models.transforms.input import ReversibleInputTransform
 from botorch.models.transforms.outcome import OutcomeTransform
 from linear_operator.utils.cholesky import psd_safe_cholesky
@@ -94,6 +94,7 @@ class GPModel(ProbModelBaseModel):
                 # Either way, the internal transform should be removed
                 # to avoid double transformations
                 # TODO: should this get saved somewhere though, e.g. as metadata?
+                # TODO: is this how we want to handle this?
                 delattr(self.model, "input_transform")
 
         if self.input_transformers is None:
@@ -114,9 +115,6 @@ class GPModel(ProbModelBaseModel):
                     )
                 # Either way, the internal transform should be removed
                 # to avoid double transformations
-                # TODO: should this get saved somewhere though, e.g. as metadata?
-                # TODO: is this how we want to handle this? Wouldn't results be inaccurate if the GP was trained w/
-                # TODO: different outcome_transform?
                 delattr(self.model, "outcome_transform")
 
         if self.output_transformers is None:
@@ -161,13 +159,14 @@ class GPModel(ProbModelBaseModel):
 
     def mll(self, x, y):
         """Returns the marginal log-likelihood value"""
-        # TODO: add validation for x and y?
         self.model.eval()
         mll = ExactMarginalLogLikelihood(self.model.likelihood, self.model)
         return mll(self.model(x), y).item()
 
     def _get_predictions(
-        self, input_dict: dict[str, float | torch.Tensor]
+        self,
+        input_dict: dict[str, float | torch.Tensor],
+        observation_noise: bool = False,
     ) -> dict[str, TDistribution]:
         """Get the predictions of the model.
         This implements the abstract method from ProbModelBaseModel.
@@ -184,16 +183,15 @@ class GPModel(ProbModelBaseModel):
         if self.input_transformers is not None:
             x = self._transform_inputs(x)
         # Get the posterior distribution
-        posterior = self._posterior(x)
+        posterior = self._posterior(x, observation_noise=observation_noise)
         # Wrap the distribution in a torch distribution
         distribution = self._get_distribution(posterior)
         # Take mean and covariance of the distribution
         mean, covar = distribution.mean, distribution.covariance_matrix
         # Return a dictionary of output variable names to distributions
-        # this untransforms the mean and covariance before returning
         return self._create_output_dict((mean, covar))
 
-    def _posterior(self, x):
+    def _posterior(self, x: torch.Tensor, observation_noise: bool = False):
         """Compute the posterior distribution.
 
         Args:
@@ -203,7 +201,7 @@ class GPModel(ProbModelBaseModel):
             Posterior object from the model.
         """
         self.model.eval()
-        posterior = self.model.posterior(x)
+        posterior = self.model.posterior(x, observation_noise=observation_noise)
         return posterior
 
     def _get_distribution(self, posterior) -> TDistribution:
@@ -259,12 +257,14 @@ class GPModel(ProbModelBaseModel):
             # Check that the covariance matrix is positive definite
             _cov = self._check_covariance_matrix(_cov)
 
-            # Last step is to untransform
             if self.output_transformers is not None:
-                _mean = self._transform_mean(_mean)
-                _cov = self._transform_covar(_cov)
+                # TODO: make this more robust?
+                # If we have two outputs, but transformer has length 1 (e.g. multitask),
+                # we should apply the same transform to both outputs
+                _mean = self._transform_mean(_mean, i)
+                _cov = self._transform_covar(_cov, i)
 
-            output_distributions[name] = MultivariateNormal(_mean, _cov)
+            output_distributions[name] = GPMultivariateNormal(_mean, _cov)
 
         return output_distributions
 
@@ -284,7 +284,7 @@ class GPModel(ProbModelBaseModel):
                 input_tensor = transformer(input_tensor)
         return input_tensor
 
-    def _transform_mean(self, mean: torch.Tensor) -> torch.Tensor:
+    def _transform_mean(self, mean: torch.Tensor, i) -> torch.Tensor:
         """(Un-)Transforms the model output mean.
 
         Args:
@@ -295,10 +295,22 @@ class GPModel(ProbModelBaseModel):
         """
         for transformer in self.output_transformers:
             if isinstance(transformer, ReversibleInputTransform):
-                mean = transformer.untransform(mean)
+                try:
+                    scale_fac = transformer.coefficient[i]
+                    offset = transformer.offset[i]
+                except IndexError:
+                    # If the transformer has only one coefficient, use it for all outputs
+                    scale_fac = transformer.coefficient[0]
+                    offset = transformer.offset[0]
+                mean = offset + scale_fac * mean
             elif isinstance(transformer, OutcomeTransform):
-                scale_fac = transformer.stdvs.squeeze(0)
-                offset = transformer.means.squeeze(0)
+                try:
+                    scale_fac = transformer.stdvs.squeeze(0)[i]
+                    offset = transformer.means.squeeze(0)[i]
+                except IndexError:
+                    # If the transformer has only one coefficient, use it for all outputs
+                    scale_fac = transformer.stdvs.squeeze(0)[0]
+                    offset = transformer.means.squeeze(0)[0]
                 mean = offset + scale_fac * mean
             else:
                 raise NotImplementedError(
@@ -306,22 +318,32 @@ class GPModel(ProbModelBaseModel):
                 )
         return mean
 
-    def _transform_covar(self, cov: torch.Tensor) -> torch.Tensor:
+    def _transform_covar(self, cov: torch.Tensor, i: int) -> torch.Tensor:
         """(Un-)Transforms the model output covariance matrix.
 
         Args:
             cov: Output covariance matrix tensor from the model.
+            i: Index of the output variable.
 
         Returns:
             (Un-)Transformed output covariance matrix tensor.
         """
         for transformer in self.output_transformers:
             if isinstance(transformer, ReversibleInputTransform):
-                scale_fac = transformer.coefficient.expand(cov.shape[:-1])
+                try:
+                    scale_fac = transformer.coefficient[i]
+                except IndexError:
+                    # If the transformer has only one coefficient, use it for all outputs
+                    scale_fac = transformer.coefficient[0]
+                scale_fac = scale_fac.expand(cov.shape[:-1])
                 scale_mat = DiagLinearOperator(scale_fac)
                 cov = scale_mat @ cov @ scale_mat
             elif isinstance(transformer, OutcomeTransform):
-                scale_fac = transformer.stdvs.squeeze(0)
+                try:
+                    scale_fac = transformer.stdvs.squeeze(0)[i]
+                except IndexError:
+                    # If the transformer has only one coefficient, use it for all outputs
+                    scale_fac = transformer.stdvs.squeeze(0)[0]
                 scale_fac = scale_fac.expand(cov.shape[:-1])
                 scale_mat = DiagLinearOperator(scale_fac)
                 cov = scale_mat @ cov @ scale_mat

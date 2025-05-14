@@ -5,7 +5,7 @@ from typing import Any, Union
 import pytest
 
 from lume_model.utils import variables_from_yaml
-from lume_model.variables import ScalarVariable
+from lume_model.variables import ScalarVariable, DistributionVariable
 
 try:
     import torch
@@ -20,6 +20,7 @@ def rootdir() -> str:
     return os.path.dirname(os.path.abspath(__file__))
 
 
+# TorchModel fixtures
 @pytest.fixture(scope="session")
 def simple_variables() -> dict[str, Union[list[ScalarVariable], list[ScalarVariable]]]:
     input_variables = [
@@ -140,3 +141,85 @@ def california_module(california_model):
     _ = pytest.importorskip("botorch")
 
     return TorchModule(model=california_model)
+
+
+# GPModel fixtures
+@pytest.fixture(scope="session")
+def gp_variables() -> dict[
+    str, Union[list[ScalarVariable], list[DistributionVariable]]
+]:
+    input_variables = [ScalarVariable(name="input")]
+    output_variables = [
+        DistributionVariable(name="output1"),
+        DistributionVariable(name="output2"),
+    ]
+    return input_variables, output_variables
+
+
+# SingleTask GP
+@pytest.fixture(scope="module")
+def single_task_gp_transformers(rootdir):
+    input_transformer = torch.load(
+        f"{rootdir}/test_files/single_task_gp/input_transformers.pt", weights_only=False
+    )
+    output_transformer = torch.load(
+        f"{rootdir}/test_files/single_task_gp/output_transformers.pt",
+        weights_only=False,
+    )
+    return input_transformer, output_transformer
+
+
+@pytest.fixture(scope="module")
+def single_task_gp_model_kwargs(
+    rootdir,
+    gp_variables,
+    single_task_gp_transformers,
+) -> dict[str, Any]:
+    _ = pytest.importorskip("botorch")
+
+    input_variables, output_variables = gp_variables
+    input_transformer, output_transformer = single_task_gp_transformers
+    model_kwargs = {
+        "model": torch.load(
+            f"{rootdir}/test_files/single_task_gp/model.pt", weights_only=False
+        ),
+        "input_variables": input_variables,
+        "output_variables": output_variables,
+        "input_transformers": [input_transformer],
+        "output_transformers": [output_transformer],
+    }
+    return model_kwargs
+
+
+# MultiTask GP
+@pytest.fixture(scope="module")
+def multi_task_gp_transformers(rootdir):
+    input_transformer = torch.load(
+        f"{rootdir}/test_files/multi_task_gp/input_transformers.pt", weights_only=False
+    )
+    output_transformer = torch.load(
+        f"{rootdir}/test_files/multi_task_gp/output_transformers.pt", weights_only=False
+    )
+    return input_transformer, output_transformer
+
+
+@pytest.fixture(scope="module")
+def multi_task_gp_model_kwargs(
+    rootdir,
+    gp_variables,
+    multi_task_gp_transformers,
+) -> dict[str, Any]:
+    _ = pytest.importorskip("botorch")
+
+    input_variables, output_variables = gp_variables
+    input_transformer, output_transformer = multi_task_gp_transformers
+    model_kwargs = {
+        "model": torch.load(
+            f"{rootdir}/test_files/multi_task_gp/model.pt", weights_only=False
+        ),
+        "input_variables": input_variables,
+        "output_variables": output_variables,
+        "input_transformers": [input_transformer],
+        "output_transformers": [output_transformer],
+    }
+    return model_kwargs

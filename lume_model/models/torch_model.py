@@ -108,7 +108,7 @@ class TorchModel(LUMEBaseModel):
     def verify_input_default_value(cls, value):
         """Verifies that input variables have the required default values."""
         for var in value:
-            if var.default_value is None or not var.default_value:
+            if var.default_value is None:
                 raise ValueError(
                     f"Input variable {var.name} must have a default value."
                 )

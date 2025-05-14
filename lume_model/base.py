@@ -9,7 +9,7 @@ from io import TextIOWrapper
 import yaml
 import numpy as np
 from pydantic import BaseModel, ConfigDict, field_validator
-import torch # TODO: for torch.Tensor type hinting, but may need to make more general in mlflow class
+import torch  # TODO: for torch.Tensor type hinting, but may need to make more general in mlflow class
 
 from lume_model.variables import ScalarVariable, get_variable, ConfigEnum
 from lume_model.utils import (
@@ -18,7 +18,7 @@ from lume_model.utils import (
     serialize_variables,
     deserialize_variables,
     variables_from_dict,
-    replace_relative_paths
+    replace_relative_paths,
 )
 from lume_model.mlflow_utils import register_model
 
@@ -143,7 +143,6 @@ def recursive_serialize(
         try:
             json.dumps(v[key])
         except (TypeError, OverflowError):
-            # print(e)
             v[key] = f"{v[key].__module__}.{v[key].__class__.__qualname__}"
 
     return v
@@ -343,15 +342,15 @@ class LUMEBaseModel(BaseModel, ABC):
             var.name: var.default_validation_config for var in self.output_variables
         }
 
-    def evaluate(self, input_dict: dict[str, Any]) -> dict[str, Any]:
+    def evaluate(self, input_dict: dict[str, Any], **kwargs) -> dict[str, Any]:
         """Main evaluation function, child classes must implement the _evaluate method."""
         validated_input_dict = self.input_validation(input_dict)
-        output_dict = self._evaluate(validated_input_dict)
+        output_dict = self._evaluate(validated_input_dict, **kwargs)
         self.output_validation(output_dict)
         return output_dict
 
     @abstractmethod
-    def _evaluate(self, input_dict: dict[str, Any]) -> dict[str, Any]:
+    def _evaluate(self, input_dict: dict[str, Any], **kwargs) -> dict[str, Any]:
         pass
 
     def input_validation(self, input_dict: dict[str, Any]) -> dict[str, Any]:
@@ -456,16 +455,17 @@ class LUMEBaseModel(BaseModel, ABC):
         return cls.model_validate(parse_config(yaml_obj, cls.model_fields))
 
     def register_to_mlflow(
-            self,
-            input_dict: dict[str, Union[float, torch.Tensor]],
-            artifact_path: str,
-            registered_model_name: str | None = None,
-            tags: dict[str, Any] | None = None,
-            version_tags: dict[str, Any] | None = None,
-            alias: str | None = None,
-            run_name: str | None = None,
-            log_model_dump: bool = True,
-            **kwargs
+        self,
+        input_dict: dict[str, Union[float, torch.Tensor]],
+        artifact_path: str,
+        registered_model_name: str | None = None,
+        tags: dict[str, Any] | None = None,
+        version_tags: dict[str, Any] | None = None,
+        alias: str | None = None,
+        run_name: str | None = None,
+        log_model_dump: bool = True,
+        save_jit: bool = False,
+        **kwargs,
     ):
         """
         Registers the model to MLflow if mlflow is installed. Each time this function is called, a new version
@@ -485,7 +485,8 @@ class LUMEBaseModel(BaseModel, ABC):
             alias: Alias to add to this MLflow model version. Optional.
             run_name: Name of the MLflow run. Optional.
             log_model_dump: Whether to log the model dump files as artifacts. Optional.
-            **kwargs: Additional arguments for mlflow.pytorch.log_model or torch.save.
+            save_jit: Whether to save the model as TorchScript when calling model.dump, if log_model_dump=True. Optional.
+            **kwargs: Additional arguments for mlflow.pyfunc.log_model.
 
         Returns:
             Model info metadata, mlflow.models.model.ModelInfo.
@@ -500,5 +501,6 @@ class LUMEBaseModel(BaseModel, ABC):
             alias,
             run_name,
             log_model_dump,
-            **kwargs
-    )
+            save_jit,
+            **kwargs,
+        )
