@@ -85,10 +85,10 @@ class GPModel(ProbModelBaseModel):
             if self.input_transformers is not None:
                 if [self.model.input_transform] != self.input_transformers:
                     warnings.warn(
-                        "Input transforms do not match the trained model's input transforms.\n"
+                        "Input transforms were passed but the trained model has an intput transform attribute.\n"
                         f"Model attr: {self.model.input_transform}\n"
                         f"Passed attr: {self.input_transformers}\n"
-                        "LUME-Model uses the passed input transforms only. "
+                        "LUME-Model uses the passed input transforms only and deletes the model's original transform attributes. "
                         "This may lead to inaccurate predictions."
                     )
                 # Either way, the internal transform should be removed
@@ -107,11 +107,11 @@ class GPModel(ProbModelBaseModel):
             if self.output_transformers is not None:
                 if [self.model.outcome_transform] != self.output_transformers:
                     warnings.warn(
-                        "Output transforms do not match the trained model's output transforms.\n"
+                        "Output transforms were passed but the trained model has an output transform attribute.\n"
                         f"Model attr: {self.model.outcome_transform}\n"
                         f"Passed attr: {self.output_transformers}\n"
-                        "LUME-Model uses the passed output transforms only. "
-                        "This may lead to inaccurate predictions."
+                        "LUME-Model uses the passed output transforms only and deletes the model's original transform attributes. "
+                        "This may lead to inaccurate predictions. It is recommended to train you GP model with outcome_transform=None."
                     )
                 # Either way, the internal transform should be removed
                 # to avoid double transformations
