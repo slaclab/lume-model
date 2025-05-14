@@ -32,11 +32,14 @@ class NNEnsemble(ProbModelBaseModel):
     def validate_torch_model_list(cls, v):
         if all(isinstance(m, (str, os.PathLike)) for m in v):
             for i, m in enumerate(v):
-                if os.path.exists(m):
-                    # TODO: if it's a wrapper around TorchModel, how to handle that?
-                    v[i] = TorchModel(Path(f"{m[:-9]}.yml"))
+                fname = m.split("_model.pt")[0]
+                if os.path.exists(m) and os.path.exists(f"{fname}.yml"):
+                    # if it's a wrapper around TorchModel, might need a different class or a different way to load
+                    v[i] = TorchModel(Path(f"{fname}.yml"))
                 else:
-                    raise OSError(f"File {m} is not found.")
+                    raise OSError(
+                        f"Both files, {m} and {fname}.yml, are required to load the models."
+                    )
 
         if not all(isinstance(m, TorchModel) for m in v):
             raise TypeError("All models must be of type TorchModel.")
@@ -103,9 +106,10 @@ class NNEnsemble(ProbModelBaseModel):
             save_jit: Whether to save the JIT models.
         """
         # Save each model in the ensemble
+        mod_file = file.split(".yaml")[0].split(".yml")[0]
         for idx, model in enumerate(self.models):
             model.dump(
-                f"{file[:-4]}_{idx}.yml",  # TODO: make filename more robust
+                f"{mod_file}_{idx}.yml",
                 base_key=base_key,
                 save_models=False,  # will be saved in the ensemble
                 save_jit=False,
