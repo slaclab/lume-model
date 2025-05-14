@@ -187,7 +187,8 @@ class GPModel(ProbModelBaseModel):
         # Wrap the distribution in a torch distribution
         distribution = self._get_distribution(posterior)
         # Take mean and covariance of the distribution
-        mean, covar = distribution.mean, distribution.covariance_matrix
+        # posterior.mean preserves batch dim, while distribution.mean does not
+        mean, covar = posterior.mean, distribution.covariance_matrix
         # Return a dictionary of output variable names to distributions
         return self._create_output_dict((mean, covar))
 
@@ -300,6 +301,7 @@ class GPModel(ProbModelBaseModel):
                     offset = transformer.offset[i]
                 except IndexError:
                     # If the transformer has only one coefficient, use it for all outputs
+                    # This is needed in the case of multitask models
                     scale_fac = transformer.coefficient[0]
                     offset = transformer.offset[0]
                 mean = offset + scale_fac * mean
