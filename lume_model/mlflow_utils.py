@@ -97,11 +97,15 @@ def register_model(
             # TODO: pass directory where user wants local dump to, default to working directory
             run_name = mlflow.active_run().info.run_name
             name = registered_model_name or f"{run_name}"
+
             lume_model.dump(f"{name}.yml", save_jit=save_jit)
             mlflow.log_artifact(f"{name}.yml", artifact_path)
             mlflow.log_artifact(f"{name}_model.pt", artifact_path)
+            os.remove(f"{name}.yml")
+            os.remove(f"{name}_model.pt")
             if save_jit:
                 mlflow.log_artifact(f"{name}_model.jit", artifact_path)
+                os.remove(f"{name}_model.jit")
 
             # Get and log the input and output transformers
             lume_model = (
@@ -109,8 +113,10 @@ def register_model(
             )
             for i in range(len(lume_model.input_transformers)):
                 mlflow.log_artifact(f"{name}_input_transformers_{i}.pt", artifact_path)
+                os.remove(f"{name}_input_transformers_{i}.pt")
             for i in range(len(lume_model.output_transformers)):
                 mlflow.log_artifact(f"{name}_output_transformers_{i}.pt", artifact_path)
+                os.remove(f"{name}_output_transformers_{i}.pt")
 
     if (tags or alias or version_tags) and registered_model_name:
         from mlflow import MlflowClient
