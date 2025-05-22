@@ -28,16 +28,20 @@ class GPModel(ProbModelBaseModel):
     LUME-model class for GP models.
     This supports Botorch's SingleTask, MultiTask, and ModelListGP models.
 
-    Note that if the Botorch model was trained with input_transform or outcome_transform set to anything other than None,
-    those transformations will be automatically applied, as well as any input_transformers or output_transformers
-    passed to this class. For ModelListGP, the passed input_transformers and output_transformers will be applied to all
-    models in the list. If different transformers are needed for different models, the models should be instantiated
-    separately using Botorch's input_transform and outcome_transform attributes before creating the model list.
+    If input_transformers or output_transformers lists are passed, they will be applied sequentially to the
+    inputs/outputs outside the underlying model, regardless of what the Botorch model's input_transform or
+    outcome_transform attributes are set to (those transformations will still be handled internally by the Botorch
+    model class). For ModelListGP, the passed input_transformers and output_transformers will be applied to all
+    models in the list (outside the underlying models). If different transformers are needed for different models,
+    the models should be instantiated separately using Botorch's input_transform and outcome_transform attributes
+    before creating the model list.
 
     Args:
         model: A single task GPyTorch model or BoTorch model.
-        input_transformers: List of input transformers to apply to the input data. Optional, default is None.
-        output_transformers: List of output transformers to apply to the output data. Optional, default is None.
+        input_transformers: List of input transformers to apply to the input data. They will be applied sequentially
+            to the inputs. Optional, default is None.
+        output_transformers: List of output transformers to apply to the output data. They will be applied sequentially
+            to the outputs. Optional, default is None.
     """
 
     model: SingleTaskGP | MultiTaskGP | ModelListGP
@@ -45,7 +49,6 @@ class GPModel(ProbModelBaseModel):
     output_transformers: (
         list[OutcomeTransform | ReversibleInputTransform | torch.nn.Linear] | None
     ) = None
-    check_transforms: bool = True
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -56,8 +59,6 @@ class GPModel(ProbModelBaseModel):
         self.output_transformers = (
             [] if self.output_transformers is None else self.output_transformers
         )
-        if self.check_transforms:
-            self._check_transforms()
 
     @field_validator("model", mode="before")
     def validate_gp_model(cls, v):
@@ -82,52 +83,6 @@ class GPModel(ProbModelBaseModel):
             loaded_transformers.append(t)
         v = loaded_transformers
         return v
-
-    def _check_transforms(self):
-        """
-        Check the input and output transforms for the model.
-
-        If the trained model already has transform attributes,
-        a warning will be printed to alert the user if transforms are also passed.
-
-        This will only display a warning if the transforms are specified twice. It is up to the user
-        to adjust the specified transforms if necessary and reinstantiate.
-        """
-        # SingleTask and MultiTask
-        if (
-            hasattr(self.model, "input_transform")
-            and self.model.input_transform is not None
-        ):
-            if self.input_transformers is not None:
-                warnings.warn(
-                    "Input transforms were passed but the trained model has an input_transform attribute. "
-                    "LUME-Model will apply the passed input transforms and use the model's original transform attributes. "
-                    "If you'd like to use the passed input transforms only, please retrain your model with input_transform=None. "
-                    "To turn off this warning, set check_transforms=False when creating the model."
-                )
-
-        if (
-            hasattr(self.model, "outcome_transform")
-            and self.model.outcome_transform is not None
-        ):
-            if self.output_transformers is not None:
-                warnings.warn(
-                    "Output transforms were passed but the trained model has an outcome_transform attribute. "
-                    "LUME-Model will apply the passed output transforms and use the model's original transform attributes. "
-                    "If you'd like to use the passed output transforms only, please retrain your model with outcome_transform=None. "
-                    "To turn off this warning, set check_transforms=False when creating the model."
-                )
-
-        # ModelListGP
-        if isinstance(self.model, ModelListGP) and (
-            self.input_transformers or self.output_transformers
-        ):
-            # Note that we do not check each model, but instead issue a warning for the entire list
-            warnings.warn(
-                "The passed input and output transformers will be applied to all models in the ModelListGP. "
-                "If any of the models in the list has a transform attribute, it will be used as well on the corresponding model. "
-                "To turn off this warning, set check_transforms=False when creating the model."
-            )
 
     def get_input_size(self) -> int:
         """Get the dimensions of the input variables."""
@@ -379,34 +334,3 @@ class GPModel(ProbModelBaseModel):
             cov = lm @ lm.transpose(-1, -2)
 
         return cov
-
-    # def dump(
-    #     self,
-    #     file: Union[str, os.PathLike],
-    #     base_key: str = "",
-    #     save_models: bool = True,
-    #     save_jit: bool = False,
-    # ):
-    #     """Dump the model to a file.
-    #
-    #     Note that when dumping ModelListGP, the models in the list are not saved separately.
-    #
-    #     Args:
-    #         file: Path to the file to save the model.
-    #         base_key: Base key for the model.
-    #         save_models: Whether to save the models.
-    #         save_jit: Whether to save the JIT models. Note that this is not supported nor recommended for GP models.
-    #     """
-    #     # if isinstance(self.model, ModelListGP):
-    #     #     # Save each model in the list
-    #     #     mod_file = file.split(".yaml")[0].split(".yml")[0]
-    #     #     for idx, model in enumerate(self.model.models):
-    #     #         model.dump(
-    #     #             f"{mod_file}_{idx}.yml",
-    #     #             base_key=base_key,
-    #     #             save_models=False,  # will be saved in the ensemble
-    #     #             save_jit=False,
-    #     #         )
-    #
-    #     # Save the ensemble of models
-    #     super().dump(file, base_key, save_models, save_jit)

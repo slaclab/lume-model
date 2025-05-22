@@ -406,22 +406,15 @@ class TestGPModel:
             DistributionVariable(name="output1"),
             DistributionVariable(name="output2"),
         ]
-        with pytest.warns(UserWarning) as record:
-            lume_model = GPModel(
-                model=model_list_gp,
-                input_variables=single_task_gp_model_kwargs["input_variables"],
-                output_variables=output_variables,
-                input_transformers=[input_transformer],
-                output_transformers=[output_transformer],
-                check_transforms=True,
-            )
-            print(record[0].message)
-            assert (
-                str(record[0].message)
-                == "The passed input and output transformers will be applied to all models in the ModelListGP. "
-                "If any of the models in the list has a transform attribute, it will be used as well on the corresponding model. "
-                "To turn off this warning, set check_transforms=False when creating the model."
-            )
+        lume_model = GPModel(
+            model=model_list_gp,
+            input_variables=single_task_gp_model_kwargs["input_variables"],
+            output_variables=output_variables,
+            input_transformers=[input_transformer],
+            output_transformers=[output_transformer],
+            check_transforms=True,
+        )
+
         # Predict with original model
         # We have to transform twice to match the lume-model behavior in this case
         test_x_tf = input_transformer.transform(test_x)
