@@ -38,23 +38,6 @@ class ProbModelBaseModel(LUMEBaseModel):  # TODO: brainstorm a better name
                 )
         return values
 
-    # @model_validator(mode="after")
-    # def validate_dimensions(self):
-    #     # implement details of how we get sizes in child classes
-    #     # here do the validation
-    #     num_inputs = self.get_input_size()
-    #     num_outputs = self.get_output_size()
-    #
-    #     if len(self.input_variables) != num_inputs:
-    #         raise ValueError(
-    #             f"The initialized model requires {num_inputs} input variables."
-    #         )
-    #     if len(self.output_variables) != num_outputs:
-    #         raise ValueError(
-    #             f"The initialized model requires {num_outputs} output variables."
-    #         )
-    #     return self
-
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         # No range validation for probabilistic models currently implemented
@@ -74,30 +57,6 @@ class ProbModelBaseModel(LUMEBaseModel):  # TODO: brainstorm a better name
                 f"Unknown precision {self.precision}, "
                 f"expected one of ['double', 'single']."
             )
-
-    # @abstractmethod
-    # def get_input_size(self) -> int:
-    #     """Get the dimensions of the input variables."""
-    #     pass
-    #
-    # @abstractmethod
-    # def get_output_size(self) -> int:
-    #     """Get the dimensions of the output variables."""
-    #     pass
-
-    def _create_output_dict(self, output: Any) -> dict[str, TDistribution]:
-        """Create a dictionary of output variable names to distributions.
-        This can be defined at the subclass level to handle multi-dimensional outputs correctly
-        for each model type before returning the dictionary with `_get_predictions`.
-
-        Args:
-            output: Can be Distribution instance (single model), a list of Distribution instances
-                corresponding to the multi-dimensional output, or tensors defining the mean and covariance.
-
-        Returns:
-            Dictionary of output variable names to distributions.
-        """
-        pass
 
     @staticmethod
     def _create_tensor_from_dict(

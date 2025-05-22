@@ -1,12 +1,10 @@
 import os
 import logging
-import warnings
-
 from pydantic import field_validator
 
 import torch
 from torch.distributions import Distribution as TDistribution
-from botorch.models import SingleTaskGP, MultiTaskGP
+from botorch.models import SingleTaskGP, MultiTaskGP, ModelListGP
 from gpytorch.mlls import ExactMarginalLogLikelihood
 from gpytorch.distributions import MultivariateNormal as GPMultivariateNormal
 from botorch.models.transforms.input import ReversibleInputTransform
@@ -26,23 +24,39 @@ logger = logging.getLogger(__name__)
 class GPModel(ProbModelBaseModel):
     """
     LUME-model class for GP models.
-    This supports SingleTask and MultiTask models, using GPyTorch and BoTorch.
+    This supports Botorch's SingleTask, MultiTask, and ModelListGP models.
+
+    If input_transformers or output_transformers lists are passed, they will be applied sequentially to the
+    inputs/outputs outside the underlying model, regardless of what the Botorch model's input_transform or
+    outcome_transform attributes are set to (those transformations will still be handled internally by the Botorch
+    model class). For ModelListGP, the passed input_transformers and output_transformers will be applied to all
+    models in the list (outside the underlying models). If different transformers are needed for different models,
+    the models should be instantiated separately using Botorch's input_transform and outcome_transform attributes
+    before creating the model list.
 
     Args:
         model: A single task GPyTorch model or BoTorch model.
-        input_transformers: List of input transformers to apply to the input data. Optional, default is None.
-        output_transformers: List of output transformers to apply to the output data. Optional, default is None.
+        input_transformers: List of input transformers to apply to the input data. They will be applied sequentially
+            to the inputs. Optional, default is None.
+        output_transformers: List of output transformers to apply to the output data. They will be applied sequentially
+            to the outputs. Optional, default is None.
     """
 
-    model: SingleTaskGP | MultiTaskGP  # TODO: any other types?
-    input_transformers: list[ReversibleInputTransform | torch.nn.Linear] = None
-    output_transformers: list[
-        OutcomeTransform | ReversibleInputTransform | torch.nn.Linear
-    ] = None
+    model: SingleTaskGP | MultiTaskGP | ModelListGP
+    input_transformers: list[ReversibleInputTransform | torch.nn.Linear] | None = None
+    output_transformers: (
+        list[OutcomeTransform | ReversibleInputTransform | torch.nn.Linear] | None
+    ) = None
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.check_transforms()
+
+        self.input_transformers = (
+            [] if self.input_transformers is None else self.input_transformers
+        )
+        self.output_transformers = (
+            [] if self.output_transformers is None else self.output_transformers
+        )
 
     @field_validator("model", mode="before")
     def validate_gp_model(cls, v):
@@ -68,83 +82,34 @@ class GPModel(ProbModelBaseModel):
         v = loaded_transformers
         return v
 
-    def check_transforms(self):
-        """
-        Check the input and output transforms for the model.
-
-        If the trained model already has transform attributes,
-        they must match any passed transforms.
-
-        This will only display a warning if the transforms do not match. It is up to the user
-        to adjust the specified transforms if necessary and reinstantiate.
-        """
-        if (
-            hasattr(self.model, "input_transform")
-            and self.model.input_transform is not None
-        ):
-            if self.input_transformers is not None:
-                if [self.model.input_transform] != self.input_transformers:
-                    warnings.warn(
-                        "Input transforms do not match the trained model's input transforms.\n"
-                        f"Model attr: {self.model.input_transform}\n"
-                        f"Passed attr: {self.input_transformers}\n"
-                        "LUME-Model uses the passed input transforms only. "
-                        "This may lead to inaccurate predictions."
-                    )
-                # Either way, the internal transform should be removed
-                # to avoid double transformations
-                # TODO: should this get saved somewhere though, e.g. as metadata?
-                # TODO: is this how we want to handle this?
-                delattr(self.model, "input_transform")
-
-        if self.input_transformers is None:
-            self.input_transformers = []
-
-        if (
-            hasattr(self.model, "outcome_transform")
-            and self.model.outcome_transform is not None
-        ):
-            if self.output_transformers is not None:
-                if [self.model.outcome_transform] != self.output_transformers:
-                    warnings.warn(
-                        "Output transforms do not match the trained model's output transforms.\n"
-                        f"Model attr: {self.model.outcome_transform}\n"
-                        f"Passed attr: {self.output_transformers}\n"
-                        "LUME-Model uses the passed output transforms only. "
-                        "This may lead to inaccurate predictions."
-                    )
-                # Either way, the internal transform should be removed
-                # to avoid double transformations
-                delattr(self.model, "outcome_transform")
-
-        if self.output_transformers is None:
-            self.output_transformers = []
-
     def get_input_size(self) -> int:
         """Get the dimensions of the input variables."""
         if isinstance(self.model, SingleTaskGP):
             num_inputs = self.model.train_inputs[0].shape[-1]
         elif isinstance(self.model, MultiTaskGP):
             num_inputs = self.model.train_inputs[0].shape[-1] - 1
+        elif isinstance(self.model, ModelListGP):
+            if isinstance(self.model.models[0], SingleTaskGP):
+                num_inputs = self.model.models[0].train_inputs[0].shape[-1]
+            elif isinstance(self.model.models[0], MultiTaskGP):
+                num_inputs = self.model.models[0].train_inputs[0].shape[-1] - 1
         else:
             raise ValueError(
-                "Model must be an instance of SingleTaskGP or MultiTaskGP."
+                "Model must be an instance of SingleTaskGP, MultiTaskGP or ModelListGP."
             )
         return num_inputs
 
     def get_output_size(self) -> int:
         """Get the dimensions of the output variables."""
-        if isinstance(self.model, SingleTaskGP):
-            num_outputs = (
-                self.model.train_targets.shape[0]
-                if len(self.model.train_targets.shape) > 1
-                else 1
-            )
-        elif isinstance(self.model, MultiTaskGP):
-            num_outputs = len(self.model._output_tasks)
+        if isinstance(self.model, ModelListGP):
+            num_outputs = sum(model.num_outputs for model in self.model.models)
+        elif isinstance(self.model, SingleTaskGP) or isinstance(
+            self.model, MultiTaskGP
+        ):
+            num_outputs = self.model.num_outputs
         else:
             raise ValueError(
-                "Model must be an instance of SingleTaskGP or MultiTaskGP."
+                "Model must be an instance of SingleTaskGP, MultiTaskGP or ModelListGP."
             )
         return num_outputs
 
@@ -187,7 +152,8 @@ class GPModel(ProbModelBaseModel):
         # Wrap the distribution in a torch distribution
         distribution = self._get_distribution(posterior)
         # Take mean and covariance of the distribution
-        mean, covar = distribution.mean, distribution.covariance_matrix
+        # posterior.mean preserves batch dim, while distribution.mean does not
+        mean, covar = posterior.mean, distribution.covariance_matrix
         # Return a dictionary of output variable names to distributions
         return self._create_output_dict((mean, covar))
 
@@ -300,6 +266,7 @@ class GPModel(ProbModelBaseModel):
                     offset = transformer.offset[i]
                 except IndexError:
                     # If the transformer has only one coefficient, use it for all outputs
+                    # This is needed in the case of multitask models
                     scale_fac = transformer.coefficient[0]
                     offset = transformer.offset[0]
                 mean = offset + scale_fac * mean
@@ -358,9 +325,6 @@ class GPModel(ProbModelBaseModel):
         try:
             torch.linalg.cholesky(cov)
         except torch._C._LinAlgError:
-            warnings.warn(
-                "Covariance matrix is not positive definite. Attempting to add jitter the diagonal."
-            )
             lm = psd_safe_cholesky(cov)  # determines jitter iteratively
             cov = lm @ lm.transpose(-1, -2)
 
