@@ -1,15 +1,17 @@
 import pytest
 import random
+from copy import deepcopy
 
 try:
     import torch
-    from botorch.models import SingleTaskGP, MultiTaskGP
+    from botorch.models import SingleTaskGP, MultiTaskGP, ModelListGP
 
     torch.manual_seed(42)
 except ImportError:
     pass
 
 from lume_model.models.gp_model import GPModel
+from lume_model.variables import ScalarVariable, DistributionVariable
 
 random.seed(42)
 
@@ -56,13 +58,30 @@ class TestGPModel:
         # Predict with original model
         test_x_tf = input_transformer.transform(test_x)
         original_pred = original_model.posterior(test_x_tf)
-        # Output transformer is a ReversibleInputTransform type
         original_mean = output_transformer.untransform(original_pred.mean)
         original_variance = (
             abs(output_transformer.coefficient) ** 2 * original_pred.variance
         )
         # Predict with GPModel
         lume_pred = gp_model.evaluate({"input": test_x})
+
+        assert gp_model.get_input_size() == 1
+        assert gp_model.get_output_size() == 2
+        assert len(lume_pred) == 2
+        assert torch.allclose(original_mean[:, 0], lume_pred["output1"].mean)
+        assert torch.allclose(original_variance[:, 0], lume_pred["output1"].variance)
+        assert torch.allclose(original_mean[:, 1], lume_pred["output2"].mean)
+        assert torch.allclose(original_variance[:, 1], lume_pred["output2"].variance)
+
+        # Test with observation noise set to True
+        original_pred = original_model.posterior(test_x_tf, observation_noise=True)
+        # Output transformer is a ReversibleInputTransform type
+        original_mean = output_transformer.untransform(original_pred.mean)
+        original_variance = (
+            abs(output_transformer.coefficient) ** 2 * original_pred.variance
+        )
+        # Predict with GPModel
+        lume_pred = gp_model.evaluate({"input": test_x}, observation_noise=True)
 
         assert gp_model.get_input_size() == 1
         assert gp_model.get_output_size() == 2
@@ -178,3 +197,201 @@ class TestGPModel:
         assert torch.allclose(original_variance[:, :, 0], lume_pred["output1"].variance)
         assert torch.allclose(original_mean[:, :, 1], lume_pred["output2"].mean)
         assert torch.allclose(original_variance[:, :, 1], lume_pred["output2"].variance)
+
+    def test_model_list_gp(self, create_single_task_gp, create_multi_task_gp):
+        # based on botorch/test/models/test_model_list_gp_regression.py
+
+        # SingleTaskGP
+        model1, test_x = create_single_task_gp
+        model_list_gp = ModelListGP(model1)
+        posterior = model_list_gp.posterior(test_x)
+
+        input_variables = [ScalarVariable(name="input")]
+        output_variables = [DistributionVariable(name="output")]
+        gp_lume_model = GPModel(
+            model=model_list_gp,
+            input_variables=input_variables,
+            output_variables=output_variables,
+        )
+        lume_pred = gp_lume_model.evaluate({"input": test_x})
+        assert gp_lume_model.get_input_size() == 1
+        assert gp_lume_model.get_output_size() == 1
+        assert len(lume_pred) == 1
+        assert torch.allclose(posterior.mean, lume_pred["output"].mean.unsqueeze(-1))
+        assert torch.allclose(
+            posterior.variance, lume_pred["output"].variance.unsqueeze(-1)
+        )
+
+        # MultiTaskGP
+        model, model2, train_x_raw = create_multi_task_gp
+
+        # Wrap a single single-output MTGP.
+        model_list_gp = ModelListGP(model)
+        with torch.no_grad():
+            posterior = model_list_gp.posterior(train_x_raw)
+        input_variables = [ScalarVariable(name="input1")]
+        output_variables = [DistributionVariable(name="output1")]
+        gp_lume_model = GPModel(
+            model=model_list_gp,
+            input_variables=input_variables,
+            output_variables=output_variables,
+        )
+        input_dict = {"input1": train_x_raw}
+        output_dict = gp_lume_model.evaluate(input_dict)
+        assert gp_lume_model.get_input_size() == 1
+        assert gp_lume_model.get_output_size() == 1
+        assert len(output_dict) == 1
+        assert torch.allclose(output_dict["output1"].mean, posterior.mean.squeeze(-1))
+        assert torch.allclose(
+            output_dict["output1"].variance, posterior.variance.squeeze(-1)
+        )
+
+        # Wrap two single-output MTGPs.
+        model_list_gp = ModelListGP(model, model)
+        with torch.no_grad():
+            posterior = model_list_gp.posterior(train_x_raw)
+        output_variables = [
+            DistributionVariable(name="output1"),
+            DistributionVariable(name="output2"),
+        ]
+        gp_lume_model = GPModel(
+            model=model_list_gp,
+            input_variables=input_variables,
+            output_variables=output_variables,
+        )
+        output_dict = gp_lume_model.evaluate(input_dict)
+        assert gp_lume_model.get_input_size() == 1
+        assert gp_lume_model.get_output_size() == 2
+        assert len(output_dict) == 2
+        assert torch.allclose(output_dict["output1"].mean, posterior.mean[:, 0])
+        assert torch.allclose(output_dict["output1"].variance, posterior.variance[:, 0])
+        assert torch.allclose(output_dict["output2"].mean, posterior.mean[:, 1])
+        assert torch.allclose(output_dict["output2"].variance, posterior.variance[:, 1])
+
+        # Wrap a multi-output MTGP.
+        model_list_gp = ModelListGP(model2)
+        with torch.no_grad():
+            posterior = model_list_gp.posterior(train_x_raw)
+        gp_lume_model = GPModel(
+            model=model_list_gp,
+            input_variables=input_variables,
+            output_variables=output_variables,
+        )
+        output_dict = gp_lume_model.evaluate(input_dict)
+        assert gp_lume_model.get_input_size() == 1
+        assert gp_lume_model.get_output_size() == 2
+        assert len(output_dict) == 2
+        assert torch.allclose(output_dict["output1"].mean, posterior.mean[:, 0])
+        assert torch.allclose(output_dict["output1"].variance, posterior.variance[:, 0])
+        assert torch.allclose(output_dict["output2"].mean, posterior.mean[:, 1])
+        assert torch.allclose(output_dict["output2"].variance, posterior.variance[:, 1])
+
+        # Mix of multi-output and single-output MTGPs.
+        model_list_gp = ModelListGP(model, model2, deepcopy(model))
+        with torch.no_grad():
+            posterior = model_list_gp.posterior(train_x_raw)
+        output_variables = [
+            DistributionVariable(name="output1"),
+            DistributionVariable(name="output2"),
+            DistributionVariable(name="output3"),
+            DistributionVariable(name="output4"),
+        ]
+        gp_lume_model = GPModel(
+            model=model_list_gp,
+            input_variables=input_variables,
+            output_variables=output_variables,
+        )
+        output_dict = gp_lume_model.evaluate(input_dict)
+        assert gp_lume_model.get_input_size() == 1
+        assert gp_lume_model.get_output_size() == 4
+        assert len(output_dict) == 4
+        assert torch.allclose(output_dict["output1"].mean, posterior.mean[:, 0])
+        assert torch.allclose(output_dict["output1"].variance, posterior.variance[:, 0])
+        assert torch.allclose(output_dict["output2"].mean, posterior.mean[:, 1])
+        assert torch.allclose(output_dict["output2"].variance, posterior.variance[:, 1])
+        assert torch.allclose(output_dict["output3"].mean, posterior.mean[:, 2])
+        assert torch.allclose(output_dict["output3"].variance, posterior.variance[:, 2])
+        assert torch.allclose(output_dict["output4"].mean, posterior.mean[:, 3])
+        assert torch.allclose(output_dict["output4"].variance, posterior.variance[:, 3])
+
+    def test_transformers(
+        self,
+        create_single_task_gp,
+        create_single_task_gp_w_transform,
+        single_task_gp_model_kwargs,
+    ):
+        model, test_x = create_single_task_gp
+        model_tf, _, input_transformer, output_transformer = (
+            create_single_task_gp_w_transform
+        )
+
+        # Test with ModelListGP
+        # Test with passing a list of transformers
+        model_list_gp = ModelListGP(model, model)
+        output_variables = [
+            DistributionVariable(name="output1"),
+            DistributionVariable(name="output2"),
+        ]
+        lume_model = GPModel(
+            model=model_list_gp,
+            input_variables=single_task_gp_model_kwargs["input_variables"],
+            output_variables=output_variables,
+            input_transformers=[input_transformer],
+            output_transformers=[output_transformer],
+        )
+        # Predict with original model
+        test_x_tf = input_transformer.transform(test_x)
+        original_pred = model_list_gp.posterior(test_x_tf)
+        original_mean = output_transformer.untransform(original_pred.mean)[0]
+        original_variance = (
+            abs(output_transformer.stdvs.squeeze(0)) ** 2 * original_pred.variance
+        )
+        # Predict with GPModel
+        lume_pred = lume_model.evaluate({"input": test_x})
+        assert lume_model.get_input_size() == 1
+        assert lume_model.get_output_size() == 2
+        assert len(lume_pred) == 2
+        assert torch.allclose(original_mean[:, 0], lume_pred["output1"].mean)
+        assert torch.allclose(original_variance[:, 0], lume_pred["output1"].variance)
+        assert torch.allclose(original_mean[:, 1], lume_pred["output2"].mean)
+        assert torch.allclose(original_variance[:, 1], lume_pred["output2"].variance)
+
+        # Test with botorch transformers set as attributes
+        # this should ignore any transformers passed to the GPModel
+        model_list_gp = ModelListGP(model_tf, model_tf)
+        output_variables = [
+            DistributionVariable(name="output1"),
+            DistributionVariable(name="output2"),
+        ]
+        with pytest.warns(UserWarning) as record:
+            lume_model = GPModel(
+                model=model_list_gp,
+                input_variables=single_task_gp_model_kwargs["input_variables"],
+                output_variables=output_variables,
+                input_transformers=[input_transformer],
+                output_transformers=[output_transformer],
+            )
+            print(record[0].message)
+            assert (
+                str(record[0].message)
+                == "The passed input and output transformers will be applied to all models in the ModelListGP. "
+                "If any of the models in the list has a transform attribute, it will be used as well on the corresponding model. "
+                "To turn off this warning, set check_transforms=False when creating the model."
+            )
+        # Predict with original model
+        # We have to transform twice to match the lume-model behavior in this case
+        test_x_tf = input_transformer.transform(test_x)
+        original_pred = model_list_gp.posterior(test_x_tf)
+        original_mean = output_transformer.untransform(original_pred.mean)[0]
+        original_variance = (
+            abs(output_transformer.stdvs.squeeze(0)) ** 2 * original_pred.variance
+        )
+        # Predict with GPModel
+        lume_pred = lume_model.evaluate({"input": test_x})
+        assert lume_model.get_input_size() == 1
+        assert lume_model.get_output_size() == 2
+        assert len(lume_pred) == 2
+        assert torch.allclose(original_mean[:, 0], lume_pred["output1"].mean)
+        assert torch.allclose(original_variance[:, 0], lume_pred["output1"].variance)
+        assert torch.allclose(original_mean[:, 1], lume_pred["output2"].mean)
+        assert torch.allclose(original_variance[:, 1], lume_pred["output2"].variance)
