@@ -107,6 +107,16 @@ def recursive_serialize(
     for key, value in v.items():
         if isinstance(value, dict):
             v[key] = recursive_serialize(value, key)
+        elif isinstance(value, list) and all(isinstance(ele, dict) for ele in value):
+            # e.g. NN ensemble
+            v[key] = [
+                recursive_serialize(value[i], f"{base_key}{i}", file_prefix)
+                for i in range(len(value))
+            ]
+            # For NN ensembles, we want v[key] to be a list of the filenames corresponding to each
+            # model in the ensemble and not the serialized dict of each
+            # NOTE: If this clause is reached for other models, we may need to do this differently
+            v[key] = [v[key][i]["model"] for i in range(len(value))]
         elif torch is not None and isinstance(value, torch.nn.Module):
             v[key] = process_torch_module(
                 value, base_key, key, file_prefix, save_models, save_jit
@@ -116,6 +126,7 @@ def recursive_serialize(
             and torch is not None
             and any(isinstance(ele, torch.nn.Module) for ele in value)
         ):
+            # List of transformers
             v[key] = [
                 process_torch_module(
                     value[i], base_key, f"{key}_{i}", file_prefix, save_models, False
@@ -295,7 +306,7 @@ class LUMEBaseModel(BaseModel, ABC):
                 raise ValueError(
                     "Cannot specify YAML string and keyword arguments for LUMEBaseModel init."
                 )
-            super().__init__(**parse_config(args[0], self.model_fields))
+            super().__init__(**parse_config(args[0], type(self).model_fields))
         elif len(args) > 1:
             raise ValueError(
                 "Arguments to LUMEBaseModel must be either a single YAML string "
@@ -307,16 +318,6 @@ class LUMEBaseModel(BaseModel, ABC):
     @field_validator("input_variables", "output_variables")
     def unique_variable_names(cls, value):
         verify_unique_variable_names(value)
-        return value
-
-    @field_validator("input_variables")
-    def verify_input_default_value(cls, value):
-        """Verifies that input variables have the required default values."""
-        for var in value:
-            if var.default_value is None:
-                raise ValueError(
-                    f"Input variable {var.name} must have a default value."
-                )
         return value
 
     @property
@@ -339,15 +340,15 @@ class LUMEBaseModel(BaseModel, ABC):
             var.name: var.default_validation_config for var in self.output_variables
         }
 
-    def evaluate(self, input_dict: dict[str, Any]) -> dict[str, Any]:
+    def evaluate(self, input_dict: dict[str, Any], **kwargs) -> dict[str, Any]:
         """Main evaluation function, child classes must implement the _evaluate method."""
         validated_input_dict = self.input_validation(input_dict)
-        output_dict = self._evaluate(validated_input_dict)
+        output_dict = self._evaluate(validated_input_dict, **kwargs)
         self.output_validation(output_dict)
         return output_dict
 
     @abstractmethod
-    def _evaluate(self, input_dict: dict[str, Any]) -> dict[str, Any]:
+    def _evaluate(self, input_dict: dict[str, Any], **kwargs) -> dict[str, Any]:
         pass
 
     def input_validation(self, input_dict: dict[str, Any]) -> dict[str, Any]:
