@@ -9,6 +9,7 @@ from io import TextIOWrapper
 import yaml
 import numpy as np
 from pydantic import BaseModel, ConfigDict, field_validator
+import torch  # TODO: for torch.Tensor type hinting, but may need to make more general in mlflow class
 
 from lume_model.variables import ScalarVariable, get_variable, ConfigEnum
 from lume_model.utils import (
@@ -19,6 +20,7 @@ from lume_model.utils import (
     variables_from_dict,
     replace_relative_paths,
 )
+from lume_model.mlflow_utils import register_model
 
 logger = logging.getLogger(__name__)
 
@@ -451,3 +453,54 @@ class LUMEBaseModel(BaseModel, ABC):
     @classmethod
     def from_yaml(cls, yaml_obj: [str, TextIOWrapper]):
         return cls.model_validate(parse_config(yaml_obj, cls.model_fields))
+
+    def register_to_mlflow(
+        self,
+        input_dict: dict[str, Union[float, torch.Tensor]],
+        artifact_path: str,
+        registered_model_name: str | None = None,
+        tags: dict[str, Any] | None = None,
+        version_tags: dict[str, Any] | None = None,
+        alias: str | None = None,
+        run_name: str | None = None,
+        log_model_dump: bool = True,
+        save_jit: bool = False,
+        **kwargs,
+    ):
+        """
+        Registers the model to MLflow if mlflow is installed. Each time this function is called, a new version
+        of the model is created. The model is saved to the tracking server or local directory, depending on the
+        MLFLOW_TRACKING_URI.
+
+        If no tracking server is set up, data and artifacts are saved directly under your current directory. To set up
+        a tracking server, set the environment variable MLFLOW_TRACKING_URI, e.g. a local port/path. See
+        https://mlflow.org/docs/latest/getting-started/intro-quickstart/ for more info.
+
+        Args:
+            input_dict: Input dictionary to infer the model signature.
+            artifact_path: Path to store the model in MLflow.
+            registered_model_name: Name of the registered model in MLflow. Optional.
+            tags: Tags to add to the MLflow model. Optional.
+            version_tags: Tags to add to this MLflow model version. Optional.
+            alias: Alias to add to this MLflow model version. Optional.
+            run_name: Name of the MLflow run. Optional.
+            log_model_dump: Whether to log the model dump files as artifacts. Optional.
+            save_jit: Whether to save the model as TorchScript when calling model.dump, if log_model_dump=True. Optional.
+            **kwargs: Additional arguments for mlflow.pyfunc.log_model.
+
+        Returns:
+            Model info metadata, mlflow.models.model.ModelInfo.
+        """
+        return register_model(
+            self,
+            input_dict,
+            artifact_path,
+            registered_model_name,
+            tags,
+            version_tags,
+            alias,
+            run_name,
+            log_model_dump,
+            save_jit,
+            **kwargs,
+        )
