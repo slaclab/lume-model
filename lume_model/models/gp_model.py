@@ -1,7 +1,5 @@
 import os
 import logging
-import warnings
-
 from pydantic import field_validator
 
 import torch
@@ -327,9 +325,6 @@ class GPModel(ProbModelBaseModel):
         try:
             torch.linalg.cholesky(cov)
         except torch._C._LinAlgError:
-            warnings.warn(
-                "Covariance matrix is not positive definite. Attempting to add jitter the diagonal."
-            )
             lm = psd_safe_cholesky(cov)  # determines jitter iteratively
             cov = lm @ lm.transpose(-1, -2)
 

@@ -306,7 +306,7 @@ class LUMEBaseModel(BaseModel, ABC):
                 raise ValueError(
                     "Cannot specify YAML string and keyword arguments for LUMEBaseModel init."
                 )
-            super().__init__(**parse_config(args[0], self.model_fields))
+            super().__init__(**parse_config(args[0], type(self).model_fields))
         elif len(args) > 1:
             raise ValueError(
                 "Arguments to LUMEBaseModel must be either a single YAML string "

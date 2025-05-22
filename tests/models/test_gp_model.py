@@ -160,6 +160,7 @@ class TestGPModel:
         test_x = torch.linspace(0, 1, 200).reshape(-1, 1).to(torch.double)
         # Predict with original model
         test_x_tf = input_transformer.transform(test_x)
+
         original_pred = original_model.posterior(test_x_tf)
         m = original_pred.mean
         v = original_pred.variance
@@ -412,7 +413,6 @@ class TestGPModel:
             output_variables=output_variables,
             input_transformers=[input_transformer],
             output_transformers=[output_transformer],
-            check_transforms=True,
         )
 
         # Predict with original model
