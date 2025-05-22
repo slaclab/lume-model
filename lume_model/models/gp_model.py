@@ -45,11 +45,19 @@ class GPModel(ProbModelBaseModel):
     output_transformers: (
         list[OutcomeTransform | ReversibleInputTransform | torch.nn.Linear] | None
     ) = None
+    check_transforms: bool = True
 
-    def __init__(self, check_transforms=True, *args, **kwargs):
+    def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        if check_transforms:
-            self.check_transforms()
+
+        self.input_transformers = (
+            [] if self.input_transformers is None else self.input_transformers
+        )
+        self.output_transformers = (
+            [] if self.output_transformers is None else self.output_transformers
+        )
+        if self.check_transforms:
+            self._check_transforms()
 
     @field_validator("model", mode="before")
     def validate_gp_model(cls, v):
@@ -75,7 +83,7 @@ class GPModel(ProbModelBaseModel):
         v = loaded_transformers
         return v
 
-    def check_transforms(self):
+    def _check_transforms(self):
         """
         Check the input and output transforms for the model.
 
@@ -134,7 +142,7 @@ class GPModel(ProbModelBaseModel):
                 num_inputs = self.model.models[0].train_inputs[0].shape[-1] - 1
         else:
             raise ValueError(
-                "Model must be an instance of SingleTaskGP or MultiTaskGP."
+                "Model must be an instance of SingleTaskGP, MultiTaskGP or ModelListGP."
             )
         return num_inputs
 

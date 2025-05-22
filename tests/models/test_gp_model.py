@@ -1,3 +1,4 @@
+import os
 import pytest
 import random
 from copy import deepcopy
@@ -120,6 +121,27 @@ class TestGPModel:
         assert torch.allclose(original_mean[:, :, 1], lume_pred["output2"].mean)
         assert torch.allclose(original_variance[:, :, 1], lume_pred["output2"].variance)
 
+        # Dump and load the model
+        gp_model.dump("test.yml")
+        loaded_model = GPModel("test.yml")
+        lume_pred_loaded = loaded_model.evaluate({"input": batch_test_x})
+        assert torch.allclose(
+            lume_pred["output1"].mean, lume_pred_loaded["output1"].mean
+        )
+        assert torch.allclose(
+            lume_pred["output1"].variance, lume_pred_loaded["output1"].variance
+        )
+        assert torch.allclose(
+            lume_pred["output2"].mean, lume_pred_loaded["output2"].mean
+        )
+        assert torch.allclose(
+            lume_pred["output2"].variance, lume_pred_loaded["output2"].variance
+        )
+        os.remove("test.yml")
+        os.remove("test_model.pt")
+        os.remove("test_input_transformers_0.pt")
+        os.remove("test_output_transformers_0.pt")
+
     def test_multi_task_gp(self, multi_task_gp_model_kwargs):
         gp_model = GPModel(
             model=multi_task_gp_model_kwargs["model"],
@@ -197,6 +219,27 @@ class TestGPModel:
         assert torch.allclose(original_variance[:, :, 0], lume_pred["output1"].variance)
         assert torch.allclose(original_mean[:, :, 1], lume_pred["output2"].mean)
         assert torch.allclose(original_variance[:, :, 1], lume_pred["output2"].variance)
+
+        # Dump and load the model
+        gp_model.dump("test.yml")
+        loaded_model = GPModel("test.yml")
+        lume_pred_loaded = loaded_model.evaluate({"input": batch_test_x})
+        assert torch.allclose(
+            lume_pred["output1"].mean, lume_pred_loaded["output1"].mean
+        )
+        assert torch.allclose(
+            lume_pred["output1"].variance, lume_pred_loaded["output1"].variance
+        )
+        assert torch.allclose(
+            lume_pred["output2"].mean, lume_pred_loaded["output2"].mean
+        )
+        assert torch.allclose(
+            lume_pred["output2"].variance, lume_pred_loaded["output2"].variance
+        )
+        os.remove("test.yml")
+        os.remove("test_model.pt")
+        os.remove("test_input_transformers_0.pt")
+        os.remove("test_output_transformers_0.pt")
 
     def test_model_list_gp(self, create_single_task_gp, create_multi_task_gp):
         # based on botorch/test/models/test_model_list_gp_regression.py
@@ -370,6 +413,7 @@ class TestGPModel:
                 output_variables=output_variables,
                 input_transformers=[input_transformer],
                 output_transformers=[output_transformer],
+                check_transforms=True,
             )
             print(record[0].message)
             assert (
@@ -395,3 +439,24 @@ class TestGPModel:
         assert torch.allclose(original_variance[:, 0], lume_pred["output1"].variance)
         assert torch.allclose(original_mean[:, 1], lume_pred["output2"].mean)
         assert torch.allclose(original_variance[:, 1], lume_pred["output2"].variance)
+
+        # Dump and load the model
+        lume_model.dump("test.yml")
+        loaded_model = GPModel("test.yml")
+        lume_pred_loaded = loaded_model.evaluate({"input": test_x})
+        assert torch.allclose(
+            lume_pred["output1"].mean, lume_pred_loaded["output1"].mean
+        )
+        assert torch.allclose(
+            lume_pred["output1"].variance, lume_pred_loaded["output1"].variance
+        )
+        assert torch.allclose(
+            lume_pred["output2"].mean, lume_pred_loaded["output2"].mean
+        )
+        assert torch.allclose(
+            lume_pred["output2"].variance, lume_pred_loaded["output2"].variance
+        )
+        os.remove("test.yml")
+        os.remove("test_model.pt")
+        os.remove("test_input_transformers_0.pt")
+        os.remove("test_output_transformers_0.pt")
