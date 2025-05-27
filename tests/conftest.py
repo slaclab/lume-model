@@ -1,18 +1,25 @@
 import os
 import json
 from typing import Any, Union
+import string
+import random
 
 import pytest
 
 from lume_model.utils import variables_from_yaml
 from lume_model.variables import ScalarVariable, DistributionVariable
+from lume_model.calibrations.torch_model.base import ParameterModule
+from lume_model.calibrations.torch_model.decoupled_linear import DecoupledLinear
 
 try:
     import torch
     from botorch.models.transforms.input import AffineInputTransform  # noqa: F401
     from botorch.models.transforms.outcome import Standardize  # noqa: F401
+    from gpytorch.priors import NormalPrior
+    from gpytorch.constraints import Interval
     from botorch.models import MultiTaskGP, SingleTaskGP
     from lume_model.models import TorchModel, TorchModule
+
 except ModuleNotFoundError:
     pass
 
@@ -310,3 +317,73 @@ def get_random_data(
     train_y = torch.sin(train_x[..., :1] * (2 * torch.pi))
     train_y = train_y + 0.2 * torch.randn(n, m, **tkwargs).repeat(rep_shape)
     return train_x, train_y
+
+
+# NN Calibration fixtures
+def random_name() -> str:
+    k = random.randint(1, 5)
+    return "".join(random.choices(string.ascii_lowercase, k=k))
+
+
+@pytest.fixture(scope="session")
+def linear_model() -> torch.nn.Module:
+    return torch.nn.Linear(in_features=1, out_features=1)
+
+
+@pytest.fixture(scope="function")
+def ndim_size() -> tuple[int]:
+    d = random.randint(1, 3)
+    return tuple(torch.randint(1, 5, size=(d,)).tolist())
+
+
+@pytest.fixture(scope="function")
+def parameter_name() -> str:
+    return random_name()
+
+
+@pytest.fixture(scope="function")
+def parameter_names() -> list[str]:
+    n = random.randint(2, 5)
+    names = []
+    for i in range(n):
+        name = ""
+        while name in names:
+            name = random_name()
+        names.append(name)
+    return names
+
+
+@pytest.fixture(scope="function")
+def extensive_parameter_module(
+    linear_model, parameter_name, ndim_size
+) -> ParameterModule:
+    kwargs = {
+        f"{parameter_name}_size": ndim_size,
+        f"{parameter_name}_default": torch.zeros(ndim_size),
+        f"{parameter_name}_initial": torch.ones(ndim_size),
+        f"{parameter_name}_prior": NormalPrior(
+            loc=torch.zeros(ndim_size), scale=torch.ones(ndim_size)
+        ),
+        f"{parameter_name}_constraint": Interval(lower_bound=-1.5, upper_bound=1.5),
+        f"{parameter_name}_mask": torch.randint(0, 2, size=ndim_size, dtype=torch.bool),
+    }
+    m = ParameterModule(
+        model=linear_model,
+        parameter_names=[parameter_name],
+        **kwargs,
+    )
+    return m
+
+
+@pytest.fixture(scope="function")
+def one_dim_decoupled_linear_module(linear_model) -> DecoupledLinear:
+    x_offset, x_scale = torch.rand(1), torch.ones(1) + torch.rand(1)
+    y_offset, y_scale = torch.rand(1), torch.ones(1) + torch.rand(1)
+    m = DecoupledLinear(
+        model=linear_model,
+        x_offset_initial=x_offset,
+        x_scale_initial=x_scale,
+        y_offset_initial=y_offset,
+        y_scale_initial=y_scale,
+    )
+    return m
