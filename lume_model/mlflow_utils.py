@@ -161,7 +161,8 @@ class PyFuncModel(mlflow.pyfunc.PythonModel):
 
     # Disable type hint validation for the predict method to avoid annoying warnings
     # since we have type validation in the lume-model itself.
-    # If need to implement, this may be helpful: https://mlflow.org/docs/latest/model/python_model/#type-hint-usage-in-pythonmodel
+    # If we need to implement this, this may be helpful:
+    # https://mlflow.org/docs/latest/model/python_model/#type-hint-usage-in-pythonmodel
     _skip_type_hint_validation = True
 
     def __init__(self, model):
