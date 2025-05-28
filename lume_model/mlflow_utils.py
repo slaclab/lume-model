@@ -1,6 +1,6 @@
 import os
 import warnings
-from typing import Dict, Any, Union
+from typing import Any, Union
 
 from torch import Tensor, nn
 
@@ -159,10 +159,16 @@ class PyFuncModel(mlflow.pyfunc.PythonModel):
     Must implement the `predict` method.
     """
 
+    # Disable type hint validation for the predict method to avoid annoying warnings
+    # since we have type validation in the lume-model itself.
+    # If we need to implement this, this may be helpful:
+    # g
+    _skip_type_hint_validation = True
+
     def __init__(self, model):
         self.model = model
 
-    def predict(self, model_input: Dict[str, Any]) -> Dict[str, Any]:
+    def predict(self, model_input):
         """Evaluate the model with the given input."""
         # Convert input to the format expected by the model
         # TODO: this isn't very general but type validation in torch modules requires this. May need to adjust.
