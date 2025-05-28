@@ -23,7 +23,8 @@ requires-python = ">=3.10"
 dependencies = [
     "pydantic",
     "numpy",
-    "pyyaml"
+    "pyyaml",
+    "mlflow"
 ]
 dynamic = ["version"]
 [tool.setuptools_scm]
@@ -34,8 +35,7 @@ dev = [
     "botorch",
     "torch",
     "pre-commit",
-    "pytest",
-    "mlflow"
+    "pytest"
 ]
 docs = [
     "mkdocs",

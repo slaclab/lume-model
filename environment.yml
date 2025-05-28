@@ -7,3 +7,4 @@ dependencies:
   - pydantic>2.3
   - numpy
   - pyyaml
+  - mlflow

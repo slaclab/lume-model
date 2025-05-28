@@ -142,6 +142,8 @@ class GPModel(ProbModelBaseModel):
         Returns:
             Dictionary of output variable names to distributions.
         """
+        # Reorder the input dictionary to match the model's input order
+        input_dict = super()._arrange_inputs(input_dict)
         # Create tensor from input_dict
         x = super()._create_tensor_from_dict(input_dict)
         # Transform the input
