@@ -8,6 +8,7 @@ LUME-model holds data structures used in the LUME modeling toolset. Variables an
 * pydantic
 * numpy
 * pyyaml
+* mlflow
 
 ## Install
 

@@ -58,6 +58,19 @@ class ProbModelBaseModel(LUMEBaseModel):  # TODO: brainstorm a better name
                 f"expected one of ['double', 'single']."
             )
 
+    def _arrange_inputs(
+        self, d: dict[str, Union[float, torch.Tensor]]
+    ) -> dict[str, Union[float, torch.Tensor]]:
+        """Enforces order of input variables before creating a tensor.
+
+        Args:
+            d: Dictionary of input variable names to tensors.
+
+        Returns:
+            Ordered input tensor.
+        """
+        return {k: d[k] for k in self.input_names}
+
     @staticmethod
     def _create_tensor_from_dict(
         d: dict[str, Union[float, torch.Tensor]],
