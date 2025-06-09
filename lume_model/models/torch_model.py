@@ -380,15 +380,15 @@ class TorchModel(LUMEBaseModel):
         default_tensor = torch.tensor(
             [var.default_value for var in self.input_variables], **self._tkwargs
         )
-
         # determine input shape
         input_shapes = [formatted_inputs[k].shape for k in formatted_inputs.keys()]
         if not all(ele == input_shapes[0] for ele in input_shapes):
             raise ValueError("Inputs have inconsistent shapes.")
 
-        input_tensor = torch.tile(default_tensor, dims=(*input_shapes[0], 1))
+        n = 2 if len(input_shapes[0]) > 2 else 1  # to not add an extra dimension
+        input_tensor = torch.tile(default_tensor, dims=(*input_shapes[0][0:n], 1))
         for key, value in formatted_inputs.items():
-            input_tensor[..., self.input_names.index(key)] = value
+            input_tensor[..., self.input_names.index(key)] = value.squeeze()
 
         if input_tensor.shape[-1] != len(self.input_names):
             raise ValueError(
