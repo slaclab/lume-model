@@ -9,7 +9,12 @@ from botorch.models.transforms.input import ReversibleInputTransform
 
 from lume_model.base import LUMEBaseModel
 from lume_model.variables import ScalarVariable
-from lume_model.models.utils import itemize_dict, format_inputs, InputDictModel
+from lume_model.models.utils import (
+    itemize_dict,
+    format_inputs,
+    InputDictModel,
+    check_model_type,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -152,16 +157,19 @@ class TorchModel(LUMEBaseModel):
         """Evaluates model on the given input dictionary.
 
         Args:
-            input_dict: Input dictionary on which to evaluate the model.
+            input_dict: Input dictionary on which to evaluate the model. The shape of the values (the input tensors) for
+            each key are [n_batch, n_samples] or [n_samples,] if batch_size is 1.
 
         Returns:
             Dictionary of output variable names to values.
         """
         formatted_inputs = format_inputs(input_dict)
         input_tensor = self._arrange_inputs(formatted_inputs)
+        input_tensor = self._adjust_shape(input_tensor)
         input_tensor = self._transform_inputs(input_tensor)
         output_tensor = self.model(input_tensor)
         output_tensor = self._transform_outputs(output_tensor)
+        output_tensor = self._adjust_shape(output_tensor)
         parsed_outputs = self._parse_outputs(output_tensor)
         output_dict = self._prepare_outputs(parsed_outputs)
         return output_dict
@@ -478,3 +486,27 @@ class TorchModel(LUMEBaseModel):
                 key: value.item() if value.squeeze().dim() == 0 else value
                 for key, value in parsed_outputs.items()
             }
+
+    def _adjust_shape(self, x: torch.Tensor) -> torch.Tensor:
+        """Adjusts the shape of the input/output tensor based on model architecture.
+
+        This method ensures that the input tensor has the correct shape for the model, especially for CNN
+        and RNN architectures.
+            - For non-conv/non-rnn models: [n_batch, n_samples, n_dim]
+            - For 1D conv models: [n_batch, n_dim, n_samples]
+            - For rnn models: [n_batch, n_samples, n_dim], or [n_samples, n_batch, n_dim] if the
+            RNN's batch_first attribute is set to False (it is by default).
+
+        Args:
+            x: Tensor to check.
+
+        Returns:
+            Tensor with correct shape.
+        """
+        model_arch = check_model_type(self.model)
+        if model_arch == "cnn-1d":
+            x = x.permute(0, 2, 1) if x.dim() == 3 else x.permute(1, 0)
+        if model_arch == "rnn":
+            if not self.model.batch_first:
+                x = x.permute(1, 0, 2) if x.dim() == 3 else x
+        return x

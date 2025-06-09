@@ -58,3 +58,55 @@ class InputDictModel(BaseModel):
     input_dict: Dict[str, Union[torch.Tensor, float]]
 
     model_config = ConfigDict(arbitrary_types_allowed=True, strict=True)
+
+
+def check_model_type(model: torch.nn.Module) -> str:
+    """Checks the type of pytorch.nn.Module and returns a string indicating the type.
+
+    At this moment, it supports CNN 1D, RNN, and raises NotImplementedError for CNN 2D/3D and Transformer layers.
+    Other model architectures (e.g. Linear) are marked as "other".
+    """
+    is_cnn_1d = any(isinstance(layer, (torch.nn.Conv1d)) for layer in model.modules())
+    is_cnn_2d_3d = any(
+        isinstance(layer, (torch.nn.Conv2d, torch.nn.Conv3d))
+        for layer in model.modules()
+    )
+    is_rnn = any(
+        isinstance(layer, (torch.nn.RNN, torch.nn.LSTM, torch.nn.GRU))
+        for layer in model.modules()
+    )
+    is_transformer = any(
+        isinstance(
+            layer,
+            (
+                torch.nn.Transformer,
+                torch.nn.TransformerEncoder,
+                torch.nn.TransformerDecoder,
+                torch.nn.TransformerEncoderLayer,
+                torch.nn.TransformerDecoderLayer,
+            ),
+        )
+        for layer in model.modules()
+    )
+
+    if (is_cnn_1d or is_cnn_2d_3d) and is_rnn:
+        raise NotImplementedError(
+            "Model architecture with both CNN and RNN layers is not supported at this time."
+        )
+    if is_cnn_2d_3d:
+        for layer in model.modules():
+            if isinstance(layer, (torch.nn.Conv2d, torch.nn.Conv3d)):
+                print(layer)
+        raise NotImplementedError(
+            "Model architecture with 2D/3D CNN layers is not supported at this time."
+        )
+    if is_transformer:
+        raise NotImplementedError(
+            "Model architecture with Transformer layers is not supported at this time. "
+        )
+    if is_cnn_1d:
+        return "cnn-1d"
+    if is_rnn:
+        return "rnn"
+    # If none of the above architectures is detected, return "other"
+    return "other"
