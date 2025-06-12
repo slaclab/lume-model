@@ -31,9 +31,11 @@ dynamic = ["version"]
 version_file = "lume_model/_version.py"
 
 [project.optional-dependencies]
-dev = [
-    "botorch",
+torch = [
     "torch",
+    "botorch",
+]
+dev = [
     "pre-commit",
     "pytest"
 ]
