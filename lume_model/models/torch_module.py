@@ -8,6 +8,7 @@ import torch
 
 from lume_model.base import parse_config, recursive_serialize
 from lume_model.models.torch_model import TorchModel
+from lume_model.models.utils import check_model_type
 from lume_model.mlflow_utils import register_model
 
 
@@ -87,13 +88,29 @@ class TorchModule(torch.nn.Module):
             return self._output_order
 
     def forward(self, x: torch.Tensor):
-        # input shape: [n_batch, n_samples, n_dim]
+        """Forward pass of the TorchModule.
+
+        Note that the expected input shape inherits from the underlying nn.Module. Models with linear,
+        or recurrent (RNN, LSTM, GRU) layers are currently supported. Models with 2D and 3D convolutional
+        layers or transformer layers are not supported at this time.
+
+        Args:
+            x: Input tensor to the model. The expected shape depends on the model type:
+                - For non-conv/non-rnn models: [n_batch, n_samples, n_dim]
+                - For 1D conv models: [n_batch, n_dim, n_samples]
+                - For rnn models: [n_batch, n_samples, n_dim], or [n_samples, n_batch, n_dim] if the
+                RNN's batch_first attribute is set to False (it is by default).
+        Returns:
+            y: Output tensor from the model.
+        """
         x = self._validate_input(x)
+        x = self._adjust_shape(x)
         model_input = self._tensor_to_dictionary(x)
         y_model = self.evaluate_model(model_input)
         y_model = self.manipulate_output(y_model)
         # squeeze for use as prior mean in botorch GPs
-        y = self._dictionary_to_tensor(y_model).squeeze()
+        y = self._dictionary_to_tensor(y_model)
+        y = self._adjust_shape(y).squeeze()
         return y
 
     def yaml(
@@ -186,6 +203,21 @@ class TorchModule(torch.nn.Module):
             dim=-1,
         )
         return output_tensor
+
+    def _adjust_shape(self, x: torch.Tensor) -> torch.Tensor:
+        """Adjust output shape based on model architecture.
+
+        The `evaluate_model` method expects the input shape to be [n_batch, n_samples]
+        or [n_samples,] if batch_size is 1 for each value in the input dictionary. We permute here accordingly to
+        construct the dictionaries in a standard way for all model types.
+        """
+        model_arch = check_model_type(self._model.model)
+        if model_arch == "cnn-1d":
+            x = x.permute(0, 2, 1) if x.dim() == 3 else x.permute(1, 0)
+        elif model_arch == "rnn":
+            if not self._model.model.batch_first:
+                x = x.permute(1, 0, 2) if x.dim() == 3 else x
+        return x
 
     @staticmethod
     def _validate_input(x: torch.Tensor) -> torch.Tensor:
