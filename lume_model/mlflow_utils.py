@@ -1,6 +1,7 @@
 import os
 import warnings
 from typing import Any, Union
+from contextlib import nullcontext
 
 from torch import Tensor, nn
 
@@ -63,7 +64,12 @@ def register_model(
         )
 
     # Log the model to MLflow
-    with mlflow.start_run(run_name=run_name):
+    ctx = (
+        mlflow.start_run(run_name=run_name)
+        if mlflow.active_run() is None
+        else nullcontext()
+    )
+    with ctx:
         # Define the signature of the model
         if isinstance(lume_model, nn.Module):
             signature = mlflow.models.infer_signature(
