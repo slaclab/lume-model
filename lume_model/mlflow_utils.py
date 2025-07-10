@@ -40,6 +40,8 @@ def register_model(
     a tracking server, set the environment variable MLFLOW_TRACKING_URI, e.g. a local port/path. See
     https://mlflow.org/docs/latest/getting-started/intro-quickstart/ for more info.
 
+    Note that at the moment, this does not log artifacts for custom models other than the YAML dump file.
+
     Args:
         lume_model: LumeModel to register.
         input: Input dictionary to infer the model signature.
@@ -85,15 +87,19 @@ def register_model(
         else:
             # Create pyfunc model for MLflow to be able to log/load the model
             pf_model = create_mlflow_model(lume_model)
-            # Adjust the input to match the expected input format
+            # Adjust the input example to match the expected input format
             # Must be one of `numpy.ndarray`, `List[numpy.ndarray]`, `Dict[str, numpy.ndarray]` or `pandas.DataFrame`
-            input = {key: value.numpy() for key, value in input.items()}
-            signature = mlflow.models.infer_signature(input, pf_model.predict(input))
+            input_example = {
+                k: v.numpy() if isinstance(v, Tensor) else v for k, v in input.items()
+            }
+            signature = mlflow.models.infer_signature(
+                input_example, pf_model.predict(input)
+            )
             model_info = mlflow.pyfunc.log_model(
                 python_model=pf_model,
                 artifact_path=artifact_path,
                 signature=signature,
-                input_example=input,
+                input_example=input_example,
                 registered_model_name=registered_model_name,
                 **kwargs,
             )
@@ -106,23 +112,33 @@ def register_model(
 
             lume_model.dump(f"{name}.yml", save_jit=save_jit)
             mlflow.log_artifact(f"{name}.yml", artifact_path)
-            mlflow.log_artifact(f"{name}_model.pt", artifact_path)
             os.remove(f"{name}.yml")
-            os.remove(f"{name}_model.pt")
-            if save_jit:
-                mlflow.log_artifact(f"{name}_model.jit", artifact_path)
-                os.remove(f"{name}_model.jit")
 
-            # Get and log the input and output transformers
-            lume_model = (
-                lume_model._model if isinstance(lume_model, nn.Module) else lume_model
-            )
-            for i in range(len(lume_model.input_transformers)):
-                mlflow.log_artifact(f"{name}_input_transformers_{i}.pt", artifact_path)
-                os.remove(f"{name}_input_transformers_{i}.pt")
-            for i in range(len(lume_model.output_transformers)):
-                mlflow.log_artifact(f"{name}_output_transformers_{i}.pt", artifact_path)
-                os.remove(f"{name}_output_transformers_{i}.pt")
+            from lume_model.models import registered_models
+
+            if type(lume_model) in registered_models:
+                mlflow.log_artifact(f"{name}_model.pt", artifact_path)
+                os.remove(f"{name}_model.pt")
+                if save_jit:
+                    mlflow.log_artifact(f"{name}_model.jit", artifact_path)
+                    os.remove(f"{name}_model.jit")
+
+                # Get and log the input and output transformers
+                lume_model = (
+                    lume_model._model
+                    if isinstance(lume_model, nn.Module)
+                    else lume_model
+                )
+                for i in range(len(lume_model.input_transformers)):
+                    mlflow.log_artifact(
+                        f"{name}_input_transformers_{i}.pt", artifact_path
+                    )
+                    os.remove(f"{name}_input_transformers_{i}.pt")
+                for i in range(len(lume_model.output_transformers)):
+                    mlflow.log_artifact(
+                        f"{name}_output_transformers_{i}.pt", artifact_path
+                    )
+                    os.remove(f"{name}_output_transformers_{i}.pt")
 
     if (tags or alias or version_tags) and registered_model_name:
         from mlflow import MlflowClient
@@ -167,8 +183,6 @@ class PyFuncModel(mlflow.pyfunc.PythonModel):
 
     # Disable type hint validation for the predict method to avoid annoying warnings
     # since we have type validation in the lume-model itself.
-    # If we need to implement this, this may be helpful:
-    # g
     _skip_type_hint_validation = True
 
     def __init__(self, model):
@@ -176,9 +190,6 @@ class PyFuncModel(mlflow.pyfunc.PythonModel):
 
     def predict(self, model_input):
         """Evaluate the model with the given input."""
-        # Convert input to the format expected by the model
-        # TODO: this isn't very general but type validation in torch modules requires this. May need to adjust.
-        model_input = {key: Tensor(value) for key, value in model_input.items()}
         return self.model.evaluate(model_input)
 
     def save_model(self):
