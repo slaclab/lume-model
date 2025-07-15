@@ -1,0 +1,53 @@
+name: Tests
+
+on:
+  push:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+jobs:
+  test:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest]
+        python-version: ["3.10", "3.11", "3.12"]
+
+    name: Python ${{ matrix.python-version }}, ${{ matrix.os }} build
+    steps:
+      - uses: actions/checkout@v4
+      - uses: conda-incubator/setup-miniconda@v3
+        with:
+          python-version: ${{ matrix.python-version }}
+          channels: conda-forge,defaults
+          activate-environment: lume-model-dev
+
+      - name: Install lume-model
+        shell: bash -l {0}
+        run: |
+          pip install -e ".[dev]"
+
+      - name: Run Tests
+        shell: bash -l {0}
+        run: |
+          echo -e '## Test results\n\n```' >> "$GITHUB_STEP_SUMMARY"
+          pytest -ra --pyargs tests -v 2>&1 | tee -a "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+
+  test-pypi-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install build
+        run: python -m pip install build  --user
+
+      - name: Build a source tarball
+        run: python -m build

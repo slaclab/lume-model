@@ -1,3 +1,4 @@
-pydantic>2.3
+pydantic
 numpy
 pyyaml
+mlflow

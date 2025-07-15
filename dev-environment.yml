@@ -3,20 +3,21 @@ name: lume-model-dev
 channels:
   - conda-forge
 dependencies:
-  - python=3.9
-  - pydantic>2.3
+  - python>=3.10
+  - pydantic
   - numpy
   - pyyaml
-  - tensorflow
   - botorch
+  - mlflow
 
   # dev requirements
   - pytest
   - pre-commit
-  - black
+  - ruff
 
   # docs requirements
   - mkdocs
   - mkdocstrings
   - mkdocstrings-python
   - mkdocs-material
+  - mkdocs-include-markdown-plugin

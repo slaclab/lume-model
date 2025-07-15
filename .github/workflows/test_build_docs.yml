@@ -1,0 +1,26 @@
+name: Build docs
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+jobs:
+  build:
+    if: ${{ github.repository == 'slaclab/lume-model' }}
+    runs-on: ubuntu-latest
+    name:  Build docs
+    steps:
+      - uses: actions/checkout@v4
+      - uses: conda-incubator/setup-miniconda@v3
+        with:
+          python-version: 3.12
+          channels: conda-forge,defaults
+          activate-environment: lume-model-dev
+      - name: Build package
+        shell: bash -l {0}
+        run: |
+          pip install -e ".[docs]"
+      - name: Build docs
+        shell: bash -l {0}
+        run: |
+          mkdocs build
