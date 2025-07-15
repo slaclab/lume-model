@@ -1,8 +1,7 @@
 import os
 import logging
-from typing import Union
+from typing import Union, Callable
 from copy import deepcopy
-from typing import Callable, Union
 
 import torch
 from pydantic import field_validator
@@ -35,8 +34,12 @@ class TorchModel(LUMEBaseModel):
     """
 
     model: torch.nn.Module
-    input_transformers: list[Union[ReversibleInputTransform, torch.nn.Linear, Callable]] = None
-    output_transformers: list[Union[ReversibleInputTransform, torch.nn.Linear, Callable]] = None
+    input_transformers: list[
+        Union[ReversibleInputTransform, torch.nn.Linear, Callable]
+    ] = None
+    output_transformers: list[
+        Union[ReversibleInputTransform, torch.nn.Linear, Callable]
+    ] = None
     output_format: str = "tensor"
     device: Union[torch.device, str] = "cpu"
     fixed_model: bool = True
@@ -51,8 +54,12 @@ class TorchModel(LUMEBaseModel):
             **kwargs: See class attributes.
         """
         super().__init__(*args, **kwargs)
-        self.input_transformers = [] if self.input_transformers is None else self.input_transformers
-        self.output_transformers = [] if self.output_transformers is None else self.output_transformers
+        self.input_transformers = (
+            [] if self.input_transformers is None else self.input_transformers
+        )
+        self.output_transformers = (
+            [] if self.output_transformers is None else self.output_transformers
+        )
 
         # dtype property sets precision across model and transformers
         self.dtype
@@ -75,7 +82,10 @@ class TorchModel(LUMEBaseModel):
         elif self.precision == "single":
             self._dtype = torch.float
         else:
-            raise ValueError(f"Unknown precision {self.precision}, expected one of ['double', 'single'].")
+            raise ValueError(
+                f"Unknown precision {self.precision}, "
+                f"expected one of ['double', 'single']."
+            )
         self._set_precision(self._dtype)
         return self._dtype
 
@@ -103,7 +113,9 @@ class TorchModel(LUMEBaseModel):
         """Verifies that input variables have the required default values."""
         for var in value:
             if var.default_value is None:
-                raise ValueError(f"Input variable {var.name} must have a default value.")
+                raise ValueError(
+                    f"Input variable {var.name} must have a default value."
+                )
         return value
 
     @field_validator("input_transformers", "output_transformers", mode="before")
@@ -125,7 +137,9 @@ class TorchModel(LUMEBaseModel):
     def validate_output_format(cls, v):
         supported_formats = ["tensor", "variable", "raw"]
         if v not in supported_formats:
-            raise ValueError(f"Unknown output format {v}, expected one of {supported_formats}.")
+            raise ValueError(
+                f"Unknown output format {v}, expected one of {supported_formats}."
+            )
         return v
 
     def _set_precision(self, value: torch.dtype):
@@ -184,7 +198,9 @@ class TorchModel(LUMEBaseModel):
 
         # return the validated input dict for consistency w/ casting ints to floats
         if any([isinstance(value, torch.Tensor) for value in validated_input.values()]):
-            validated_input = {k: v.to(**self._tkwargs) for k, v in validated_input.items()}
+            validated_input = {
+                k: v.to(**self._tkwargs) for k, v in validated_input.items()
+            }
 
         return validated_input
 
@@ -206,14 +222,16 @@ class TorchModel(LUMEBaseModel):
         input_dict = {}
         for var in self.input_variables:
             if isinstance(var, ScalarVariable):
-                input_dict[var.name] = var.value_range[0] + torch.rand(size=(n_samples,)) * (
-                    var.value_range[1] - var.value_range[0]
-                )
+                input_dict[var.name] = var.value_range[0] + torch.rand(
+                    size=(n_samples,)
+                ) * (var.value_range[1] - var.value_range[0])
             else:
                 torch.tensor(var.default_value, **self._tkwargs).repeat((n_samples, 1))
         return input_dict
 
-    def random_evaluate(self, n_samples: int = 1) -> dict[str, Union[float, torch.Tensor]]:
+    def random_evaluate(
+        self, n_samples: int = 1
+    ) -> dict[str, Union[float, torch.Tensor]]:
         """Returns random evaluation(s) of the model.
 
         Args:
@@ -237,25 +255,39 @@ class TorchModel(LUMEBaseModel):
                 t.to(device)
         self.device = device
 
-    def insert_input_transformer(self, new_transformer: ReversibleInputTransform, loc: int):
+    def insert_input_transformer(
+        self, new_transformer: ReversibleInputTransform, loc: int
+    ):
         """Inserts an additional input transformer at the given location.
 
         Args:
             new_transformer: New transformer to add.
             loc: Location where the new transformer shall be added to the transformer list.
         """
-        self.input_transformers = self.input_transformers[:loc] + [new_transformer] + self.input_transformers[loc:]
+        self.input_transformers = (
+            self.input_transformers[:loc]
+            + [new_transformer]
+            + self.input_transformers[loc:]
+        )
 
-    def insert_output_transformer(self, new_transformer: ReversibleInputTransform, loc: int):
+    def insert_output_transformer(
+        self, new_transformer: ReversibleInputTransform, loc: int
+    ):
         """Inserts an additional output transformer at the given location.
 
         Args:
             new_transformer: New transformer to add.
             loc: Location where the new transformer shall be added to the transformer list.
         """
-        self.output_transformers = self.output_transformers[:loc] + [new_transformer] + self.output_transformers[loc:]
+        self.output_transformers = (
+            self.output_transformers[:loc]
+            + [new_transformer]
+            + self.output_transformers[loc:]
+        )
 
-    def update_input_variables_to_transformer(self, transformer_loc: int) -> list[ScalarVariable]:
+    def update_input_variables_to_transformer(
+        self, transformer_loc: int
+    ) -> list[ScalarVariable]:
         """Returns input variables updated to the transformer at the given location.
 
         Updated are the value ranges and default of the input variables. This allows, e.g., to add a
@@ -268,9 +300,15 @@ class TorchModel(LUMEBaseModel):
             The updated input variables.
         """
         x_old = {
-            "min": torch.tensor([var.value_range[0] for var in self.input_variables], dtype=self.dtype),
-            "max": torch.tensor([var.value_range[1] for var in self.input_variables], dtype=self.dtype),
-            "default": torch.tensor([var.default_value for var in self.input_variables], dtype=self.dtype),
+            "min": torch.tensor(
+                [var.value_range[0] for var in self.input_variables], dtype=self.dtype
+            ),
+            "max": torch.tensor(
+                [var.value_range[1] for var in self.input_variables], dtype=self.dtype
+            ),
+            "default": torch.tensor(
+                [var.default_value for var in self.input_variables], dtype=self.dtype
+            ),
         }
         x_new = {}
         for key in x_old.keys():
@@ -289,7 +327,9 @@ class TorchModel(LUMEBaseModel):
                 else:
                     x = self.input_transformers[i](x)
             # untransform of transformer to adjust for
-            if isinstance(self.input_transformers[transformer_loc], ReversibleInputTransform):
+            if isinstance(
+                self.input_transformers[transformer_loc], ReversibleInputTransform
+            ):
                 x = self.input_transformers[transformer_loc].untransform(x)
             else:
                 w = self.input_transformers[transformer_loc].weight
@@ -297,7 +337,9 @@ class TorchModel(LUMEBaseModel):
                 x = torch.matmul((x - b), torch.linalg.inv(w.T))
             # backtrack through transformers
             for transformer in self.input_transformers[:transformer_loc][::-1]:
-                if isinstance(self.input_transformers[transformer_loc], ReversibleInputTransform):
+                if isinstance(
+                    self.input_transformers[transformer_loc], ReversibleInputTransform
+                ):
                     x = transformer.untransform(x)
                 else:
                     w, b = transformer.weight, transformer.bias
@@ -309,7 +351,9 @@ class TorchModel(LUMEBaseModel):
             var.default_value = x_new["default"][0][i].item()
         return updated_variables
 
-    def _fill_default_inputs(self, input_dict: dict[str, torch.Tensor]) -> dict[str, torch.Tensor]:
+    def _fill_default_inputs(
+        self, input_dict: dict[str, torch.Tensor]
+    ) -> dict[str, torch.Tensor]:
         """Fills missing input variables with default values.
 
         Args:
@@ -323,7 +367,9 @@ class TorchModel(LUMEBaseModel):
                 input_dict[var.name] = torch.tensor(var.default_value, **self._tkwargs)
         return input_dict
 
-    def _arrange_inputs(self, formatted_inputs: dict[str, torch.Tensor]) -> torch.Tensor:
+    def _arrange_inputs(
+        self, formatted_inputs: dict[str, torch.Tensor]
+    ) -> torch.Tensor:
         """Enforces order of input variables.
 
         Enforces the order of the input variables to be passed to the transformers and model and updates the
@@ -335,7 +381,9 @@ class TorchModel(LUMEBaseModel):
         Returns:
             Ordered input tensor to be passed to the transformers.
         """
-        default_tensor = torch.tensor([var.default_value for var in self.input_variables], **self._tkwargs)
+        default_tensor = torch.tensor(
+            [var.default_value for var in self.input_variables], **self._tkwargs
+        )
 
         # determine input shape
         input_shapes = [formatted_inputs[k].shape for k in formatted_inputs.keys()]
@@ -432,4 +480,7 @@ class TorchModel(LUMEBaseModel):
         if self.output_format.lower() == "tensor":
             return parsed_outputs
         else:
-            return {key: value.item() if value.squeeze().dim() == 0 else value for key, value in parsed_outputs.items()}
+            return {
+                key: value.item() if value.squeeze().dim() == 0 else value
+                for key, value in parsed_outputs.items()
+            }
