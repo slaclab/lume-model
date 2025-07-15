@@ -2,6 +2,7 @@ import os
 import logging
 from typing import Union
 from copy import deepcopy
+from typing import Callable, Union
 
 import torch
 from pydantic import field_validator
@@ -34,8 +35,8 @@ class TorchModel(LUMEBaseModel):
     """
 
     model: torch.nn.Module
-    input_transformers: list[Union[ReversibleInputTransform, torch.nn.Linear]] = None
-    output_transformers: list[Union[ReversibleInputTransform, torch.nn.Linear]] = None
+    input_transformers: list[Union[ReversibleInputTransform, torch.nn.Linear, Callable]] = None
+    output_transformers: list[Union[ReversibleInputTransform, torch.nn.Linear, Callable]] = None
     output_format: str = "tensor"
     device: Union[torch.device, str] = "cpu"
     fixed_model: bool = True
@@ -388,6 +389,8 @@ class TorchModel(LUMEBaseModel):
         for transformer in self.output_transformers:
             if isinstance(transformer, ReversibleInputTransform):
                 output_tensor = transformer.untransform(output_tensor)
+            elif isinstance(transformer, Callable):
+                output_tensor = transformer(output_tensor)
             else:
                 w, b = transformer.weight, transformer.bias
                 output_tensor = torch.matmul((output_tensor - b), torch.linalg.inv(w.T))
