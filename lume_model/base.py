@@ -9,7 +9,6 @@ from io import TextIOWrapper
 import yaml
 import numpy as np
 from pydantic import BaseModel, ConfigDict, field_validator
-import torch  # TODO: for torch.Tensor type hinting, but may need to make more general in mlflow class
 
 from lume_model.variables import ScalarVariable, get_variable, ConfigEnum
 from lume_model.utils import (
@@ -456,7 +455,6 @@ class LUMEBaseModel(BaseModel, ABC):
 
     def register_to_mlflow(
         self,
-        input_dict: dict[str, Union[float, torch.Tensor]],
         artifact_path: str,
         registered_model_name: str | None = None,
         tags: dict[str, Any] | None = None,
@@ -477,7 +475,6 @@ class LUMEBaseModel(BaseModel, ABC):
         https://mlflow.org/docs/latest/getting-started/intro-quickstart/ for more info.
 
         Args:
-            input_dict: Input dictionary to infer the model signature.
             artifact_path: Path to store the model in MLflow.
             registered_model_name: Name of the registered model in MLflow. Optional.
             tags: Tags to add to the MLflow model. Optional.
@@ -493,7 +490,6 @@ class LUMEBaseModel(BaseModel, ABC):
         """
         return register_model(
             self,
-            input_dict,
             artifact_path,
             registered_model_name,
             tags,

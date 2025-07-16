@@ -1,9 +1,9 @@
 import os
 import warnings
-from typing import Any, Union
+from typing import Any
 from contextlib import nullcontext
 
-from torch import Tensor, nn
+from torch import nn
 
 try:
     import mlflow
@@ -20,7 +20,6 @@ except ImportError:
 
 def register_model(
     lume_model,
-    input: dict[str, Union[float, Tensor]] | Tensor,
     artifact_path: str,
     registered_model_name: str | None = None,
     tags: dict[str, Any] | None = None,
@@ -44,7 +43,6 @@ def register_model(
 
     Args:
         lume_model: LumeModel to register.
-        input: Input dictionary to infer the model signature.
         artifact_path: Path to store the model in MLflow.
         registered_model_name: Name of the registered model in MLflow.
         tags: Tags to add to the MLflow model.
@@ -72,34 +70,19 @@ def register_model(
         else nullcontext()
     )
     with ctx:
-        # Define the signature of the model
         if isinstance(lume_model, nn.Module):
-            signature = mlflow.models.infer_signature(
-                input.numpy(), lume_model(Tensor(input)).detach().numpy()
-            )
             model_info = mlflow.pytorch.log_model(
                 pytorch_model=lume_model,
                 artifact_path=artifact_path,
-                signature=signature,
                 registered_model_name=registered_model_name,
                 **kwargs,
             )
         else:
             # Create pyfunc model for MLflow to be able to log/load the model
             pf_model = create_mlflow_model(lume_model)
-            # Adjust the input example to match the expected input format
-            # Must be one of `numpy.ndarray`, `List[numpy.ndarray]`, `Dict[str, numpy.ndarray]` or `pandas.DataFrame`
-            input_example = {
-                k: v.numpy() if isinstance(v, Tensor) else v for k, v in input.items()
-            }
-            signature = mlflow.models.infer_signature(
-                input_example, pf_model.predict(input)
-            )
             model_info = mlflow.pyfunc.log_model(
                 python_model=pf_model,
                 artifact_path=artifact_path,
-                signature=signature,
-                input_example=input_example,
                 registered_model_name=registered_model_name,
                 **kwargs,
             )
@@ -117,6 +100,8 @@ def register_model(
             from lume_model.models import registered_models
 
             if type(lume_model) in registered_models:
+                # all registered models are torch models at the moment
+                # may change in the future
                 mlflow.log_artifact(f"{name}_model.pt", artifact_path)
                 os.remove(f"{name}_model.pt")
                 if save_jit:

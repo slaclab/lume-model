@@ -198,7 +198,6 @@ class TorchModule(torch.nn.Module):
 
     def register_to_mlflow(
         self,
-        input: torch.Tensor,
         artifact_path: str,
         registered_model_name: str | None = None,
         tags: dict[str, Any] | None = None,
@@ -219,7 +218,6 @@ class TorchModule(torch.nn.Module):
         https://mlflow.org/docs/latest/getting-started/intro-quickstart/ for more info.
 
         Args:
-            input: Input tensor to infer the model signature.
             artifact_path: Path to store the model in MLflow.
             registered_model_name: Name of the registered model in MLflow. Optional.
             tags: Tags to add to the MLflow model. Optional.
@@ -235,7 +233,6 @@ class TorchModule(torch.nn.Module):
         """
         return register_model(
             self,
-            input,
             artifact_path,
             registered_model_name,
             tags,
