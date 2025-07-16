@@ -24,6 +24,8 @@ dependencies = [
     "pydantic",
     "numpy",
     "pyyaml",
+    "torch",
+    "botorch",
     "mlflow"
 ]
 dynamic = ["version"]
@@ -31,12 +33,7 @@ dynamic = ["version"]
 version_file = "lume_model/_version.py"
 
 [project.optional-dependencies]
-torch = [
-    "botorch",
-    "torch"
-]
 dev = [
-    "lume-model[torch]",
     "pre-commit",
     "pytest"
 ]
