@@ -1,6 +1,6 @@
 import os
 import logging
-from typing import Union
+from typing import Union, Callable
 from copy import deepcopy
 
 import torch
@@ -34,8 +34,12 @@ class TorchModel(LUMEBaseModel):
     """
 
     model: torch.nn.Module
-    input_transformers: list[Union[ReversibleInputTransform, torch.nn.Linear]] = None
-    output_transformers: list[Union[ReversibleInputTransform, torch.nn.Linear]] = None
+    input_transformers: list[
+        Union[ReversibleInputTransform, torch.nn.Linear, Callable]
+    ] = None
+    output_transformers: list[
+        Union[ReversibleInputTransform, torch.nn.Linear, Callable]
+    ] = None
     output_format: str = "tensor"
     device: Union[torch.device, str] = "cpu"
     fixed_model: bool = True
@@ -307,9 +311,7 @@ class TorchModel(LUMEBaseModel):
             ),
         }
         x_new = {}
-        for key in x_old.keys():
-            x = x_old[key]
-
+        for key, x in x_old.items():
             # Make at least 2D
             if x.ndim == 0:
                 x = x.unsqueeze(0)
@@ -327,19 +329,30 @@ class TorchModel(LUMEBaseModel):
                 self.input_transformers[transformer_loc], ReversibleInputTransform
             ):
                 x = self.input_transformers[transformer_loc].untransform(x)
-            else:
+            elif isinstance(self.input_transformers[transformer_loc], torch.nn.Linear):
                 w = self.input_transformers[transformer_loc].weight
                 b = self.input_transformers[transformer_loc].bias
                 x = torch.matmul((x - b), torch.linalg.inv(w.T))
+            else:
+                raise NotImplementedError(
+                    f"Reverse transformation for type {type(self.input_transformers[transformer_loc])} is not supported."
+                )
             # backtrack through transformers
             for transformer in self.input_transformers[:transformer_loc][::-1]:
                 if isinstance(
                     self.input_transformers[transformer_loc], ReversibleInputTransform
                 ):
                     x = transformer.untransform(x)
-                else:
+                elif isinstance(
+                    self.input_transformers[transformer_loc], torch.nn.Linear
+                ):
                     w, b = transformer.weight, transformer.bias
                     x = torch.matmul((x - b), torch.linalg.inv(w.T))
+                else:
+                    raise NotImplementedError(
+                        f"Reverse transformation for type {type(self.input_transformers[transformer_loc])} is not supported."
+                    )
+
             x_new[key] = x
         updated_variables = deepcopy(self.input_variables)
         for i, var in enumerate(updated_variables):
@@ -433,9 +446,12 @@ class TorchModel(LUMEBaseModel):
         for transformer in self.output_transformers:
             if isinstance(transformer, ReversibleInputTransform):
                 output_tensor = transformer.untransform(output_tensor)
-            else:
+            elif isinstance(transformer, torch.nn.Linear):
                 w, b = transformer.weight, transformer.bias
                 output_tensor = torch.matmul((output_tensor - b), torch.linalg.inv(w.T))
+            else:
+                # we assume anything else is provided as a callable
+                output_tensor = transformer(output_tensor)
         return output_tensor
 
     def _parse_outputs(self, output_tensor: torch.Tensor) -> dict[str, torch.Tensor]:
