@@ -7,7 +7,7 @@ import pytest
 
 try:
     import torch
-    from botorch.models.transforms.input import AffineInputTransform
+    from botorch.models.transforms.input import AffineInputTransform, ReversibleInputTransform
     from lume_model.models import TorchModel
     from lume_model.variables import ScalarVariable
 
@@ -32,6 +32,7 @@ def assert_model_equality(m1: TorchModel, m2: TorchModel):
     assert m1.output_format == m2.output_format
     assert m1.device == m2.device
     assert m1.fixed_model == m2.fixed_model
+
 
 
 class TestTorchModel:
@@ -281,3 +282,73 @@ class TestTorchModel:
         os.remove(f"{filename}_model.jit")
         os.remove(f"{filename}_input_transformers_0.pt")
         os.remove(f"{filename}_output_transformers_0.pt")
+
+
+class DivideByFiveCallable(torch.nn.Module):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+    
+    def forward(self, x:torch.Tensor) ->torch.Tensor:
+        return x / 5.0
+
+def divide_by_five(x: torch.Tensor):
+    return x / 5.0
+
+class MultiplyByFiveCallable(torch.nn.Module):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+    
+    def forward(self, x:torch.Tensor) ->torch.Tensor:
+        return x * 5.0
+
+def multiply_by_five(x: torch.Tensor):
+    return x * 5.0
+
+class DivideByFiveReversibleTransform(ReversibleInputTransform):
+    reverse = False
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+    def _transform(self, x):
+        return x / 5.0
+    def _untransform(self, x):
+        return x * 5.0
+
+class TestTransformers:
+    @pytest.mark.parametrize('input_transformer_type', ['module', 'function', 'reversible', 'linear']) 
+    def test_callable_input_transformers(self, input_transformer_type, california_model, california_test_input_dict):
+        # for the purpose of the test, we multiply the contents of the input_dictionary by 5 
+        # so we can add an input transform that needs to divide by 5
+        input_dict = {key: value * 5 for key, value in california_test_input_dict.items()}
+        if input_transformer_type == 'module':
+            input_transformer = DivideByFiveCallable()
+        elif input_transformer_type == 'function':
+            input_transformer = divide_by_five
+        elif input_transformer_type == 'reversible':
+            input_transformer = DivideByFiveReversibleTransform()
+        elif input_transformer_type == 'linear':
+            input_transformer = torch.nn.Linear(len(california_model.input_names), len(california_model.input_names))
+        else:
+            raise ValueError(f'Unknown input transformer type {input_transformer_type}')
+        
+        california_model.insert_input_transformer(input_transformer, 0)
+        results = california_model.evaluate(input_dict)
+        assert len(results) == len(california_model.output_names)
+
+    @pytest.mark.parametrize('output_transformer_type', ['module', 'function', 'reversible', 'linear']) 
+    def test_callable_output_transformers(self, output_transformer_type, california_model, california_test_input_dict):
+        # for the purpose of the test, we multiply the contents of the input_dictionary by 5 
+        # so we can add an input transform that needs to divide by 5
+        if output_transformer_type == 'module':
+            output_transformer = MultiplyByFiveCallable()
+        elif output_transformer_type == 'function':
+            output_transformer = multiply_by_five
+        elif output_transformer_type == 'reversible':
+            output_transformer = DivideByFiveReversibleTransform()
+        elif output_transformer_type == 'linear':
+            output_transformer = torch.nn.Linear(len(california_model.output_names), len(california_model.output_names))
+        else:
+            raise ValueError(f'Unknown input transformer type {output_transformer_type}')
+        
+        california_model.insert_output_transformer(output_transformer, 0)
+        results = california_model.evaluate(california_test_input_dict)
+        assert len(results) == len(california_model.output_names)
