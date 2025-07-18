@@ -312,7 +312,6 @@ class TorchModel(LUMEBaseModel):
         }
         x_new = {}
         for key, x in x_old.items():
-
             # Make at least 2D
             if x.ndim == 0:
                 x = x.unsqueeze(0)
@@ -330,25 +329,29 @@ class TorchModel(LUMEBaseModel):
                 self.input_transformers[transformer_loc], ReversibleInputTransform
             ):
                 x = self.input_transformers[transformer_loc].untransform(x)
-            elif isinstance(
-                self.input_transformers[transformer_loc], torch.nn.Linear
-            ):
+            elif isinstance(self.input_transformers[transformer_loc], torch.nn.Linear):
                 w = self.input_transformers[transformer_loc].weight
                 b = self.input_transformers[transformer_loc].bias
                 x = torch.matmul((x - b), torch.linalg.inv(w.T))
             else:
-                raise NotImplementedError(f'Reverse transformation for type {type(self.input_transformers[transformer_loc])} is not supported.')
+                raise NotImplementedError(
+                    f"Reverse transformation for type {type(self.input_transformers[transformer_loc])} is not supported."
+                )
             # backtrack through transformers
             for transformer in self.input_transformers[:transformer_loc][::-1]:
                 if isinstance(
                     self.input_transformers[transformer_loc], ReversibleInputTransform
                 ):
                     x = transformer.untransform(x)
-                elif isinstance(self.input_transformers[transformer_loc], torch.nn.Linear):
+                elif isinstance(
+                    self.input_transformers[transformer_loc], torch.nn.Linear
+                ):
                     w, b = transformer.weight, transformer.bias
                     x = torch.matmul((x - b), torch.linalg.inv(w.T))
                 else:
-                    raise NotImplementedError(f'Reverse transformation for type {type(self.input_transformers[transformer_loc])} is not supported.')
+                    raise NotImplementedError(
+                        f"Reverse transformation for type {type(self.input_transformers[transformer_loc])} is not supported."
+                    )
 
             x_new[key] = x
         updated_variables = deepcopy(self.input_variables)
