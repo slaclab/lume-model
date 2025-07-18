@@ -381,11 +381,8 @@ class TestTransformers:
 
     @pytest.mark.parametrize("input_transformer_type", ["function", "module"])
     def test_update_input_variables_to_transformer_not_implemented(
-        self, input_transformer_type, california_model, california_test_input_dict
+        self, input_transformer_type, california_model
     ):
-        input_dict = {
-            key: value * 5 for key, value in california_test_input_dict.items()
-        }
         if input_transformer_type == "module":
             input_transformer = DivideByFiveCallable()
         elif input_transformer_type == "function":
