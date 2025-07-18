@@ -352,3 +352,17 @@ class TestTransformers:
         california_model.insert_output_transformer(output_transformer, 0)
         results = california_model.evaluate(california_test_input_dict)
         assert len(results) == len(california_model.output_names)
+
+    @pytest.mark.parametrize('input_transformer_type', ['function', 'module']) 
+    def test_update_input_variables_to_transformer_not_implemented(self, input_transformer_type, california_model, california_test_input_dict):
+        input_dict = {key: value * 5 for key, value in california_test_input_dict.items()}
+        if input_transformer_type == 'module':
+            input_transformer = DivideByFiveCallable()
+        elif input_transformer_type == 'function':
+            input_transformer = divide_by_five
+        else:
+            raise ValueError(f'Unknown input transformer type {input_transformer_type}')
+        
+        california_model.insert_input_transformer(input_transformer, 0)
+        with pytest.raises(NotImplementedError):
+            california_model.update_input_variables_to_transformer(0)
