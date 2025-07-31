@@ -70,22 +70,15 @@ def register_model(
         else nullcontext()
     )
     with ctx:
-        if isinstance(lume_model, nn.Module):
-            model_info = mlflow.pytorch.log_model(
-                pytorch_model=lume_model,
-                artifact_path=artifact_path,
-                registered_model_name=registered_model_name,
-                **kwargs,
-            )
-        else:
-            # Create pyfunc model for MLflow to be able to log/load the model
-            pf_model = create_mlflow_model(lume_model)
-            model_info = mlflow.pyfunc.log_model(
-                python_model=pf_model,
-                artifact_path=artifact_path,
-                registered_model_name=registered_model_name,
-                **kwargs,
-            )
+        # Create pyfunc model for MLflow to be able to log/load the model
+        # No longer using the pytorch module for compatibility with poly-lithic
+        pf_model = create_mlflow_model(lume_model)
+        model_info = mlflow.pyfunc.log_model(
+            python_model=pf_model,
+            artifact_path=artifact_path,
+            registered_model_name=registered_model_name,
+            **kwargs,
+        )
 
         if log_model_dump:
             # Log the model dump files to MLflow
@@ -175,6 +168,14 @@ class PyFuncModel(mlflow.pyfunc.PythonModel):
 
     def predict(self, model_input):
         """Evaluate the model with the given input."""
+        if isinstance(self.model, nn.Module):
+            return self.model(model_input)
+        return self.model.evaluate(model_input)
+
+    def evaluate(self, model_input: dict):
+        """Point to the internal evaluate function"""
+        if isinstance(self.model, nn.Module):
+            return self.model(model_input)
         return self.model.evaluate(model_input)
 
     def save_model(self):
