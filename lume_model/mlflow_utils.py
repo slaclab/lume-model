@@ -174,9 +174,15 @@ class PyFuncModel(mlflow.pyfunc.PythonModel):
 
     def evaluate(self, model_input: dict):
         """Point to the internal evaluate function"""
-        if isinstance(self.model, nn.Module):
-            return self.model(model_input)
-        return self.model.evaluate(model_input)
+        if isinstance(self.model, nn.Module):  # TODO: make it a flag?
+            return self.model(model_input).detach().cpu().numpy()
+        try:
+            return {
+                k: v.detach().cpu().numpy()
+                for k, v in self.model.evaluate(model_input).items()
+            }
+        except:  # noqa: E722
+            return self.model.evaluate(model_input)
 
     def save_model(self):
         raise NotImplementedError("Save model not implemented")
