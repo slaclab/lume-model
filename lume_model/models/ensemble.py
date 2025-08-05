@@ -111,8 +111,8 @@ class NNEnsemble(ProbModelBaseModel):
             model.dump(
                 f"{mod_file}_{idx}.yml",
                 base_key=base_key,
-                save_models=False,  # will be saved in the ensemble
-                save_jit=False,
+                save_models=save_models,
+                save_jit=save_jit,
             )
 
         # Save the ensemble of models
