@@ -215,7 +215,7 @@ precision: double
 The TorchModel can then be loaded:
 
 ```python
-from lume_model.torch_model import TorchModel
+from lume_model.models.torch_model import TorchModel
 
 # Load the model from a YAML file
 torch_model = TorchModel("path/to/model_config.yml")
@@ -281,7 +281,7 @@ get tensor-type outputs.
 
 ```python
 from torch import tensor
-from lume_model.torch_module import TorchModule
+from lume_model.models.torch_module import TorchModule
 
 
 # Example input tensor
