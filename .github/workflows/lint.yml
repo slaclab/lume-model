@@ -15,7 +15,7 @@ jobs:
       - uses: conda-incubator/setup-miniconda@v3
         with:
           python-version: 3.12
-          channels: conda-forge
+          channels: conda-forge,defaults
           activate-environment: lume-model-dev
 
       - name: Install lume-model
