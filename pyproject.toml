@@ -25,7 +25,7 @@ dependencies = [
     "numpy",
     "pyyaml",
     "torch",
-    "botorch",
+    "botorch>=0.15",
     "mlflow"
 ]
 dynamic = ["version"]
