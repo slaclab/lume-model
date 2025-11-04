@@ -268,9 +268,9 @@ class LUMEBaseModel(BaseModel, ABC):
         input_variables: List defining the input variables and their order.
         output_variables: List defining the output variables and their order.
         input_validation_config: Determines the behavior during input validation by specifying the validation
-          config for each input variable: {var_name: value}. Value can be "warn", "error", or None.
+          config for each input variable: {var_name: value}. Value can be "warn", "error", or "none".
         output_validation_config: Determines the behavior during output validation by specifying the validation
-          config for each output variable: {var_name: value}. Value can be "warn", "error", or None.
+          config for each output variable: {var_name: value}. Value can be "warn", "error", or "none".
     """
 
     input_variables: list[ScalarVariable]
