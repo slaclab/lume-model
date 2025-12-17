@@ -244,6 +244,7 @@ class TorchModule(torch.nn.Module):
             **kwargs,
         )
 
+
 class PriorModel(torch.nn.Module):
     """
     Prior model for Bayesian optimization.
@@ -253,68 +254,79 @@ class PriorModel(torch.nn.Module):
         super(PriorModel, self).__init__()
         self.model = model
         self.all_inputs = list(model.input_order)
-        self.control_variables = [pv for pv in self.all_inputs if pv not in fixed_variables]
+        self.control_variables = [
+            pv for pv in self.all_inputs if pv not in fixed_variables
+        ]
 
         # Create a buffer tensor to store the full input template
         # This is updated ONCE when fixed variables change, not on every forward call
-        self.register_buffer('input_buffer', torch.zeros(len(all_inputs)))
-        
+        self.register_buffer("input_buffer", torch.zeros(len(self.all_inputs)))
+
         # Pre-compute indices for fast lookup (computed once, used many times)
-        self.control_indices = [all_inputs.index(var) for var in control_variables]
-        self.fixed_indices = [all_inputs.index(var) for var in fixed_variables.keys()]
-        
+        self.control_indices = torch.tensor(
+            [self.all_inputs.index(var) for var in self.control_variables],
+            dtype=torch.long,
+        )
+        self.fixed_indices = [
+            self.all_inputs.index(var) for var in fixed_variables.keys()
+        ]
+
+        # Initialize call counter
+        self.call_count = 0
+
         # Initialize buffer with fixed variables
         self.update_fixed_variables(fixed_variables)
-        
-        print(f"PriorModel initialized:")
+
+        print("PriorModel initialized:")
         print(f"  Total inputs (from model): {len(self.all_inputs)}")
         print(f"  Fixed variables: {len(self.fixed_indices)}")
         print(f"  Control variables (derived): {len(self.control_variables)}")
         print(f"  Control variables: {self.control_variables}")
         print(f"  Control indices: {self.control_indices}")
-    
+
     def update_fixed_variables(self, fixed_variables):
         """
         Update the buffer with new fixed variable values.
-        
+
         This method directly updates the input_buffer tensor with new values for
         fixed variables. It should be called when fixed variable measurements change.
-        
+
         Args:
             fixed_variables (dict): Dictionary mapping PV names to their new measured values.
                 Keys should be PV names (str) that exist in self.all_inputs and are NOT
                 control variables. Values should be floats.
-        
+
         Returns:
             None. Updates self.input_buffer in-place.
         """
         for var_name, value in fixed_variables.items():
             idx = self.all_inputs.index(var_name)
             self.input_buffer[idx] = value
-            
+
     def update_from_data(self, data_row):
         """
         Update fixed variables from a data row (e.g., from X.data).
-    
+
         Args:
             data_row: pandas Series or dict containing measured values
-        
+
         Returns:
             dict: Dictionary of {pv_name: value} for the fixed variables that were updated.
         """
         # Extract only the fixed (non-control) variables
         measured_fixed_values = {
-            pv: data_row[pv] for pv in self.all_inputs 
+            pv: data_row[pv]
+            for pv in self.all_inputs
             if pv not in self.control_variables
         }
-    
+
         # Update the buffer
         self.update_fixed_variables(measured_fixed_values)
-    
+
         print(f"   Updated buffer with {len(measured_fixed_values)} fixed variables")
-    
+
         return measured_fixed_values
-    
+
     def forward(self, x) -> torch.Tensor:
         """
         Forward pass through the LUME model with control and fixed variables
@@ -323,23 +335,24 @@ class PriorModel(torch.nn.Module):
             x (torch.Tensor): Tensor containing only control variable values.
                 Can have arbitrary batch dimensions.
                 The last dimension must match len(self.control_variables).
-        
+
         Returns:
             torch.Tensor: Output from the LUME model. Shape depends on the model's
                 output structure and the input batch dimensions.
         """
         self.call_count += 1
-        batch_size = x.shape[:-1] # Get batch shape (everything except the last dimension)
-        n_control = x.shape[-1]
-        
+        batch_shape = x.shape[
+            :-1
+        ]  # Get batch shape (everything except the last dimension)
+
         # Expand buffer to match batch dimensions
-        expanded_buffer = self.input_buffer.view(
-            *([1] * len(batch_shape)), -1
-        ).expand(*batch_shape, -1)
-        
+        expanded_buffer = self.input_buffer.view(*([1] * len(batch_shape)), -1).expand(
+            *batch_shape, -1
+        )
+
         # Clone to make it writable
         full_input = expanded_buffer.clone()
-        
+
         # Scatter control values into the full input tensor
         # scatter_(dim, index, src)
         # We want to scatter along the last dimension
@@ -348,6 +361,6 @@ class PriorModel(torch.nn.Module):
         ).expand(*batch_shape, -1)
 
         full_input.scatter_(dim=-1, index=indices_expanded, src=x)
-        
+
         # Call LUME model
         return self.model(full_input)
