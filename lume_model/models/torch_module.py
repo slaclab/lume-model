@@ -251,7 +251,7 @@ class PriorModel(torch.nn.Module):
     This module wraps a LUME model and manages the seperation between control variables
     (optimized by Xopt) and fixed variables (measured from the machine). It also maintains
     an efficient buffer of fixed variables that is updated periodically.
-    The prior modek is used as a mean function in Gaussian process models to incorporate
+    The prior model is used as a mean function in Gaussian process models to incorporate
     physics knowledge from the LUME surrogate model into the Bayesian optimization process.
 
     Args:
