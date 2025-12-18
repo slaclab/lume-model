@@ -245,11 +245,11 @@ class TorchModule(torch.nn.Module):
         )
 
 
-class PriorModel(torch.nn.Module):
+class FixedVariableModel(torch.nn.Module):
     """
     Prior model for Bayesian optimization.
     This module wraps a LUME model and manages the seperation between control variables
-    (optimized by Xopt) and fixed variables (measured from the machine). It also maintains
+    and fixed variables (measured from the machine). It also maintains
     an efficient buffer of fixed variables that is updated periodically.
     The prior model is used as a mean function in Gaussian process models to incorporate
     physics knowledge from the LUME surrogate model into the Bayesian optimization process.
@@ -257,7 +257,7 @@ class PriorModel(torch.nn.Module):
     Args:
         model (TorchModule): LUME model that takes all input variables and produces outputs.
             The model's input order is obtained via model.input_variables.
-        fixed_variables (dict): Dictionary mapping PV names to their initial measured values
+        fixed_values (dict): Dictionary mapping PV names to their initial measured values
             for all non-control variables. Keys should be PV names (str), values should be
             floats. These represent the initial state of variables not being optimized.
 
@@ -265,7 +265,7 @@ class PriorModel(torch.nn.Module):
         model (TorchModule): The LUME surrogate model.
         all_inputs (list): Ordered list of all input variable names from the LUME model.
         control_variables (list): List of control variable names, derived as
-            all_inputs - fixed_variables.
+            all_inputs - fixed_values.
         input_buffer (torch.Tensor): 1D tensor storing the current values of all inputs.
             Shape: (n_total_inputs,). This is updated when fixed variables change.
         control_indices (torch.Tensor): 1D tensor of indices for control variables in the
@@ -273,12 +273,12 @@ class PriorModel(torch.nn.Module):
         fixed_indices (list): List of indices for fixed variables in the full input tensor.
     """
 
-    def __init__(self, model: TorchModule, fixed_variables):
-        super(PriorModel, self).__init__()
+    def __init__(self, model: TorchModule, fixed_values):
+        super(FixedVariableModel, self).__init__()
         self.model = model
         self.all_inputs = list(model.input_order)
         self.control_variables = [
-            pv for pv in self.all_inputs if pv not in fixed_variables
+            pv for pv in self.all_inputs if pv not in fixed_values
         ]
 
         # Create a buffer tensor to store the full input template
@@ -290,12 +290,10 @@ class PriorModel(torch.nn.Module):
             [self.all_inputs.index(var) for var in self.control_variables],
             dtype=torch.long,
         )
-        self.fixed_indices = [
-            self.all_inputs.index(var) for var in fixed_variables.keys()
-        ]
+        self.fixed_indices = [self.all_inputs.index(var) for var in fixed_values.keys()]
 
         # Initialize buffer with fixed variables
-        self.update_fixed_variables(fixed_variables)
+        self.update_fixed_values(fixed_values)
 
         print("PriorModel initialized:")
         print(f"  Total inputs (from model): {len(self.all_inputs)}")
@@ -304,7 +302,7 @@ class PriorModel(torch.nn.Module):
         print(f"  Control variables: {self.control_variables}")
         print(f"  Control indices: {self.control_indices}")
 
-    def update_fixed_variables(self, fixed_variables):
+    def update_fixed_values(self, fixed_values):
         """
         Update the buffer with new fixed variable values.
 
@@ -312,40 +310,16 @@ class PriorModel(torch.nn.Module):
         fixed variables. It should be called when fixed variable measurements change.
 
         Args:
-            fixed_variables (dict): Dictionary mapping PV names to their new measured values.
+            fixed_values (dict): Dictionary mapping PV names to their new measured values.
                 Keys should be PV names (str) that exist in self.all_inputs and are NOT
                 control variables. Values should be floats.
 
         Returns:
             None. Updates self.input_buffer in-place.
         """
-        for var_name, value in fixed_variables.items():
+        for var_name, value in fixed_values.items():
             idx = self.all_inputs.index(var_name)
             self.input_buffer[idx] = value
-
-    def update_from_data(self, data_row):
-        """
-        Update fixed variables from a data row (e.g., from X.data).
-
-        Args:
-            data_row: pandas Series or dict containing measured values
-
-        Returns:
-            dict: Dictionary of {pv_name: value} for the fixed variables that were updated.
-        """
-        # Extract only the fixed (non-control) variables
-        measured_fixed_values = {
-            pv: data_row[pv]
-            for pv in self.all_inputs
-            if pv not in self.control_variables
-        }
-
-        # Update the buffer
-        self.update_fixed_variables(measured_fixed_values)
-
-        print(f"   Updated buffer with {len(measured_fixed_values)} fixed variables")
-
-        return measured_fixed_values
 
     def forward(self, x) -> torch.Tensor:
         """
