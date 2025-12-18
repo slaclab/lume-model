@@ -249,9 +249,9 @@ class PriorModel(torch.nn.Module):
     """
     Prior model for Bayesian optimization.
     This module wraps a LUME model and manages the seperation between control variables
-    (optimized by Xopt) and fixed variables (measured from the machine). It also maintains 
+    (optimized by Xopt) and fixed variables (measured from the machine). It also maintains
     an efficient buffer of fixed variables that is updated periodically.
-    The prior modek is used as a mean function in Gaussian process models to incorporate 
+    The prior modek is used as a mean function in Gaussian process models to incorporate
     physics knowledge from the LUME surrogate model into the Bayesian optimization process.
 
     Args:
@@ -264,7 +264,7 @@ class PriorModel(torch.nn.Module):
     Attributes:
         model (TorchModule): The LUME surrogate model.
         all_inputs (list): Ordered list of all input variable names from the LUME model.
-        control_variables (list): List of control variable names, derived as 
+        control_variables (list): List of control variable names, derived as
             all_inputs - fixed_variables.
         input_buffer (torch.Tensor): 1D tensor storing the current values of all inputs.
             Shape: (n_total_inputs,). This is updated when fixed variables change.
