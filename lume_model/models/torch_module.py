@@ -248,6 +248,29 @@ class TorchModule(torch.nn.Module):
 class PriorModel(torch.nn.Module):
     """
     Prior model for Bayesian optimization.
+    This module wraps a LUME model and manages the seperation between control variables
+    (optimized by Xopt) and fixed variables (measured from the machine). It also maintains 
+    an efficient buffer of fixed variables that is updated periodically.
+    The prior modek is used as a mean function in Gaussian process models to incorporate 
+    physics knowledge from the LUME surrogate model into the Bayesian optimization process.
+
+    Args:
+        model (TorchModule): LUME model that takes all input variables and produces outputs.
+            The model's input order is obtained via model.input_variables.
+        fixed_variables (dict): Dictionary mapping PV names to their initial measured values
+            for all non-control variables. Keys should be PV names (str), values should be
+            floats. These represent the initial state of variables not being optimized.
+
+    Attributes:
+        model (TorchModule): The LUME surrogate model.
+        all_inputs (list): Ordered list of all input variable names from the LUME model.
+        control_variables (list): List of control variable names, derived as 
+            all_inputs - fixed_variables.
+        input_buffer (torch.Tensor): 1D tensor storing the current values of all inputs.
+            Shape: (n_total_inputs,). This is updated when fixed variables change.
+        control_indices (torch.Tensor): 1D tensor of indices for control variables in the
+            full input tensor. Shape: (n_control_vars,). Used for fast indexing.
+        fixed_indices (list): List of indices for fixed variables in the full input tensor.
     """
 
     def __init__(self, model: TorchModule, fixed_variables):
@@ -270,9 +293,6 @@ class PriorModel(torch.nn.Module):
         self.fixed_indices = [
             self.all_inputs.index(var) for var in fixed_variables.keys()
         ]
-
-        # Initialize call counter
-        self.call_count = 0
 
         # Initialize buffer with fixed variables
         self.update_fixed_variables(fixed_variables)
@@ -340,7 +360,6 @@ class PriorModel(torch.nn.Module):
             torch.Tensor: Output from the LUME model. Shape depends on the model's
                 output structure and the input batch dimensions.
         """
-        self.call_count += 1
         batch_shape = x.shape[
             :-1
         ]  # Get batch shape (everything except the last dimension)
