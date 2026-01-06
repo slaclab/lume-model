@@ -1,0 +1,12 @@
+name: Test on GPU
+
+on:
+  workflow_dispatch:
+
+jobs:
+  check_gpu:
+    runs-on: # Use the appropriate label for the runner, e.g., 'ubuntu-latest' for default or 'linux-nvidia-gpu' for a custom large runner
+    steps:
+      - name: Check for NVIDIA GPU presence
+        run: nvidia-smi
+        continue-on-error: true
