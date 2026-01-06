@@ -6,7 +6,7 @@ on:
 
 jobs:
   check_gpu:
-    runs-on: ubuntu-latest
+    runs-on: linux-nvidia-gpu
     steps:
       - name: Check for NVIDIA GPU presence
         run: nvidia-smi
