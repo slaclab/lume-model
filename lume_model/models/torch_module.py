@@ -2,7 +2,7 @@ import os
 import json
 import yaml
 import inspect
-from typing import Union, Any
+from typing import Union, Any, Dict
 
 import torch
 
@@ -274,6 +274,15 @@ class FixedVariableModel(torch.nn.Module):
     """
 
     def __init__(self, model: TorchModule, fixed_values):
+        """
+        Initialize the FixedVariableModel class.
+        This constructor steps up the model wrapper that separates control variables (to be optimized) from fixed variables (measured           from machine state). It creates an efficient buffer structure for fast forward passes during optimization.
+
+        Args:
+            model (TorchModule): The LUME surrogate model
+            fixed_variables (Dict[str, float]): Dictionary mapping PV (process variable) names to their initial measured values
+            for all non-control variables
+        """
         super(FixedVariableModel, self).__init__()
         self.model = model
         self.all_inputs = list(model.input_order)
@@ -286,16 +295,20 @@ class FixedVariableModel(torch.nn.Module):
         self.register_buffer("input_buffer", torch.zeros(len(self.all_inputs)))
 
         # Pre-compute indices for fast lookup (computed once, used many times)
-        self.control_indices = torch.tensor(
-            [self.all_inputs.index(var) for var in self.control_variables],
-            dtype=torch.long,
+        # Store as buffer so it moves with the model to different devices
+        self.register_buffer(
+            "control_indices",
+            torch.tensor(
+                [self.all_inputs.index(var) for var in self.control_variables],
+                dtype=torch.long,
+            )
         )
         self.fixed_indices = [self.all_inputs.index(var) for var in fixed_values.keys()]
 
         # Initialize buffer with fixed variables
         self.update_fixed_values(fixed_values)
 
-        print("PriorModel initialized:")
+        print("FixedVariableModel initialized")
         print(f"  Total inputs (from model): {len(self.all_inputs)}")
         print(f"  Fixed variables: {len(self.fixed_indices)}")
         print(f"  Control variables (derived): {len(self.control_variables)}")
