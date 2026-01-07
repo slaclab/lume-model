@@ -2,7 +2,7 @@ import os
 import json
 import yaml
 import inspect
-from typing import Union, Any, Dict
+from typing import Union, Any
 
 import torch
 
@@ -301,7 +301,7 @@ class FixedVariableModel(torch.nn.Module):
             torch.tensor(
                 [self.all_inputs.index(var) for var in self.control_variables],
                 dtype=torch.long,
-            )
+            ),
         )
         self.fixed_indices = [self.all_inputs.index(var) for var in fixed_values.keys()]
 
