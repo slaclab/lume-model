@@ -7,7 +7,7 @@ registered_models = []
 # models requiring torch
 try:
     from lume_model.models.torch_model import TorchModel
-    from lume_model.models.torch_module import TorchModule, FixedVariableModel
+    from lume_model.models.torch_module import TorchModule
     from lume_model.models.ensemble import NNEnsemble
     from lume_model.models.gp_model import GPModel
 
