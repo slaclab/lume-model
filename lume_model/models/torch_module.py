@@ -243,3 +243,130 @@ class TorchModule(torch.nn.Module):
             save_jit,
             **kwargs,
         )
+
+
+class FixedVariableModel(torch.nn.Module):
+    """
+    Prior model for Bayesian optimization.
+    This module wraps a LUME model and manages the seperation between control variables
+    and fixed variables (measured from the machine). It also maintains
+    an efficient buffer of fixed variables that is updated periodically.
+    The prior model is used as a mean function in Gaussian process models to incorporate
+    physics knowledge from the LUME surrogate model into the Bayesian optimization process.
+
+    Args:
+        model (TorchModule): LUME model that takes all input variables and produces outputs.
+            The model's input order is obtained via model.input_variables.
+        fixed_values (dict): Dictionary mapping PV names to their initial measured values
+            for all non-control variables. Keys should be PV names (str), values should be
+            floats. These represent the initial state of variables not being optimized.
+
+    Attributes:
+        model (TorchModule): The LUME surrogate model.
+        all_inputs (list): Ordered list of all input variable names from the LUME model.
+        control_variables (list): List of control variable names, derived as
+            all_inputs - fixed_values.
+        input_buffer (torch.Tensor): 1D tensor storing the current values of all inputs.
+            Shape: (n_total_inputs,). This is updated when fixed variables change.
+        control_indices (torch.Tensor): 1D tensor of indices for control variables in the
+            full input tensor. Shape: (n_control_vars,). Used for fast indexing.
+        fixed_indices (list): List of indices for fixed variables in the full input tensor.
+    """
+
+    def __init__(self, model: TorchModule, fixed_values):
+        """
+        Initialize the FixedVariableModel class.
+        This constructor steps up the model wrapper that separates control variables (to be optimized) from fixed variables (measured           from machine state). It creates an efficient buffer structure for fast forward passes during optimization.
+
+        Args:
+            model (TorchModule): The LUME surrogate model
+            fixed_variables (Dict[str, float]): Dictionary mapping PV (process variable) names to their initial measured values
+            for all non-control variables
+        """
+        super(FixedVariableModel, self).__init__()
+        self.model = model
+        self.all_inputs = list(model.input_order)
+        self.control_variables = [
+            pv for pv in self.all_inputs if pv not in fixed_values
+        ]
+
+        # Create a buffer tensor to store the full input template
+        # This is updated ONCE when fixed variables change, not on every forward call
+        self.register_buffer("input_buffer", torch.zeros(len(self.all_inputs)))
+
+        # Pre-compute indices for fast lookup (computed once, used many times)
+        # Store as buffer so it moves with the model to different devices
+        self.register_buffer(
+            "control_indices",
+            torch.tensor(
+                [self.all_inputs.index(var) for var in self.control_variables],
+                dtype=torch.long,
+            ),
+        )
+        self.fixed_indices = [self.all_inputs.index(var) for var in fixed_values.keys()]
+
+        # Initialize buffer with fixed variables
+        self.update_fixed_values(fixed_values)
+
+        print("FixedVariableModel initialized")
+        print(f"  Total inputs (from model): {len(self.all_inputs)}")
+        print(f"  Fixed variables: {len(self.fixed_indices)}")
+        print(f"  Control variables (derived): {len(self.control_variables)}")
+        print(f"  Control variables: {self.control_variables}")
+        print(f"  Control indices: {self.control_indices}")
+
+    def update_fixed_values(self, fixed_values):
+        """
+        Update the buffer with new fixed variable values.
+
+        This method directly updates the input_buffer tensor with new values for
+        fixed variables. It should be called when fixed variable measurements change.
+
+        Args:
+            fixed_values (dict): Dictionary mapping PV names to their new measured values.
+                Keys should be PV names (str) that exist in self.all_inputs and are NOT
+                control variables. Values should be floats.
+
+        Returns:
+            None. Updates self.input_buffer in-place.
+        """
+        for var_name, value in fixed_values.items():
+            idx = self.all_inputs.index(var_name)
+            self.input_buffer[idx] = value
+
+    def forward(self, x) -> torch.Tensor:
+        """
+        Forward pass through the LUME model with control and fixed variables
+
+        Args:
+            x (torch.Tensor): Tensor containing only control variable values.
+                Can have arbitrary batch dimensions.
+                The last dimension must match len(self.control_variables).
+
+        Returns:
+            torch.Tensor: Output from the LUME model. Shape depends on the model's
+                output structure and the input batch dimensions.
+        """
+        batch_shape = x.shape[
+            :-1
+        ]  # Get batch shape (everything except the last dimension)
+
+        # Expand buffer to match batch dimensions
+        expanded_buffer = self.input_buffer.view(*([1] * len(batch_shape)), -1).expand(
+            *batch_shape, -1
+        )
+
+        # Clone to make it writable
+        full_input = expanded_buffer.clone()
+
+        # Scatter control values into the full input tensor
+        # scatter_(dim, index, src)
+        # We want to scatter along the last dimension
+        indices_expanded = self.control_indices.view(
+            *([1] * len(batch_shape)), -1
+        ).expand(*batch_shape, -1)
+
+        full_input.scatter_(dim=-1, index=indices_expanded, src=x)
+
+        # Call LUME model
+        return self.model(full_input)
