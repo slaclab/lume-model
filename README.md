@@ -11,7 +11,7 @@ PyTorch-based tools and workflows.
 
 ## Base Requirements
 
-* Python >= 3.10
+* Python >= 3.11
 * pydantic
 * numpy
 * pyyaml
